@@ -1,11 +1,14 @@
 [project]
-name = "PACKAGE"
-description = "DESCRIPTION"
+name = "tokenizerdatamodels"
+description = "Datamodels for HF tokenizers"
 readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.11"
 
 dependencies = [
+    "tokenizers",
+    "transformers",
+    "pydantic",
 ]
 
 [build-system]
@@ -44,7 +47,7 @@ select = [
 ]
 ignore = [
     # Allow self and cls to be untyped, and allow Any type
-    "ANN401",
+    "ANN101", "ANN102", "ANN401",
     # Pydocstyle ignores
     "D100", "D101", "D104", "D203", "D212", "D401",
     # Allow use of f-strings in logging
@@ -65,10 +68,10 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.setuptools]
-packages = ["PACKAGE"]
+packages = ["tokenizerdatamodels"]
 
 [tool.setuptools_scm]
 # can be empty if no extra settings are needed, presence enables setuptools_scm
 
 [tool.setuptools.dynamic]
-version = {attr = "PACKAGE.version.__version__"}
+version = {attr = "tokenizerdatamodels.version.__version__"}
