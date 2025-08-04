@@ -50,7 +50,16 @@ print(new_tok.encode("hello 123").tokens)
 
 The example above is still pretty rough. In the future, you'll be able to add pretokenizers with something like `.add_pretokenizer`, which then would automatically add a sequence if necessary.
 
-# Install
+# Roadmap
+
+Here's a rough roadmap:
+
+* Add automated lowercasing
+* Add vocabulary changes + checks (e.g., check the merge table if a token is added)
+* Add helper functions (e.g., the aforementioned `.add_pretokenizer`)
+* Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
+
+# Installation
 
 I only offer git right now:
 
