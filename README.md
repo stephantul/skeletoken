@@ -64,7 +64,7 @@ Here's a rough roadmap:
 I only offer git right now:
 
 ```bash
-pip install git+https://github.com/stephantul/tokenizerdatamodels.git
+pip install git+https://github.com/stephantul/tokenizer-datamodels.git
 ```
 
 
