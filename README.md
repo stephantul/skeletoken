@@ -38,8 +38,7 @@ tokenizer_model = TokenizerModel.model_validate_json(tok.to_str())
 # The gpt tokenizer only has a single pretokenizer.
 # So we need to add a sequence
 digits = DigitsPreTokenizer(individual_digits=True)
-sequence = PretokenizerSequence(pretokenizers=[tokenizer_model.pre_tokenizer, digits])
-tokenizer_model.pre_tokenizer = sequence
+tokenizer_model.add_pre_tokenizer(digits)
 
 new_tok = Tokenizer.from_str(tokenizer_model.model_dump_json())
 print(tok.encode("hello 123").tokens)
@@ -48,16 +47,14 @@ print(new_tok.encode("hello 123").tokens)
 # ['hello', 'Ġ', '1', '2', '3']
 ```
 
-The example above is still pretty rough. In the future, you'll be able to add pretokenizers with something like `.add_pretokenizer`, which then would automatically add a sequence if necessary.
-
 # Roadmap
 
 Here's a rough roadmap:
 
-* Add automated lowercasing
-* Add vocabulary changes + checks (e.g., check the merge table if a token is added)
-* Add helper functions (e.g., the aforementioned `.add_pretokenizer`)
-* Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
+[ ] Add automated lowercasing (see [blog](https://stephantul.github.io/tokenization/casing/2025/08/01/uncasing/))
+[ ] Add vocabulary changes + checks (e.g., check the merge table if a token is added)
+[x] Add helper functions (e.g., the aforementioned `.add_pretokenizer`)
+[ ] Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
 
 # Installation
 
@@ -66,7 +63,6 @@ I only offer git right now:
 ```bash
 pip install git+https://github.com/stephantul/tokenizer-datamodels.git
 ```
-
 
 # License
 
