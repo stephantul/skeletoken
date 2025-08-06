@@ -51,10 +51,10 @@ print(new_tok.encode("hello 123").tokens)
 
 Here's a rough roadmap:
 
-[ ] Add automated lowercasing (see [blog](https://stephantul.github.io/tokenization/casing/2025/08/01/uncasing/))
-[ ] Add vocabulary changes + checks (e.g., check the merge table if a token is added)
-[x] Add helper functions (e.g., the aforementioned `.add_pretokenizer`)
-[ ] Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
+* Add automated lowercasing (see [blog](https://stephantul.github.io/tokenization/casing/2025/08/01/uncasing/))
+* Add vocabulary changes + checks (e.g., check the merge table if a token is added)
+* ✅ Add helper functions for adding modules
+* Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
 
 # Installation
 
