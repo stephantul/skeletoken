@@ -21,15 +21,36 @@ class DecoderType(str, Enum):
 
 
 class BPEDecoder(BaseModel):
+    """
+    A legacy BPE decoder.
+
+    The `suffix` is used to determine the end of a BPE token.
+    For example, if the suffix is "a", then "baba" will be decoded as "bb".
+
+    Attributes
+    ----------
+        suffix: The suffix to use for BPE tokenization.
+
+    """
+
     type: Literal[DecoderType.BPEDECODER] = DecoderType.BPEDECODER
     suffix: str
 
 
 class ByteFallbackDecoder(BaseModel):
+    """
+    A ByteFallback decoder is used to handle byte-level tokens.
+
+    It acts as a fallback for weird bytes, and replaces them with �, much like
+    'utf-8' decoding does.
+    """
+
     type: Literal[DecoderType.BYTEFALLBACK] = DecoderType.BYTEFALLBACK
 
 
 class ByteLevelDecoder(BaseModel):
+    """A ByteLevel decoder is used for byte-level tokenization."""
+
     type: Literal[DecoderType.BYTELEVEL] = DecoderType.BYTELEVEL
     add_prefix_space: bool
     trim_offsets: bool
@@ -37,6 +58,21 @@ class ByteLevelDecoder(BaseModel):
 
 
 class CTCDecoder(BaseModel):
+    """
+    A CTC decoder is used for connectionist temporal classification.
+
+    It removes any contiguous duplicates, e.g., "hh_ee_ll_ll_oo" -> "hello",
+    and removes the padding token, e.g., "h h _ e e l l l _ o o" -> "hello".
+    The word delimiter is replaced by a space between words, e.g., "hello|world" -> "hello | world".
+
+    Attributes
+    ----------
+        pad_token: The padding token to remove.
+        word_delimiter_token: The token used to separate words.
+        cleanup: If True, it will clean up the output by removing some stuff.
+
+    """
+
     type: Literal[DecoderType.CTC] = DecoderType.CTC
     pad_token: str
     word_delimiter_token: str
@@ -44,6 +80,12 @@ class CTCDecoder(BaseModel):
 
 
 class FuseDecoder(BaseModel):
+    """
+    A Fuse decoder just merges tokens.
+
+    e.g., "un" + "known" -> "unknown"
+    """
+
     type: Literal[DecoderType.FUSE] = DecoderType.FUSE
 
 

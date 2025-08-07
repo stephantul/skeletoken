@@ -81,3 +81,7 @@ class TokenizerModel(BaseModel):
     def from_string(cls: type[TokenizerModel], json_str: str) -> TokenizerModel:
         """Create a TokenizerModel from a JSON string."""
         return cls.model_validate_json(json_str)
+
+    def to_tokenizer(self) -> Tokenizer:
+        """Convert the TokenizerModel back to a Tokenizer instance."""
+        return Tokenizer.from_str(self.model_dump_json())
