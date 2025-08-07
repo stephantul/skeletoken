@@ -26,23 +26,57 @@ class NormalizerType(str, Enum):
 
 
 class NormalizerSequence(BaseModel):
+    """A sequence of normalizers to be applied in order."""
+
     type: Literal[NormalizerType.SEQUENCE] = NormalizerType.SEQUENCE
     normalizers: list[Normalizer]
 
 
 class NFCNormalizer(BaseModel):
+    """
+    Applies NFC normalization to the input text.
+
+    See here for more details:
+    https://unicode.org/reports/tr15/#Normalization_Forms
+
+    """
+
     type: Literal[NormalizerType.NFC] = NormalizerType.NFC
 
 
 class NFDNormalizer(BaseModel):
+    """
+    Applies NFD normalization to the input text.
+
+    See here for more details:
+    https://unicode.org/reports/tr15/#Normalization_Forms
+
+    """
+
     type: Literal[NormalizerType.NFD] = NormalizerType.NFD
 
 
 class NFKCNormalizer(BaseModel):
+    """
+    Applies NFKC normalization to the input text.
+
+    See here for more details:
+    https://unicode.org/reports/tr15/#Normalization_Forms
+
+    """
+
     type: Literal[NormalizerType.NFKC] = NormalizerType.NFKC
 
 
 class NFKDNormalizer(BaseModel):
+    """
+    Applies NFKD normalization to the input text.
+
+    See here for more details:
+    https://unicode.org/reports/tr15/#Normalization_Forms
+
+    """
+
     type: Literal[NormalizerType.NFKD] = NormalizerType.NFKD
 
 
@@ -55,10 +89,19 @@ class BertNormalizer(BaseModel):
 
 
 class ByteLevelNormalizer(BaseModel):
+    r"""
+    Applies byte-level normalization to the input text.
+
+    This normalizer applies the same transformations as the ByteLevel pretokenizer.
+    Using this normalizer and adding a regex split pretokenizer is equivalent to using the ByteLevel pretokenizer.
+    """
+
     type: Literal[NormalizerType.BYTELEVEL] = NormalizerType.BYTELEVEL
 
 
 class LowercaseNormalizer(BaseModel):
+    """Lowercases the input text."""
+
     type: Literal[NormalizerType.LOWERCASE] = NormalizerType.LOWERCASE
 
 
@@ -67,27 +110,42 @@ class NmtNormalizer(BaseModel):
 
 
 class PrependedNormalizer(BaseModel):
+    """Prepends a string to the input text."""
+
     type: Literal[NormalizerType.PREPEND] = NormalizerType.PREPEND
     prepend: str
 
 
 class StripNormalizer(BaseModel):
+    """Strips whitespace from the left and/or right side of the input text."""
+
     type: Literal[NormalizerType.STRIP] = NormalizerType.STRIP
     strip_left: bool
     strip_right: bool
 
 
 class StripAccentsNormalizer(BaseModel):
+    """Strips accents from the input text."""
+
     type: Literal[NormalizerType.STRIPACCENTS] = NormalizerType.STRIPACCENTS
 
 
 class ReplaceNormalizer(BaseModel):
+    """Replaces a pattern in the input text with a given content."""
+
     type: Literal[NormalizerType.REPLACE] = NormalizerType.REPLACE
     pattern: StringPattern | RegexPattern
     content: str
 
 
 class PrecompiledNormalizer(BaseModel):
+    """
+    A precompiled normalizer that uses a precompiled characters map.
+
+    NOTE: I don't know what precompiled_charsmap is supposed to be.
+    It comes from sentencepiece, but it's a byte string.
+    """
+
     type: Literal[NormalizerType.PRECOMPILED] = NormalizerType.PRECOMPILED
     precompiled_charsmap: str
 
