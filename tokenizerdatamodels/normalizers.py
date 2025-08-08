@@ -106,6 +106,34 @@ class LowercaseNormalizer(BaseModel):
 
 
 class NmtNormalizer(BaseModel):
+    """
+    A normalizer that removes specific codepoints.
+
+    The codepoints:
+        0x0001..=0x0008 -> Control characters SOH to BS
+        0x000B -> Vertical tab
+        0x000E..=0x001F -> More control characters
+        0x007F -> DEL (delete)
+        0x008F, 0x009F -> Control characters from C1 set
+
+    are removed
+
+    The codepoints:
+        0x0009 => Tab (Horizontal Tab)
+        0x000A => Line Feed (LF / Newline)
+        0x000C => Form Feed (FF)
+        0x000D => Carriage Return (CR)
+        0x1680 => Ogham Space Mark
+        0x200B..=0x200F => Zero Width Space and related (ZWSP, ZWNJ, ZWJ, LRM, RLM, etc.)
+        0x2028 => Line Separator
+        0x2029 => Paragraph Separator
+        0x2581 => Lower One Eighth Block (▁) – used as visible space in some tokenizers
+        0xFEFF => Zero Width No-Break Space / Byte Order Mark (BOM)
+        0xFFFD => Replacement Character (�)
+
+    are replaced with a space character (U+0020).
+    """
+
     type: Literal[NormalizerType.NMT] = NormalizerType.NMT
 
 
@@ -142,8 +170,7 @@ class PrecompiledNormalizer(BaseModel):
     """
     A precompiled normalizer that uses a precompiled characters map.
 
-    NOTE: I don't know what precompiled_charsmap is supposed to be.
-    It comes from sentencepiece, but it's a byte string.
+    NOTE: It is unclear how this is constructed, and is mainly here for compatibility with sentencepiece
     """
 
     type: Literal[NormalizerType.PRECOMPILED] = NormalizerType.PRECOMPILED

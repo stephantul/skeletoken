@@ -49,7 +49,11 @@ class ByteFallbackDecoder(BaseModel):
 
 
 class ByteLevelDecoder(BaseModel):
-    """A ByteLevel decoder is used for byte-level tokenization."""
+    """
+    A ByteLevel decoder is used for byte-level tokenization.
+
+    This decoder implements the inverse of the ByteLevel pretokenizer.
+    """
 
     type: Literal[DecoderType.BYTELEVEL] = DecoderType.BYTELEVEL
     add_prefix_space: bool
@@ -69,7 +73,7 @@ class CTCDecoder(BaseModel):
     ----------
         pad_token: The padding token to remove.
         word_delimiter_token: The token used to separate words.
-        cleanup: If True, it will clean up the output by removing some stuff.
+        cleanup: If True, it will clean up the output by removing some artifacts.
 
     """
 
@@ -90,6 +94,12 @@ class FuseDecoder(BaseModel):
 
 
 class MetaspaceDecoder(BaseModel):
+    """
+    A Metaspace decoder is used for metaspace tokenization.
+
+    This decoder inverts the metaspace tokenization process.
+    """
+
     type: Literal[DecoderType.METASPACE] = DecoderType.METASPACE
     replacement: str
     prepend_scheme: PrependScheme
@@ -97,12 +107,36 @@ class MetaspaceDecoder(BaseModel):
 
 
 class ReplaceDecoder(BaseModel):
+    """
+    A Replace decoder replaces a pattern in the input text with a given content.
+
+    It can be seen as the inverse of the Replace pretokenizer, but doesn't need to be the exact inverse.
+    """
+
     type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE
     pattern: StringPattern | RegexPattern
     content: str
 
 
 class StripDecoder(BaseModel):
+    """
+    A Strip decoder strips characters from the input text.
+
+    This decoder removes a specific content from the start and/or end of the input text.
+    The start and stop indices are used to determine where to strip the content.
+    If the start index is higher than the stop index, it will strip from the end of the content.
+
+    e.g., start 0 and end 1 will strip the first character,
+    while start 1 and end 0 will strip the last character.
+
+    Attributes
+    ----------
+        content: The content to strip.
+        start: The start index to strip from.
+        stop: The stop index to strip to.
+
+    """
+
     type: Literal[DecoderType.STRIP] = DecoderType.STRIP
     content: str
     start: int
@@ -110,6 +144,18 @@ class StripDecoder(BaseModel):
 
 
 class WordPieceDecoder(BaseModel):
+    """
+    A WordPiece decoder is used for WordPiece tokenization.
+
+    This decoder implements the inverse of the WordPiece pretokenizer.
+
+    Attributes
+    ----------
+        prefix: The prefix to use for WordPiece tokenization.
+        cleanup: If True, it will clean up the output by removing some artifacts.
+
+    """
+
     type: Literal[DecoderType.WORDPIECE] = DecoderType.WORDPIECE
     prefix: str
     cleanup: bool
