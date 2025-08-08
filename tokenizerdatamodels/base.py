@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Literal
 
@@ -8,10 +9,12 @@ from tokenizers import Tokenizer
 
 from tokenizerdatamodels.addedtoken import AddedToken
 from tokenizerdatamodels.decoders import DecoderDiscriminator
-from tokenizerdatamodels.models import ModelDiscriminator
+from tokenizerdatamodels.models import BPE, ModelDiscriminator, Unigram, WordLevel, WordPiece
 from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence
 from tokenizerdatamodels.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
 from tokenizerdatamodels.pretokenizers import PreTokenizerDiscriminator, PretokenizerSequence
+
+logger = logging.getLogger(__name__)
 
 
 class TokenizerModel(BaseModel):
@@ -85,3 +88,9 @@ class TokenizerModel(BaseModel):
     def to_tokenizer(self) -> Tokenizer:
         """Convert the TokenizerModel back to a Tokenizer instance."""
         return Tokenizer.from_str(self.model_dump_json())
+
+    def make_model_greedy(self) -> TokenizerModel:
+        """Convert the TokenizerModel to a greedy tokenizer model."""
+        self_copy = self.copy(deep=True)
+        self_copy.model = self_copy.model.to_greedy()
+        return self_copy
