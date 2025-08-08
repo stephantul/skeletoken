@@ -24,6 +24,8 @@ class PreTokenizerType(str, Enum):
 
 
 class PretokenizerSequence(BaseModel):
+    """A sequence of pretokenizers to be applied in order."""
+
     type: Literal[PreTokenizerType.SEQUENCE] = PreTokenizerType.SEQUENCE
     pretokenizers: list[PreTokenizer]
 

@@ -21,15 +21,40 @@ class DecoderType(str, Enum):
 
 
 class BPEDecoder(BaseModel):
+    """
+    A legacy BPE decoder.
+
+    The `suffix` is used to determine the end of a BPE token.
+    For example, if the suffix is "a", then "baba" will be decoded as "bb".
+
+    Attributes
+    ----------
+        suffix: The suffix to use for BPE tokenization.
+
+    """
+
     type: Literal[DecoderType.BPEDECODER] = DecoderType.BPEDECODER
     suffix: str
 
 
 class ByteFallbackDecoder(BaseModel):
+    """
+    A ByteFallback decoder is used to handle byte-level tokens.
+
+    It acts as a fallback for weird bytes, and replaces them with �, much like
+    'utf-8' decoding does.
+    """
+
     type: Literal[DecoderType.BYTEFALLBACK] = DecoderType.BYTEFALLBACK
 
 
 class ByteLevelDecoder(BaseModel):
+    """
+    A ByteLevel decoder is used for byte-level tokenization.
+
+    This decoder implements the inverse of the ByteLevel pretokenizer.
+    """
+
     type: Literal[DecoderType.BYTELEVEL] = DecoderType.BYTELEVEL
     add_prefix_space: bool
     trim_offsets: bool
@@ -37,6 +62,21 @@ class ByteLevelDecoder(BaseModel):
 
 
 class CTCDecoder(BaseModel):
+    """
+    A CTC decoder is used for connectionist temporal classification.
+
+    It removes any contiguous duplicates, e.g., "hh_ee_ll_ll_oo" -> "hello",
+    and removes the padding token, e.g., "h h _ e e l l l _ o o" -> "hello".
+    The word delimiter is replaced by a space between words, e.g., "hello|world" -> "hello | world".
+
+    Attributes
+    ----------
+        pad_token: The padding token to remove.
+        word_delimiter_token: The token used to separate words.
+        cleanup: If True, it will clean up the output by removing some artifacts.
+
+    """
+
     type: Literal[DecoderType.CTC] = DecoderType.CTC
     pad_token: str
     word_delimiter_token: str
@@ -44,10 +84,22 @@ class CTCDecoder(BaseModel):
 
 
 class FuseDecoder(BaseModel):
+    """
+    A Fuse decoder just merges tokens.
+
+    e.g., "un" + "known" -> "unknown"
+    """
+
     type: Literal[DecoderType.FUSE] = DecoderType.FUSE
 
 
 class MetaspaceDecoder(BaseModel):
+    """
+    A Metaspace decoder is used for metaspace tokenization.
+
+    This decoder inverts the metaspace tokenization process.
+    """
+
     type: Literal[DecoderType.METASPACE] = DecoderType.METASPACE
     replacement: str
     prepend_scheme: PrependScheme
@@ -55,12 +107,36 @@ class MetaspaceDecoder(BaseModel):
 
 
 class ReplaceDecoder(BaseModel):
+    """
+    A Replace decoder replaces a pattern in the input text with a given content.
+
+    It can be seen as the inverse of the Replace pretokenizer, but doesn't need to be the exact inverse.
+    """
+
     type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE
     pattern: StringPattern | RegexPattern
     content: str
 
 
 class StripDecoder(BaseModel):
+    """
+    A Strip decoder strips characters from the input text.
+
+    This decoder removes a specific content from the start and/or end of the input text.
+    The start and stop indices are used to determine where to strip the content.
+    If the start index is higher than the stop index, it will strip from the end of the content.
+
+    e.g., start 0 and end 1 will strip the first character,
+    while start 1 and end 0 will strip the last character.
+
+    Attributes
+    ----------
+        content: The content to strip.
+        start: The start index to strip from.
+        stop: The stop index to strip to.
+
+    """
+
     type: Literal[DecoderType.STRIP] = DecoderType.STRIP
     content: str
     start: int
@@ -68,6 +144,18 @@ class StripDecoder(BaseModel):
 
 
 class WordPieceDecoder(BaseModel):
+    """
+    A WordPiece decoder is used for WordPiece tokenization.
+
+    This decoder implements the inverse of the WordPiece pretokenizer.
+
+    Attributes
+    ----------
+        prefix: The prefix to use for WordPiece tokenization.
+        cleanup: If True, it will clean up the output by removing some artifacts.
+
+    """
+
     type: Literal[DecoderType.WORDPIECE] = DecoderType.WORDPIECE
     prefix: str
     cleanup: bool
