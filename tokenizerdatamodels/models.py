@@ -35,8 +35,8 @@ class BPE(BaseModel):
     vocab: dict[str, int]
     dropout: float | None
     unk_token: str | None
-    continuing_subword_prefix: str
-    end_of_word_suffix: str
+    continuing_subword_prefix: str | None
+    end_of_word_suffix: str | None
     fuse_unk: bool
     byte_fallback: bool
     ignore_merges: bool
@@ -47,7 +47,7 @@ class BPE(BaseModel):
         return WordPiece(
             vocab=self.vocab,
             unk_token=first_token,
-            continuing_subword_prefix=self.continuing_subword_prefix,
+            continuing_subword_prefix=self.continuing_subword_prefix or "",
             max_input_chars_per_word=100,
         )
 
