@@ -62,10 +62,14 @@ class TokenInfo(BaseModel):
 class SpecialTokens(RootModel[dict[str, TokenInfo]]): ...
 
 
+# Simple type alias for a sequence of tokens for a template post-processor.
+TokenSequence = tuple[SpecialToken | SequenceToken, ...]
+
+
 class TemplatePostProcessor(BaseModel):
     type: Literal[PostProcessorType.TEMPLATE_PROCESSING] = PostProcessorType.TEMPLATE_PROCESSING
-    single: tuple[SpecialToken, SequenceToken, SpecialToken] | None
-    pair: tuple[SpecialToken, SequenceToken, SpecialToken, SequenceToken, SpecialToken] | None
+    single: TokenSequence | None
+    pair: TokenSequence | None
     special_tokens: SpecialTokens | None
 
 
