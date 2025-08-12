@@ -15,12 +15,14 @@ from tokenizerdatamodels.normalizers import (
     NFKDNormalizer,
     NmtNormalizer,
     Normalizer,
+    NormalizerSequence,
     NormalizerType,
     PrecompiledNormalizer,
     PrependedNormalizer,
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
+    lower_cases,
 )
 
 
@@ -87,3 +89,25 @@ def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: Norma
     assert tokenizer.normalizer.type == normalizer_type
 
     Tokenizer.from_str(tokenizer.model_dump_json())
+
+
+@pytest.mark.parametrize(
+    "normalizer,should_normalize",
+    [
+        [_get_default_normalizer(NormalizerType.BERTNORMALIZER), True],
+        [BertNormalizer(clean_text=False, handle_chinese_chars=True, strip_accents=False, lowercase=False), False],
+        [_get_default_normalizer(NormalizerType.LOWERCASE), True],
+        [_get_default_normalizer(NormalizerType.STRIP), False],
+        [NormalizerSequence(normalizers=[_get_default_normalizer(NormalizerType.LOWERCASE)]), True],
+        [
+            NormalizerSequence(
+                normalizers=[NormalizerSequence(normalizers=[_get_default_normalizer(NormalizerType.LOWERCASE)])]
+            ),
+            True,
+        ],
+        [None, False],
+    ],
+)
+def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
+    """Test whether the lowercases detection works."""
+    assert lower_cases(normalizer) == should_normalize

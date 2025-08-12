@@ -29,7 +29,7 @@ class NormalizerSequence(BaseModel):
     """A sequence of normalizers to be applied in order."""
 
     type: Literal[NormalizerType.SEQUENCE] = NormalizerType.SEQUENCE
-    normalizers: list[Normalizer]
+    normalizers: list[NormalizerDiscriminator]
 
 
 class NFCNormalizer(BaseModel):
@@ -194,3 +194,26 @@ Normalizer = (
     | NormalizerSequence
 )
 NormalizerDiscriminator = Annotated[Normalizer, Field(discriminator="type")]
+
+
+def lower_cases(normalizer: NormalizerDiscriminator | None) -> bool:
+    """
+    Check if a normalizer performs lowercasing.
+
+    Note that it is possible to still lowercase if this returns True, because
+    of a replacenormalizer. I think this is a super edge case, but it could still be done.
+    """
+    if normalizer is None:
+        return False
+    # If it is a sequence, apply the function recursively
+    # This is necessary, because it is possible to nest sequences of normalizers.
+    if isinstance(normalizer, NormalizerSequence):
+        return any(lower_cases(x) for x in normalizer.normalizers)
+
+    if isinstance(normalizer, LowercaseNormalizer):
+        return True
+    elif isinstance(normalizer, BertNormalizer):
+        if normalizer.lowercase:
+            return True
+
+    return False

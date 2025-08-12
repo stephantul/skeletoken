@@ -46,8 +46,8 @@ class Behavior(str, Enum):
     CONTIGUOUS: merges contiguous blocks of patterns: "baaab" -> "b", "aaa", "b"
     """
 
-    REMOVED = "removed"
-    ISOLATED = "isolated"
-    MERGED_WITH_PREVIOUS = "merged_with_previous"
-    MERGED_WITH_NEXT = "merged_with_next"
-    CONTIGUOUS = "contiguous"
+    REMOVED = "Removed"
+    ISOLATED = "Isolated"
+    MERGED_WITH_PREVIOUS = "MergedWithPrevious"
+    MERGED_WITH_NEXT = "MergedWithNext"
+    CONTIGUOUS = "Contiguous"

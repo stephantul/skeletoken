@@ -4,8 +4,8 @@ import pytest
 from tokenizers import Tokenizer
 
 from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.models import WordPiece
-from tokenizerdatamodels.normalizers import ByteLevelNormalizer, NormalizerSequence
+from tokenizerdatamodels.models import ModelType, WordPiece
+from tokenizerdatamodels.normalizers import ByteLevelNormalizer, LowercaseNormalizer, NormalizerSequence, lower_cases
 from tokenizerdatamodels.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
 from tokenizerdatamodels.pretokenizers import ByteLevelPreTokenizer, PretokenizerSequence
 
@@ -124,3 +124,21 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert model.pre_tokenizer is None
         assert model.post_processor is None
         assert model.decoder is None
+
+
+def test_make_greedy(small_tokenizer: Tokenizer) -> None:
+    """Test whether the make greedy function works."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.make_model_greedy()
+    assert tok_model.model.type == ModelType.WORDPIECE
+    assert tok_model.to_tokenizer()
+
+
+def test_lowercase(small_tokenizer: Tokenizer) -> None:
+    """Tests whether the model performs the lowercase test correctly."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert not tok_model.does_lowercase
+    assert tok_model.does_lowercase == lower_cases(tok_model.normalizer)
+    tok_model.normalizer = LowercaseNormalizer()
+    assert tok_model.does_lowercase
+    assert tok_model.does_lowercase == lower_cases(tok_model.normalizer)

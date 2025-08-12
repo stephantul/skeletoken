@@ -4,13 +4,13 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from tokenizers import Tokenizer
 
 from tokenizerdatamodels.addedtoken import AddedToken
 from tokenizerdatamodels.decoders import DecoderDiscriminator
-from tokenizerdatamodels.models import BPE, ModelDiscriminator, Unigram, WordLevel, WordPiece
-from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence
+from tokenizerdatamodels.models import ModelDiscriminator
+from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence, lower_cases
 from tokenizerdatamodels.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
 from tokenizerdatamodels.pretokenizers import PreTokenizerDiscriminator, PretokenizerSequence
 
@@ -21,13 +21,13 @@ class TokenizerModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     version: Literal["1.0"] = "1.0"
-    truncation: None
-    padding: None
-    added_tokens: list[AddedToken]
-    normalizer: None | NormalizerDiscriminator
-    pre_tokenizer: None | PreTokenizerDiscriminator
-    post_processor: None | PostProcessorDiscriminator
-    decoder: None | DecoderDiscriminator
+    truncation: None = None
+    padding: None = None
+    added_tokens: list[AddedToken] = Field(default_factory=list)
+    normalizer: None | NormalizerDiscriminator = None
+    pre_tokenizer: None | PreTokenizerDiscriminator = None
+    post_processor: None | PostProcessorDiscriminator = None
+    decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
@@ -77,7 +77,7 @@ class TokenizerModel(BaseModel):
         elif path.exists() and path.is_file():
             tokenizer = Tokenizer.from_file(str(path))
         else:
-            tokenizer = Tokenizer.from_pretrained(str(path))
+            tokenizer = Tokenizer.from_pretrained(str(path))  # pragma: nocover
         return cls.from_tokenizer(tokenizer)
 
     @classmethod
@@ -91,6 +91,11 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        self_copy = self.copy(deep=True)
+        self_copy = self.model_copy(deep=True)
         self_copy.model = self_copy.model.to_greedy()
         return self_copy
+
+    @property
+    def does_lowercase(self) -> bool:
+        """Check if the tokenizer lowercases the input."""
+        return lower_cases(self.normalizer)
