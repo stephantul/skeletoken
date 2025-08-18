@@ -10,9 +10,9 @@ from tokenizers import Tokenizer
 from tokenizerdatamodels.addedtoken import AddedToken
 from tokenizerdatamodels.decoders import DecoderDiscriminator
 from tokenizerdatamodels.models import ModelDiscriminator
-from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence, lower_cases
+from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence, byte_normalizes, lower_cases
 from tokenizerdatamodels.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
-from tokenizerdatamodels.pretokenizers import PreTokenizerDiscriminator, PretokenizerSequence
+from tokenizerdatamodels.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, byte_tokenizes
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,10 @@ class TokenizerModel(BaseModel):
         """Add a pre-tokenizer to the tokenizer model."""
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
-        elif isinstance(self.pre_tokenizer, PretokenizerSequence):
+        elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
             self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
         else:
-            self.pre_tokenizer = PretokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
+            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> None:
         """Add a post-processor to the tokenizer model."""
@@ -96,6 +96,24 @@ class TokenizerModel(BaseModel):
         return self_copy
 
     @property
-    def does_lowercase(self) -> bool:
+    def lowercases_input(self) -> bool:
         """Check if the tokenizer lowercases the input."""
         return lower_cases(self.normalizer)
+
+    @property
+    def transforms_into_bytes(self) -> bool:
+        """
+        Check if the tokenizer transforms the input into bytes.
+
+        There's two ways this can happen:
+            1. If the pretokenizer is a ByteLevelPreTokenizer.
+            2. If the normalizer is a ByteLevelNormalizer.
+
+        This is a bit more complicated, because the pretokenizer can be a sequence of pretokenizers,
+        and the normalizer can also be a sequence of normalizers.
+        """
+        if byte_tokenizes(self.pre_tokenizer):
+            return True
+        if byte_normalizes(self.normalizer):
+            return True
+        return False

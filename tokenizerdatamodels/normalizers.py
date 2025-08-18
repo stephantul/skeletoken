@@ -28,6 +28,7 @@ class NormalizerType(str, Enum):
 class NormalizerSequence(BaseModel):
     """A sequence of normalizers to be applied in order."""
 
+    sequence_field: str = "normalizers"
     type: Literal[NormalizerType.SEQUENCE] = NormalizerType.SEQUENCE
     normalizers: list[NormalizerDiscriminator]
 
@@ -217,3 +218,15 @@ def lower_cases(normalizer: NormalizerDiscriminator | None) -> bool:
             return True
 
     return False
+
+
+def byte_normalizes(normalizer: NormalizerDiscriminator | None) -> bool:
+    """Check if a normalizer transforms the input into bytes."""
+    if normalizer is None:
+        return False
+    # If it is a sequence, apply the function recursively
+    # This is necessary, because it is possible to nest sequences of normalizers.
+    if isinstance(normalizer, NormalizerSequence):
+        return any(byte_normalizes(x) for x in normalizer.normalizers)
+
+    return isinstance(normalizer, ByteLevelNormalizer)

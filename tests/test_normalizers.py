@@ -22,6 +22,7 @@ from tokenizerdatamodels.normalizers import (
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
+    byte_normalizes,
     lower_cases,
 )
 
@@ -111,3 +112,23 @@ def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: Norma
 def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
     """Test whether the lowercases detection works."""
     assert lower_cases(normalizer) == should_normalize
+
+
+@pytest.mark.parametrize(
+    "normalizer,should_normalize",
+    [
+        [_get_default_normalizer(NormalizerType.BYTELEVEL), True],
+        [_get_default_normalizer(NormalizerType.STRIP), False],
+        [NormalizerSequence(normalizers=[_get_default_normalizer(NormalizerType.LOWERCASE)]), False],
+        [
+            NormalizerSequence(
+                normalizers=[NormalizerSequence(normalizers=[_get_default_normalizer(NormalizerType.LOWERCASE)])]
+            ),
+            False,
+        ],
+        [None, False],
+    ],
+)
+def test_byte_normalizes(normalizer: Normalizer, should_normalize: bool) -> None:
+    """Test whether the lowercases detection works."""
+    assert byte_normalizes(normalizer) == should_normalize
