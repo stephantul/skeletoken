@@ -4,10 +4,16 @@ import pytest
 from tokenizers import Tokenizer
 
 from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.models import WordPiece
-from tokenizerdatamodels.normalizers import ByteLevelNormalizer, NormalizerSequence
+from tokenizerdatamodels.models import ModelType, WordPiece
+from tokenizerdatamodels.normalizers import (
+    ByteLevelNormalizer,
+    LowercaseNormalizer,
+    NormalizerSequence,
+    byte_normalizes,
+    lower_cases,
+)
 from tokenizerdatamodels.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
-from tokenizerdatamodels.pretokenizers import ByteLevelPreTokenizer, PretokenizerSequence
+from tokenizerdatamodels.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence, byte_tokenizes
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
@@ -38,13 +44,13 @@ def test_add_pre_tokenizer(small_tokenizer: Tokenizer) -> None:
     model.add_pre_tokenizer(pre_tokenizer)
 
     # Tests adding a second pre-tokenizer and turning it into a sequence
-    assert isinstance(model.pre_tokenizer, PretokenizerSequence)
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
     assert len(model.pre_tokenizer.pretokenizers) == 2
 
     model.add_pre_tokenizer(pre_tokenizer)
 
     # Tests adding a third pre-tokenizer and keeping it as a sequence
-    assert isinstance(model.pre_tokenizer, PretokenizerSequence)
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
     assert len(model.pre_tokenizer.pretokenizers) == 3
 
 
@@ -124,3 +130,35 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert model.pre_tokenizer is None
         assert model.post_processor is None
         assert model.decoder is None
+
+
+def test_make_greedy(small_tokenizer: Tokenizer) -> None:
+    """Test whether the make greedy function works."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.make_model_greedy()
+    assert tok_model.model.type == ModelType.WORDPIECE
+    assert tok_model.to_tokenizer()
+
+
+def test_lowercase(small_tokenizer: Tokenizer) -> None:
+    """Tests whether the model performs the lowercase test correctly."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert not tok_model.lowercases_input
+    assert tok_model.lowercases_input == lower_cases(tok_model.normalizer)
+    tok_model.normalizer = LowercaseNormalizer()
+    assert tok_model.lowercases_input
+    assert tok_model.lowercases_input == lower_cases(tok_model.normalizer)
+
+
+def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
+    """Tests whether the model performs byte normalization correctly."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert not tok_model.transforms_into_bytes
+    assert tok_model.transforms_into_bytes == byte_normalizes(tok_model.normalizer) or byte_tokenizes(
+        tok_model.pre_tokenizer
+    )
+    tok_model.normalizer = ByteLevelNormalizer()
+    assert tok_model.transforms_into_bytes
+    tok_model.normalizer = None
+    tok_model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=False)
+    assert tok_model.transforms_into_bytes

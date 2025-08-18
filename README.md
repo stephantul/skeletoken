@@ -33,14 +33,13 @@ from tokenizerdatamodels import TokenizerModel
 from tokenizerdatamodels.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
 
 tok = Tokenizer.from_pretrained("gpt2")
-tokenizer_model = TokenizerModel.model_validate_json(tok.to_str())
+tokenizer_model = TokenizerModel.from_pretrained("gpt2")
 
-# The gpt tokenizer only has a single pretokenizer.
-# So we need to add a sequence
+# Create the digits pretokenizer
 digits = DigitsPreTokenizer(individual_digits=True)
 tokenizer_model.add_pre_tokenizer(digits)
 
-new_tok = Tokenizer.from_str(tokenizer_model.model_dump_json())
+new_tok = tokenizer_model.to_tokenizer()
 print(tok.encode("hello 123").tokens)
 # ['hello', 'Ġ123']
 print(new_tok.encode("hello 123").tokens)

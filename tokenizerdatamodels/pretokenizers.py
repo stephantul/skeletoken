@@ -23,7 +23,7 @@ class PreTokenizerType(str, Enum):
     SEQUENCE = "Sequence"
 
 
-class PretokenizerSequence(BaseModel):
+class PreTokenizerSequence(BaseModel):
     """A sequence of pretokenizers to be applied in order."""
 
     type: Literal[PreTokenizerType.SEQUENCE] = PreTokenizerType.SEQUENCE
@@ -98,6 +98,18 @@ PreTokenizer = (
     | WhitespacePreTokenizer
     | WhitespaceSplitPreTokenizer
     | UnicodeScriptsPreTokenizer
-    | PretokenizerSequence
+    | PreTokenizerSequence
 )
 PreTokenizerDiscriminator = Annotated[PreTokenizer, Field(discriminator="type")]
+
+
+def byte_tokenizes(pretokenizer: PreTokenizerDiscriminator | None) -> bool:
+    """Check if a pretokenizer transforms the input into bytes."""
+    if pretokenizer is None:
+        return False
+    # If it is a sequence, apply the function recursively
+    # This is necessary, because it is possible to nest sequences of pretokenizers.
+    if isinstance(pretokenizer, PreTokenizerSequence):
+        return any(byte_tokenizes(x) for x in pretokenizer.pretokenizers)
+
+    return isinstance(pretokenizer, ByteLevelPreTokenizer)

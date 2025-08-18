@@ -14,12 +14,14 @@ from tokenizerdatamodels.pretokenizers import (
     FixedLengthPreTokenizer,
     MetaspacePreTokenizer,
     PreTokenizer,
+    PreTokenizerSequence,
     PreTokenizerType,
     PunctuationPreTokenizer,
     SplitPreTokenizer,
     UnicodeScriptsPreTokenizer,
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
+    byte_tokenizes,
 )
 
 
@@ -82,3 +84,25 @@ def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: P
     assert tokenizer.pre_tokenizer.type == pretokenizer_type
 
     Tokenizer.from_str(tokenizer.model_dump_json())
+
+
+@pytest.mark.parametrize(
+    "pretokenizer,should_byte_transform",
+    [
+        [_get_default_pretokenizer(PreTokenizerType.BERT_PRETOKENIZER), False],
+        [_get_default_pretokenizer(PreTokenizerType.BYTELEVEL), True],
+        [PreTokenizerSequence(pretokenizers=[_get_default_pretokenizer(PreTokenizerType.BYTELEVEL)]), True],
+        [
+            PreTokenizerSequence(
+                pretokenizers=[
+                    PreTokenizerSequence(pretokenizers=[_get_default_pretokenizer(PreTokenizerType.BYTELEVEL)])
+                ]
+            ),
+            True,
+        ],
+        [None, False],
+    ],
+)
+def test_lowercases(pretokenizer: PreTokenizer, should_byte_transform: bool) -> None:
+    """Test whether the lowercases detection works."""
+    assert byte_tokenizes(pretokenizer) == should_byte_transform
