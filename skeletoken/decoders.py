@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from tokenizerdatamodels.common import PrependScheme, RegexPattern, StringPattern
+from skeletoken.common import PrependScheme, RegexPattern, StringPattern
 
 
 class DecoderType(str, Enum):

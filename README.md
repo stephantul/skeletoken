@@ -1,4 +1,8 @@
-# Tokenizer datamodels
+
+<h2 align="center">
+  <img width="35%" alt="Skeleton by van Gogh. Source: https://nl.wikipedia.org/wiki/Kop_van_een_skelet_met_brandende_sigaret#/media/Bestand:Vincent_van_Gogh_-_Head_of_a_skeleton_with_a_burning_cigarette_-_Google_Art_Project.jpg" src="assets/vgogh_skeleton.jpeg"><br/>
+</h2>
+<h1 align="center"> Skeletoken </h2>
 
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
@@ -14,7 +18,7 @@ This package contains datamodels (pydantic Basemodels) that contain the same con
 
 ```python
 from tokenizers import Tokenizer
-from tokenizerdatamodels import TokenizerModel
+from skeletoken import TokenizerModel
 
 tok = Tokenizer.from_pretrained("gpt2")
 tokenizer_model = TokenizerModel.model_validate_json(tok.to_str())
@@ -29,8 +33,8 @@ Ok, now let's add a digit splitter to the tokenizer.
 
 ```python
 from tokenizers import Tokenizer
-from tokenizerdatamodels import TokenizerModel
-from tokenizerdatamodels.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
+from skeletoken import TokenizerModel
+from skeletoken.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
 
 tok = Tokenizer.from_pretrained("gpt2")
 tokenizer_model = TokenizerModel.from_pretrained("gpt2")

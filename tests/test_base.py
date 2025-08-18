@@ -3,17 +3,17 @@ from tempfile import TemporaryDirectory
 import pytest
 from tokenizers import Tokenizer
 
-from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.models import ModelType, WordPiece
-from tokenizerdatamodels.normalizers import (
+from skeletoken.base import TokenizerModel
+from skeletoken.models import ModelType, WordPiece
+from skeletoken.normalizers import (
     ByteLevelNormalizer,
     LowercaseNormalizer,
     NormalizerSequence,
     byte_normalizes,
     lower_cases,
 )
-from tokenizerdatamodels.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
-from tokenizerdatamodels.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence, byte_tokenizes
+from skeletoken.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
+from skeletoken.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence, byte_tokenizes
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:

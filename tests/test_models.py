@@ -3,8 +3,8 @@ from typing import Any, Literal, overload
 
 import pytest
 
-from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece
+from skeletoken.base import TokenizerModel
+from skeletoken.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece
 
 
 @overload

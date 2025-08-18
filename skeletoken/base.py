@@ -7,12 +7,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from tokenizers import Tokenizer
 
-from tokenizerdatamodels.addedtoken import AddedToken
-from tokenizerdatamodels.decoders import DecoderDiscriminator
-from tokenizerdatamodels.models import ModelDiscriminator
-from tokenizerdatamodels.normalizers import NormalizerDiscriminator, NormalizerSequence, byte_normalizes, lower_cases
-from tokenizerdatamodels.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
-from tokenizerdatamodels.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, byte_tokenizes
+from skeletoken.addedtoken import AddedToken
+from skeletoken.decoders import DecoderDiscriminator
+from skeletoken.models import ModelDiscriminator
+from skeletoken.normalizers import NormalizerDiscriminator, NormalizerSequence, byte_normalizes, lower_cases
+from skeletoken.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
+from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, byte_tokenizes
 
 logger = logging.getLogger(__name__)
 

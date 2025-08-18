@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from tokenizerdatamodels.common import RegexPattern, StringPattern
+from skeletoken.common import RegexPattern, StringPattern
 
 
 class NormalizerType(str, Enum):
