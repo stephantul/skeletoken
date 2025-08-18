@@ -1,5 +1,5 @@
 [project]
-name = "tokenizerdatamodels"
+name = "skeletoken"
 description = "Datamodels for HF tokenizers"
 readme = "README.md"
 dynamic = ["version"]
@@ -67,10 +67,10 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.setuptools]
-packages = ["tokenizerdatamodels"]
+packages = ["skeletoken"]
 
 [tool.setuptools_scm]
 # can be empty if no extra settings are needed, presence enables setuptools_scm
 
 [tool.setuptools.dynamic]
-version = {attr = "tokenizerdatamodels.version.__version__"}
+version = {attr = "skeletoken.version.__version__"}

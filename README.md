@@ -1,4 +1,4 @@
-# Tokenizer datamodels
+# Skeletoken
 
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
@@ -14,7 +14,7 @@ This package contains datamodels (pydantic Basemodels) that contain the same con
 
 ```python
 from tokenizers import Tokenizer
-from tokenizerdatamodels import TokenizerModel
+from skeletoken import TokenizerModel
 
 tok = Tokenizer.from_pretrained("gpt2")
 tokenizer_model = TokenizerModel.model_validate_json(tok.to_str())
@@ -29,8 +29,8 @@ Ok, now let's add a digit splitter to the tokenizer.
 
 ```python
 from tokenizers import Tokenizer
-from tokenizerdatamodels import TokenizerModel
-from tokenizerdatamodels.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
+from skeletoken import TokenizerModel
+from skeletoken.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
 
 tok = Tokenizer.from_pretrained("gpt2")
 tokenizer_model = TokenizerModel.from_pretrained("gpt2")

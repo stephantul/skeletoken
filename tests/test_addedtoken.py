@@ -2,8 +2,8 @@ from typing import Any
 
 from tokenizers import Tokenizer
 
-from tokenizerdatamodels.addedtoken import AddedToken
-from tokenizerdatamodels.base import TokenizerModel
+from skeletoken.addedtoken import AddedToken
+from skeletoken.base import TokenizerModel
 
 
 def test_addedtokens(small_tokenizer_json: dict[str, Any]) -> None:

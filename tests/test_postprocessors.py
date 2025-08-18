@@ -3,8 +3,8 @@ from typing import Any
 import pytest
 from tokenizers import Tokenizer
 
-from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.postprocessors import (
+from skeletoken.base import TokenizerModel
+from skeletoken.postprocessors import (
     BertPostProcessor,
     ByteLevelPostProcessor,
     PostProcessor,

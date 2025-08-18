@@ -3,9 +3,9 @@ from typing import Any
 import pytest
 from tokenizers import Tokenizer
 
-from tokenizerdatamodels.base import TokenizerModel
-from tokenizerdatamodels.common import PrependScheme, StringPattern
-from tokenizerdatamodels.normalizers import (
+from skeletoken.base import TokenizerModel
+from skeletoken.common import PrependScheme, StringPattern
+from skeletoken.normalizers import (
     BertNormalizer,
     ByteLevelNormalizer,
     LowercaseNormalizer,

@@ -3,4 +3,4 @@ install:
 	uv run pre-commit install
 
 test:
-	uv run pytest --cov=tokenizerdatamodels --cov-report=term-missing
+	uv run pytest --cov=skeletoken --cov-report=term-missing
