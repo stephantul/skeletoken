@@ -44,6 +44,7 @@ class ByteFallbackDecoder(BaseModel):
 
     It acts as a fallback for weird bytes, and replaces them with �, much like
     'utf-8' decoding does.
+
     """
 
     type: Literal[DecoderType.BYTEFALLBACK] = DecoderType.BYTEFALLBACK
@@ -101,6 +102,7 @@ class FuseDecoder(BaseModel):
     A Fuse decoder just merges tokens.
 
     e.g., "un" + "known" -> "unknown"
+
     """
 
     type: Literal[DecoderType.FUSE] = DecoderType.FUSE
@@ -134,6 +136,7 @@ class ReplaceDecoder(BaseModel):
     A Replace decoder replaces a pattern in the input text with a given content.
 
     It can be seen as the inverse of the Replace pretokenizer, but doesn't need to be the exact inverse.
+
     """
 
     type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE

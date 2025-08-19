@@ -49,6 +49,7 @@ class BertPreTokenizer(BasePretokenizer):
 
     so: ",,," will be pretokenized as [",", ",", ","], despite these
     not being separated by spaces.
+
     """
 
     type: Literal[PreTokenizerType.BERT_PRETOKENIZER] = PreTokenizerType.BERT_PRETOKENIZER
@@ -216,6 +217,7 @@ class WhitespacePreTokenizer(BasePretokenizer):
 
     This can be seen as a standard word-based splitter, very similar to the
     one used in older tokenizers.
+
     """
 
     type: Literal[PreTokenizerType.WHITESPACE] = PreTokenizerType.WHITESPACE
@@ -226,6 +228,7 @@ class WhitespaceSplitPreTokenizer(BasePretokenizer):
     Literally only splits on whitespace.
 
     It's not really desirable, and can be considered a variant of CharDelimiterSplit.
+
     """
 
     type: Literal[PreTokenizerType.WHITESPACESPLIT] = PreTokenizerType.WHITESPACESPLIT

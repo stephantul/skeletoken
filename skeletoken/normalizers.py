@@ -141,6 +141,7 @@ class ByteLevelNormalizer(BaseNormalizer):
 
     This normalizer applies the same transformations as the ByteLevel pretokenizer.
     Using this normalizer and adding a regex split pretokenizer is equivalent to using the ByteLevel pretokenizer.
+
     """
 
     type: Literal[NormalizerType.BYTELEVEL] = NormalizerType.BYTELEVEL
@@ -181,6 +182,7 @@ class NmtNormalizer(BaseNormalizer):
         0xFFFD => Replacement Character (�)
 
     are replaced with a space character (U+0020).
+
     """
 
     type: Literal[NormalizerType.NMT] = NormalizerType.NMT
