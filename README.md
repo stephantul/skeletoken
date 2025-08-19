@@ -34,7 +34,7 @@ Ok, now let's add a digit splitter to the tokenizer.
 ```python
 from tokenizers import Tokenizer
 from skeletoken import TokenizerModel
-from skeletoken.pretokenizers import DigitsPreTokenizer, PretokenizerSequence
+from skeletoken.pretokenizers import DigitsPreTokenizer
 
 tok = Tokenizer.from_pretrained("gpt2")
 tokenizer_model = TokenizerModel.from_pretrained("gpt2")
