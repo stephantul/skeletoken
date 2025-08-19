@@ -61,10 +61,10 @@ Here's a rough roadmap:
 
 # Installation
 
-I only offer git right now:
+Install it via pip
 
 ```bash
-pip install git+https://github.com/stephantul/skeletoken.git
+pip install skeletoken
 ```
 
 # License
