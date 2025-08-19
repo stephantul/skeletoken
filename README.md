@@ -1,6 +1,6 @@
 
 <h2 align="center">
-  <img width="35%" alt="Skeleton by van Gogh. Source: https://nl.wikipedia.org/wiki/Kop_van_een_skelet_met_brandende_sigaret#/media/Bestand:Vincent_van_Gogh_-_Head_of_a_skeleton_with_a_burning_cigarette_-_Google_Art_Project.jpg" src="assets/vgogh_skeleton.jpeg"><br/>
+  <img width="35%" alt="A skeleton smoking a cigarette." src="https://github.com/stephantul/skeletoken/blob/main/assets/vgogh_skeleton.jpeg?raw=true"><br/>
 </h2>
 <h1 align="center"> Skeletoken </h2>
 
