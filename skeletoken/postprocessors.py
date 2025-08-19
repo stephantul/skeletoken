@@ -31,10 +31,10 @@ class BertPostProcessor(BaseModel):
 
     Attributes
     ----------
-        sep : tuple[str, int]
-            The SEP token and its token id.
-        cls : tuple[str, int]
-            The CLS token and its token id.
+    sep : tuple[str, int]
+        The SEP token and its token id.
+    cls : tuple[str, int]
+        The CLS token and its token id.
 
     """
 

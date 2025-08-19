@@ -67,13 +67,13 @@ class ByteLevelPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
-        add_prefix_space : bool
-            Whether to add a space before the first token. This is desirable because it
-            creates more correspondence between tokens.
-        use_regex: bool
-            Whether to use regex for splitting. If this is not set, no splitting is performed.
-        trim_offsets: bool
-            Doesn't do anything
+    add_prefix_space : bool
+        Whether to add a space before the first token. This is desirable because it
+        creates more correspondence between tokens.
+    use_regex: bool
+        Whether to use regex for splitting. If this is not set, no splitting is performed.
+    trim_offsets: bool
+        Doesn't do anything
 
     """
 

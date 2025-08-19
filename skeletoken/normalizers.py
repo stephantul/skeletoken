@@ -112,14 +112,14 @@ class BertNormalizer(BaseNormalizer):
     """
     The normalization used by the original BERT.
 
-    Args:
-    ----
-        clean_text: If set, this normalizes whitespace and
-            removes any control characters.
-        handle_chinese_chars: If set, it surrounds any Chinese characters
-            in the text with spaces so that they are pretokenized
-            correctly.
-        strip_accents: If set, this removes all accents from the text.
+    Parameters
+    ----------
+    clean_text : bool
+        If set, this normalizes whitespace and removes any control characters.
+    handle_chinese_chars : bool
+        If set, it surrounds any Chinese characters in the text with spaces so that they are pretokenized correctly.
+    strip_accents : bool | None
+        If set, this removes all accents from the text.
 
     """
 
@@ -190,9 +190,10 @@ class PrependedNormalizer(BaseNormalizer):
     """
     Prepends a string to the input text.
 
-    Args:
-    ----
-        prepend: The string to prepend to a text.
+    Parameters
+    ----------
+    prepend : str
+        The string to prepend to a text.
 
     """
 
@@ -204,10 +205,12 @@ class StripNormalizer(BaseNormalizer):
     """
     Strips whitespace from the left and/or right side of the input text.
 
-    Args:
-    ----
-        strip_left: If set, this removes whitespace from the left side.
-        strip_right: If set, this removes whitespace from the right side.
+    Parameters
+    ----------
+    strip_left : bool
+        If set, this removes whitespace from the left side.
+    strip_right : bool
+        If set, this removes whitespace from the right side.
 
     """
 
@@ -235,6 +238,12 @@ class PrecompiledNormalizer(BaseNormalizer):
     A precompiled normalizer that uses a precompiled characters map.
 
     NOTE: It is unclear how this is constructed, and is mainly here for compatibility with sentencepiece
+
+    Attributes
+    ----------
+        precompiled_charsmap : str
+            The precompiled characters map.
+
     """
 
     type: Literal[NormalizerType.PRECOMPILED] = NormalizerType.PRECOMPILED

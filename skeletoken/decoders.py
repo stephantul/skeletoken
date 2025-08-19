@@ -29,8 +29,8 @@ class BPEDecoder(BaseModel):
 
     Attributes
     ----------
-        suffix : str
-            The suffix to use for BPE tokenization.
+    suffix : str
+        The suffix to use for BPE tokenization.
 
     """
 
@@ -57,11 +57,11 @@ class ByteLevelDecoder(BaseModel):
 
     Attributes
     ----------
-        add_prefix_space : bool
-            Whether to add a space before the first token. This leads to more consistent
-            behavior for sentence-initial tokens, and is recommended to be set to True.
-        trim_offsets : bool
-            Whether to trim the offsets of the tokens.
+    add_prefix_space : bool
+        Whether to add a space before the first token. This leads to more consistent
+        behavior for sentence-initial tokens, and is recommended to be set to True.
+    trim_offsets : bool
+        Whether to trim the offsets of the tokens.
 
     """
 
@@ -81,12 +81,12 @@ class CTCDecoder(BaseModel):
 
     Attributes
     ----------
-        pad_token : str
-            The padding token to remove.
-        word_delimiter_token : str
-            The token used to separate words.
-        cleanup : bool
-            If set, it will clean up the output by removing some artifacts.
+    pad_token : str
+        The padding token to remove.
+    word_delimiter_token : str
+        The token used to separate words.
+    cleanup : bool
+        If set, it will clean up the output by removing some artifacts.
 
     """
 
@@ -114,12 +114,12 @@ class MetaspaceDecoder(BaseModel):
 
     Attributes
     ----------
-        replacement : str
-            The string to replace the metaspace tokens with.
-        prepend_scheme : PrependScheme
-            The scheme to use for prepending the replacement string.
-        split : bool
-            Should be set if the original Metaspace tokenizer performed splitting.
+    replacement : str
+        The string to replace the metaspace tokens with.
+    prepend_scheme : PrependScheme
+        The scheme to use for prepending the replacement string.
+    split : bool
+        Should be set if the original Metaspace tokenizer performed splitting.
 
     """
 
@@ -154,12 +154,12 @@ class StripDecoder(BaseModel):
 
     Attributes
     ----------
-        content : str
-            The content to strip.
-        start : int
-            The start index to strip from.
-        stop : int
-            The stop index to strip to.
+    content : str
+        The content to strip.
+    start : int
+        The start index to strip from.
+    stop : int
+        The stop index to strip to.
 
     """
 
@@ -177,11 +177,11 @@ class WordPieceDecoder(BaseModel):
 
     Attributes
     ----------
-        prefix : str
-            The subword prefix to use for WordPiece tokenization. This is usually
-            '##'.
-        cleanup : bool
-            If True, it will clean up the output by removing some artifacts.
+    prefix : str
+        The subword prefix to use for WordPiece tokenization. This is usually
+        '##'.
+    cleanup : bool
+        If True, it will clean up the output by removing some artifacts.
 
     """
 
