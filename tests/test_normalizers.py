@@ -22,8 +22,6 @@ from skeletoken.normalizers import (
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
-    byte_normalizes,
-    lower_cases,
 )
 
 
@@ -106,12 +104,11 @@ def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: Norma
             ),
             True,
         ],
-        [None, False],
     ],
 )
 def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
     """Test whether the lowercases detection works."""
-    assert lower_cases(normalizer) == should_normalize
+    assert normalizer.lowercases == should_normalize
 
 
 @pytest.mark.parametrize(
@@ -126,9 +123,8 @@ def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
             ),
             False,
         ],
-        [None, False],
     ],
 )
 def test_byte_normalizes(normalizer: Normalizer, should_normalize: bool) -> None:
     """Test whether the lowercases detection works."""
-    assert byte_normalizes(normalizer) == should_normalize
+    assert normalizer.byte_normalizes == should_normalize

@@ -9,11 +9,9 @@ from skeletoken.normalizers import (
     ByteLevelNormalizer,
     LowercaseNormalizer,
     NormalizerSequence,
-    byte_normalizes,
-    lower_cases,
 )
 from skeletoken.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
-from skeletoken.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence, byte_tokenizes
+from skeletoken.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
@@ -144,19 +142,15 @@ def test_lowercase(small_tokenizer: Tokenizer) -> None:
     """Tests whether the model performs the lowercase test correctly."""
     tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
     assert not tok_model.lowercases_input
-    assert tok_model.lowercases_input == lower_cases(tok_model.normalizer)
     tok_model.normalizer = LowercaseNormalizer()
     assert tok_model.lowercases_input
-    assert tok_model.lowercases_input == lower_cases(tok_model.normalizer)
+    assert tok_model.lowercases_input == tok_model.normalizer._lowercases
 
 
 def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
     """Tests whether the model performs byte normalization correctly."""
     tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
     assert not tok_model.transforms_into_bytes
-    assert tok_model.transforms_into_bytes == byte_normalizes(tok_model.normalizer) or byte_tokenizes(
-        tok_model.pre_tokenizer
-    )
     tok_model.normalizer = ByteLevelNormalizer()
     assert tok_model.transforms_into_bytes
     tok_model.normalizer = None
