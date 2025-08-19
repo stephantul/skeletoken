@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from skeletoken.common import RegexPattern, StringPattern
 
@@ -25,6 +25,23 @@ class NormalizerType(str, Enum):
     PRECOMPILED = "Precompiled"
 
 
+class BaseNormalizer(BaseModel):
+    """Base class for all normalizers."""
+
+    _lowercases: bool = PrivateAttr(default=False)
+    _byte_normalizes: bool = PrivateAttr(default=False)
+
+    @property
+    def lowercases(self) -> bool:
+        """Check if the normalizer lowercases."""
+        return self._lowercases
+
+    @property
+    def byte_normalizes(self) -> bool:
+        """Check if the normalizer byte normalizes."""
+        return self._byte_normalizes
+
+
 class NormalizerSequence(BaseModel):
     """A sequence of normalizers to be applied in order."""
 
@@ -32,8 +49,18 @@ class NormalizerSequence(BaseModel):
     type: Literal[NormalizerType.SEQUENCE] = NormalizerType.SEQUENCE
     normalizers: list[NormalizerDiscriminator]
 
+    @property
+    def lowercases(self) -> bool:
+        """Check if the sequence contains a lowercase normalizer."""
+        return any(normalizer.lowercases for normalizer in self.normalizers)
 
-class NFCNormalizer(BaseModel):
+    @property
+    def byte_normalizes(self) -> bool:
+        """Check if the sequence contains a byte normalizer."""
+        return any(normalizer.byte_normalizes for normalizer in self.normalizers)
+
+
+class NFCNormalizer(BaseNormalizer):
     """
     Applies NFC normalization to the input text.
 
@@ -45,7 +72,7 @@ class NFCNormalizer(BaseModel):
     type: Literal[NormalizerType.NFC] = NormalizerType.NFC
 
 
-class NFDNormalizer(BaseModel):
+class NFDNormalizer(BaseNormalizer):
     """
     Applies NFD normalization to the input text.
 
@@ -57,7 +84,7 @@ class NFDNormalizer(BaseModel):
     type: Literal[NormalizerType.NFD] = NormalizerType.NFD
 
 
-class NFKCNormalizer(BaseModel):
+class NFKCNormalizer(BaseNormalizer):
     """
     Applies NFKC normalization to the input text.
 
@@ -69,7 +96,7 @@ class NFKCNormalizer(BaseModel):
     type: Literal[NormalizerType.NFKC] = NormalizerType.NFKC
 
 
-class NFKDNormalizer(BaseModel):
+class NFKDNormalizer(BaseNormalizer):
     """
     Applies NFKD normalization to the input text.
 
@@ -81,16 +108,35 @@ class NFKDNormalizer(BaseModel):
     type: Literal[NormalizerType.NFKD] = NormalizerType.NFKD
 
 
-class BertNormalizer(BaseModel):
+class BertNormalizer(BaseNormalizer):
+    """
+    The normalization used by the original BERT.
+
+    Args:
+    ----
+        clean_text: If set, this normalizes whitespace and
+            removes any control characters.
+        handle_chinese_chars: If set, it surrounds any Chinese characters
+            in the text with spaces so that they are pretokenized
+            correctly.
+        strip_accents: If set, this removes all accents from the text.
+
+    """
+
     type: Literal[NormalizerType.BERTNORMALIZER] = NormalizerType.BERTNORMALIZER
     clean_text: bool
     handle_chinese_chars: bool
     strip_accents: bool | None
     lowercase: bool
 
+    @property
+    def lowercases(self) -> bool:
+        """Check if the normalizer lowercases."""
+        return self.lowercase
 
-class ByteLevelNormalizer(BaseModel):
-    r"""
+
+class ByteLevelNormalizer(BaseNormalizer):
+    """
     Applies byte-level normalization to the input text.
 
     This normalizer applies the same transformations as the ByteLevel pretokenizer.
@@ -98,15 +144,17 @@ class ByteLevelNormalizer(BaseModel):
     """
 
     type: Literal[NormalizerType.BYTELEVEL] = NormalizerType.BYTELEVEL
+    _byte_normalizes: bool = PrivateAttr(default=True)
 
 
-class LowercaseNormalizer(BaseModel):
+class LowercaseNormalizer(BaseNormalizer):
     """Lowercases the input text."""
 
     type: Literal[NormalizerType.LOWERCASE] = NormalizerType.LOWERCASE
+    _lowercases: bool = True
 
 
-class NmtNormalizer(BaseModel):
+class NmtNormalizer(BaseNormalizer):
     """
     A normalizer that removes specific codepoints.
 
@@ -138,28 +186,43 @@ class NmtNormalizer(BaseModel):
     type: Literal[NormalizerType.NMT] = NormalizerType.NMT
 
 
-class PrependedNormalizer(BaseModel):
-    """Prepends a string to the input text."""
+class PrependedNormalizer(BaseNormalizer):
+    """
+    Prepends a string to the input text.
+
+    Args:
+    ----
+        prepend: The string to prepend to a text.
+
+    """
 
     type: Literal[NormalizerType.PREPEND] = NormalizerType.PREPEND
     prepend: str
 
 
-class StripNormalizer(BaseModel):
-    """Strips whitespace from the left and/or right side of the input text."""
+class StripNormalizer(BaseNormalizer):
+    """
+    Strips whitespace from the left and/or right side of the input text.
+
+    Args:
+    ----
+        strip_left: If set, this removes whitespace from the left side.
+        strip_right: If set, this removes whitespace from the right side.
+
+    """
 
     type: Literal[NormalizerType.STRIP] = NormalizerType.STRIP
     strip_left: bool
     strip_right: bool
 
 
-class StripAccentsNormalizer(BaseModel):
+class StripAccentsNormalizer(BaseNormalizer):
     """Strips accents from the input text."""
 
     type: Literal[NormalizerType.STRIPACCENTS] = NormalizerType.STRIPACCENTS
 
 
-class ReplaceNormalizer(BaseModel):
+class ReplaceNormalizer(BaseNormalizer):
     """Replaces a pattern in the input text with a given content."""
 
     type: Literal[NormalizerType.REPLACE] = NormalizerType.REPLACE
@@ -167,7 +230,7 @@ class ReplaceNormalizer(BaseModel):
     content: str
 
 
-class PrecompiledNormalizer(BaseModel):
+class PrecompiledNormalizer(BaseNormalizer):
     """
     A precompiled normalizer that uses a precompiled characters map.
 
@@ -195,38 +258,3 @@ Normalizer = (
     | NormalizerSequence
 )
 NormalizerDiscriminator = Annotated[Normalizer, Field(discriminator="type")]
-
-
-def lower_cases(normalizer: NormalizerDiscriminator | None) -> bool:
-    """
-    Check if a normalizer performs lowercasing.
-
-    Note that it is possible to still lowercase if this returns True, because
-    of a replacenormalizer. I think this is a super edge case, but it could still be done.
-    """
-    if normalizer is None:
-        return False
-    # If it is a sequence, apply the function recursively
-    # This is necessary, because it is possible to nest sequences of normalizers.
-    if isinstance(normalizer, NormalizerSequence):
-        return any(lower_cases(x) for x in normalizer.normalizers)
-
-    if isinstance(normalizer, LowercaseNormalizer):
-        return True
-    elif isinstance(normalizer, BertNormalizer):
-        if normalizer.lowercase:
-            return True
-
-    return False
-
-
-def byte_normalizes(normalizer: NormalizerDiscriminator | None) -> bool:
-    """Check if a normalizer transforms the input into bytes."""
-    if normalizer is None:
-        return False
-    # If it is a sequence, apply the function recursively
-    # This is necessary, because it is possible to nest sequences of normalizers.
-    if isinstance(normalizer, NormalizerSequence):
-        return any(byte_normalizes(x) for x in normalizer.normalizers)
-
-    return isinstance(normalizer, ByteLevelNormalizer)

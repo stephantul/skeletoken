@@ -29,7 +29,8 @@ class BPEDecoder(BaseModel):
 
     Attributes
     ----------
-        suffix: The suffix to use for BPE tokenization.
+        suffix : str
+            The suffix to use for BPE tokenization.
 
     """
 
@@ -53,6 +54,15 @@ class ByteLevelDecoder(BaseModel):
     A ByteLevel decoder is used for byte-level tokenization.
 
     This decoder implements the inverse of the ByteLevel pretokenizer.
+
+    Attributes
+    ----------
+        add_prefix_space : bool
+            Whether to add a space before the first token. This leads to more consistent
+            behavior for sentence-initial tokens, and is recommended to be set to True.
+        trim_offsets : bool
+            Whether to trim the offsets of the tokens.
+
     """
 
     type: Literal[DecoderType.BYTELEVEL] = DecoderType.BYTELEVEL
@@ -71,9 +81,12 @@ class CTCDecoder(BaseModel):
 
     Attributes
     ----------
-        pad_token: The padding token to remove.
-        word_delimiter_token: The token used to separate words.
-        cleanup: If True, it will clean up the output by removing some artifacts.
+        pad_token : str
+            The padding token to remove.
+        word_delimiter_token : str
+            The token used to separate words.
+        cleanup : bool
+            If set, it will clean up the output by removing some artifacts.
 
     """
 
@@ -98,6 +111,16 @@ class MetaspaceDecoder(BaseModel):
     A Metaspace decoder is used for metaspace tokenization.
 
     This decoder inverts the metaspace tokenization process.
+
+    Attributes
+    ----------
+        replacement : str
+            The string to replace the metaspace tokens with.
+        prepend_scheme : PrependScheme
+            The scheme to use for prepending the replacement string.
+        split : bool
+            Should be set if the original Metaspace tokenizer performed splitting.
+
     """
 
     type: Literal[DecoderType.METASPACE] = DecoderType.METASPACE
@@ -131,9 +154,12 @@ class StripDecoder(BaseModel):
 
     Attributes
     ----------
-        content: The content to strip.
-        start: The start index to strip from.
-        stop: The stop index to strip to.
+        content : str
+            The content to strip.
+        start : int
+            The start index to strip from.
+        stop : int
+            The stop index to strip to.
 
     """
 
@@ -151,8 +177,11 @@ class WordPieceDecoder(BaseModel):
 
     Attributes
     ----------
-        prefix: The prefix to use for WordPiece tokenization.
-        cleanup: If True, it will clean up the output by removing some artifacts.
+        prefix : str
+            The subword prefix to use for WordPiece tokenization. This is usually
+            '##'.
+        cleanup : bool
+            If True, it will clean up the output by removing some artifacts.
 
     """
 

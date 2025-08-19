@@ -10,9 +10,9 @@ from tokenizers import Tokenizer
 from skeletoken.addedtoken import AddedToken
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import ModelDiscriminator
-from skeletoken.normalizers import NormalizerDiscriminator, NormalizerSequence, byte_normalizes, lower_cases
+from skeletoken.normalizers import NormalizerDiscriminator, NormalizerSequence
 from skeletoken.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
-from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, byte_tokenizes
+from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class TokenizerModel(BaseModel):
     @property
     def lowercases_input(self) -> bool:
         """Check if the tokenizer lowercases the input."""
-        return lower_cases(self.normalizer)
+        return self.normalizer is not None and self.normalizer.lowercases
 
     @property
     def transforms_into_bytes(self) -> bool:
@@ -112,8 +112,8 @@ class TokenizerModel(BaseModel):
         This is a bit more complicated, because the pretokenizer can be a sequence of pretokenizers,
         and the normalizer can also be a sequence of normalizers.
         """
-        if byte_tokenizes(self.pre_tokenizer):
+        if self.pre_tokenizer is not None and self.pre_tokenizer._byte_pretokenizes:
             return True
-        if byte_normalizes(self.normalizer):
+        if self.normalizer is not None and self.normalizer.byte_normalizes:
             return True
         return False

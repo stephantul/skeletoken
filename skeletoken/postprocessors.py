@@ -15,17 +15,37 @@ class PostProcessorType(str, Enum):
 
 
 class PostProcessorSequence(BaseModel):
+    """A sequence of postprocessors."""
+
     type: Literal[PostProcessorType.SEQUENCE] = PostProcessorType.SEQUENCE
     post_processors: list[PostProcessor]
 
 
 class BertPostProcessor(BaseModel):
+    """
+    The BERT postprocessor.
+
+    This adds the SEP and CLS tokens to the sequence.
+    Note that this processor is actually never used, even BERT uses
+    the TemplatePostProcessor, see below.
+
+    Attributes
+    ----------
+        sep : tuple[str, int]
+            The SEP token and its token id.
+        cls : tuple[str, int]
+            The CLS token and its token id.
+
+    """
+
     type: Literal[PostProcessorType.BERT_PROCESSING] = PostProcessorType.BERT_PROCESSING
     sep: tuple[str, int]
     cls: tuple[str, int]
 
 
 class ByteLevelPostProcessor(BaseModel):
+    """The ByteLevelPostProcessor. This adds the prefix space, and trims the offsets."""
+
     type: Literal[PostProcessorType.BYTE_LEVEL] = PostProcessorType.BYTE_LEVEL
     add_prefix_space: bool
     trim_offsets: bool

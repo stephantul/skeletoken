@@ -21,7 +21,6 @@ from skeletoken.pretokenizers import (
     UnicodeScriptsPreTokenizer,
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
-    byte_tokenizes,
 )
 
 
@@ -38,7 +37,7 @@ def _get_default_pretokenizer(pretokenizer_type: PreTokenizerType) -> PreTokeniz
     elif pretokenizer_type == PreTokenizerType.FIXEDLENGTH:
         return FixedLengthPreTokenizer(length=5)
     elif pretokenizer_type == PreTokenizerType.METASPACE:
-        return MetaspacePreTokenizer(replacement=" ", prepend_scheme=PrependScheme.FIRST)
+        return MetaspacePreTokenizer(replacement=" ", prepend_scheme=PrependScheme.FIRST, split=True)
     elif pretokenizer_type == PreTokenizerType.PUNCTUATION:
         return PunctuationPreTokenizer(behavior=Behavior.CONTIGUOUS)
     elif pretokenizer_type == PreTokenizerType.SPLIT:
@@ -100,9 +99,8 @@ def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: P
             ),
             True,
         ],
-        [None, False],
     ],
 )
-def test_lowercases(pretokenizer: PreTokenizer, should_byte_transform: bool) -> None:
-    """Test whether the lowercases detection works."""
-    assert byte_tokenizes(pretokenizer) == should_byte_transform
+def test_byte_transform(pretokenizer: PreTokenizer, should_byte_transform: bool) -> None:
+    """Test whether the byte transform detection works."""
+    assert pretokenizer._byte_pretokenizes == should_byte_transform
