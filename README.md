@@ -1,7 +1,6 @@
 
 <h2 align="center">
-  <img width="35%" alt="A skeleton smoking a cigarette." src="https://raw.githubusercontent.com/stephantul/skeletoken/main/assets/vgogh_skeleton.jpeg
-  "><br/>
+  <img width="35%" alt="A skeleton smoking a cigarette." src="https://raw.githubusercontent.com/stephantul/skeletoken/main/assets/vgogh_skeleton.jpeg"><br/>
 </h2>
 <h1 align="center"> Skeletoken </h2>
 
