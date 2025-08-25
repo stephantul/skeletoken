@@ -8,9 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from tokenizers import Tokenizer
 
 from skeletoken.addedtoken import AddedToken
+from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import ModelDiscriminator
-from skeletoken.normalizers import NormalizerDiscriminator, NormalizerSequence
+from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
 from skeletoken.postprocessors import PostProcessorDiscriminator, PostProcessorSequence
 from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence
 
@@ -30,6 +31,28 @@ class TokenizerModel(BaseModel):
     decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
 
+    def add_token_to_vocabulary(self, token: str) -> None:
+        """Adds a token to the tokenizer's vocabulary."""
+        self.model.vocab.add_token(token)
+
+    def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> None:
+        """Replaces a token with another one. It keeps the old index in the vocabulary."""
+        self.model.vocab.replace_token(old_token, new_token)
+
+    def remove_token_from_vocabulary(self, token: str) -> None:
+        """Removes a token from the vocabulary."""
+        self.model.vocab.remove_token(token)
+
+    def decase_vocabulary(self) -> None:
+        """Decases the vocabulary."""
+        # Special tokens and unnormalized added tokens need to be skipped.
+        special_tokens = [token.content for token in self.added_tokens if token.special or not token.normalized]
+        sorted_vocab = self.model.vocab.sorted_vocabulary
+        vocabulary = decase_vocabulary(sorted_vocab, special_tokens, is_byte=self.transforms_into_bytes)
+        self.model.vocab.replace_vocabulary(vocabulary)
+        if not self.lowercases_input:
+            self.add_normalizer(LowercaseNormalizer(), prefix=True)
+
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
         """Add a pre-tokenizer to the tokenizer model."""
         if self.pre_tokenizer is None:
@@ -48,14 +71,27 @@ class TokenizerModel(BaseModel):
         else:
             self.post_processor = PostProcessorSequence(post_processors=[self.post_processor, post_processor])
 
-    def add_normalizer(self, normalizer: NormalizerDiscriminator) -> None:
-        """Add a normalizer to the tokenizer model."""
+    def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
+        """
+        Add a normalizer to the tokenizer model.
+
+        Parameters
+        ----------
+        normalizer: NormalizerDiscriminator
+            The normalizer to add.
+        prefix: bool
+            Whether to add the normalizer as a prefix.
+
+        """
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):
             self.normalizer.normalizers.append(normalizer)
         else:
-            self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
+            if prefix:
+                self.normalizer = NormalizerSequence(normalizers=[normalizer, self.normalizer])
+            else:
+                self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
 
     @classmethod
     def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> "TokenizerModel":
