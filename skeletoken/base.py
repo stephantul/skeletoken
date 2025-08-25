@@ -43,7 +43,7 @@ class TokenizerModel(BaseModel):
         """Removes a token from the vocabulary."""
         self.model.vocab.remove_token(token)
 
-    def decase_vocabulary(self) -> None:
+    def decase_vocabulary(self) -> TokenizerModel:
         """Decases the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
         special_tokens = [token.content for token in self.added_tokens if token.special or not token.normalized]
@@ -53,7 +53,9 @@ class TokenizerModel(BaseModel):
         if not self.lowercases_input:
             self.add_normalizer(LowercaseNormalizer(), prefix=True)
 
-    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
+        return self
+
+    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
@@ -62,7 +64,9 @@ class TokenizerModel(BaseModel):
         else:
             self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
 
-    def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> None:
+        return self
+
+    def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
         if self.post_processor is None:
             self.post_processor = post_processor
@@ -71,7 +75,9 @@ class TokenizerModel(BaseModel):
         else:
             self.post_processor = PostProcessorSequence(post_processors=[self.post_processor, post_processor])
 
-    def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
+        return self
+
+    def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> TokenizerModel:
         """
         Add a normalizer to the tokenizer model.
 
@@ -93,13 +99,15 @@ class TokenizerModel(BaseModel):
             else:
                 self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
 
+        return self
+
     @classmethod
-    def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> "TokenizerModel":
+    def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> TokenizerModel:
         """Create a TokenizerModel from a Tokenizer instance."""
         return cls.from_string(tokenizer.to_str())
 
     @classmethod
-    def from_pretrained(cls: type[TokenizerModel], path_or_repo: str | Path) -> "TokenizerModel":
+    def from_pretrained(cls: type[TokenizerModel], path_or_repo: str | Path) -> TokenizerModel:
         """Create a TokenizerModel from a pretrained tokenizer."""
         path = Path(path_or_repo)
         tokenizer: Tokenizer
@@ -127,9 +135,8 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        self_copy = self.model_copy(deep=True)
-        self_copy.model = self_copy.model.to_greedy()
-        return self_copy
+        self.model = self.model.to_greedy()
+        return self
 
     @property
     def lowercases_input(self) -> bool:
