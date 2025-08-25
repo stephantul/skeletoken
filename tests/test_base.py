@@ -8,6 +8,8 @@ from skeletoken.models import ModelType, WordPiece
 from skeletoken.normalizers import (
     ByteLevelNormalizer,
     LowercaseNormalizer,
+    NFKCNormalizer,
+    Normalizer,
     NormalizerSequence,
 )
 from skeletoken.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
@@ -74,6 +76,37 @@ def test_add_normalizer(small_tokenizer: Tokenizer) -> None:
     # Tests adding a third normalizer and keeping it as a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
     assert len(model.normalizer.normalizers) == 3
+
+
+def test_add_normalizer_prefix(small_tokenizer: Tokenizer) -> None:
+    """Add a normalizer prefix."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+
+    normalizer: Normalizer = ByteLevelNormalizer()
+    model.add_normalizer(normalizer, prefix=True)
+
+    # Tests removing None and adding a normalizer
+    assert model.normalizer is not None
+    assert isinstance(model.normalizer, ByteLevelNormalizer)
+
+    normalizer = LowercaseNormalizer()
+    model.add_normalizer(normalizer, prefix=True)
+
+    # Tests adding a second normalizer and keeping it as a sequence
+    assert isinstance(model.normalizer, NormalizerSequence)
+    assert len(model.normalizer.normalizers) == 2
+    assert isinstance(model.normalizer.normalizers[0], LowercaseNormalizer)
+    assert isinstance(model.normalizer.normalizers[1], ByteLevelNormalizer)
+
+    normalizer = NFKCNormalizer()
+    model.add_normalizer(normalizer, prefix=False)
+
+    # Tests adding a third normalizer and keeping it as a sequence
+    assert isinstance(model.normalizer, NormalizerSequence)
+    assert len(model.normalizer.normalizers) == 3
+    assert isinstance(model.normalizer.normalizers[0], LowercaseNormalizer)
+    assert isinstance(model.normalizer.normalizers[1], ByteLevelNormalizer)
+    assert isinstance(model.normalizer.normalizers[2], NFKCNormalizer)
 
 
 def test_add_processor(small_tokenizer: Tokenizer) -> None:
@@ -156,3 +189,40 @@ def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
     tok_model.normalizer = None
     tok_model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=False)
     assert tok_model.transforms_into_bytes
+
+
+def test_remove_token(small_tokenizer: Tokenizer) -> None:
+    """Test removing a token from the vocabulary."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.remove_token_from_vocabulary("a")
+    with pytest.raises(ValueError):
+        tok_model.remove_token_from_vocabulary("a")
+    assert "a" not in tok_model.model.vocab.vocabulary
+
+
+def test_add_token(small_tokenizer: Tokenizer) -> None:
+    """Test adding a token to the vocabulary."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    with pytest.raises(ValueError):
+        tok_model.add_token_to_vocabulary("a")
+    tok_model.add_token_to_vocabulary("new_token")
+    assert "new_token" in tok_model.model.vocab.vocabulary
+
+
+def test_replace_token(small_tokenizer: Tokenizer) -> None:
+    """Test replace token interface."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    with pytest.raises(ValueError):
+        tok_model.replace_token_in_vocabulary("a", "b")
+    tok_model.replace_token_in_vocabulary("b", "x")
+    assert "b" not in tok_model.model.vocab.vocabulary
+    assert "x" in tok_model.model.vocab.vocabulary
+
+
+def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
+    """Test the decasing of the vocabulary."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    vocabulary = tok_model.model.vocab.sorted_vocabulary
+    tok_model.decase_vocabulary()
+    # This tokenizer does not assign any special tokens, so this is true.
+    assert tok_model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]

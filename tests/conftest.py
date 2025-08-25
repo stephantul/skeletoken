@@ -4,6 +4,8 @@ from typing import Any
 from pytest import fixture
 from tokenizers import Tokenizer
 
+from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+
 
 @fixture(scope="function")
 def small_tokenizer_json() -> dict[str, Any]:
