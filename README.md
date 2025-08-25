@@ -37,17 +37,64 @@ from skeletoken import TokenizerModel
 from skeletoken.pretokenizers import DigitsPreTokenizer
 
 tok = Tokenizer.from_pretrained("gpt2")
-tokenizer_model = TokenizerModel.from_pretrained("gpt2")
+model = TokenizerModel.from_pretrained("gpt2")
 
 # Create the digits pretokenizer
 digits = DigitsPreTokenizer(individual_digits=True)
-tokenizer_model.add_pre_tokenizer(digits)
+model = model.add_pre_tokenizer(digits)
 
 new_tok = tokenizer_model.to_tokenizer()
 print(tok.encode("hello 123").tokens)
 # ['hello', 'Ġ123']
 print(new_tok.encode("hello 123").tokens)
 # ['hello', 'Ġ', '1', '2', '3']
+```
+
+## Decasing a tokenizer
+
+For background, see [this blogpost](https://stephantul.github.io/blog/uncasing/). Decasing is super easy using skeletoken.
+
+```python
+from tokenizers import Tokenizer
+from skeletoken import TokenizerModel
+
+model_name = "intfloat/multilingual-e5-small"
+
+tokenizer = Tokenizer.from_pretrained(model_name)
+
+print([tokenizer.encode(x).tokens for x in ["Amsterdam", "amsterdam"]])
+# [['<s>', '▁Amsterdam', '</s>'], ['<s>', '▁am', 'ster', 'dam', '</s>']]
+
+model = TokenizerModel.from_pretrained(model_name)
+model = model.decase_vocabulary()
+
+lower_tokenizer = model.to_tokenizer()
+print([lower_tokenizer.encode(x).tokens for x in ["Amsterdam", "amsterdam"]])
+# [['<s>', '▁amsterdam', '</s>'], ['<s>', '▁amsterdam', '</s>']]
+
+```
+
+## Making a tokenizer greedy
+
+For background, see [this blog post](https://stephantul.github.io/blog/greedy/). Like decasing, turning any tokenizer into a greedy one is super easy using skeletoken.
+
+```python
+from tokenizers import Tokenizer
+from skeletoken import TokenizerModel
+
+model_name = "gpt2"
+
+tokenizer = Tokenizer.from_pretrained(model_name)
+
+print([tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
+# [['Ġhell', 'ooo'], ['Ġblu', 'etooth']]
+
+model = TokenizerModel.from_pretrained(model_name)
+model.make_model_greedy()
+greedy_tokenizer = model.to_tokenizer()
+print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
+# [['Ġhello', 'oo'], ['Ġblue', 'too', 'th']]
+
 ```
 
 # Roadmap
