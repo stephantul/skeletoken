@@ -179,3 +179,10 @@ class TokenizerModel(BaseModel):
         if self.post_processor is None:
             return None
         return get_bos_token_from_post_processor(self.post_processor)
+
+    @property
+    def splits(self) -> bool:
+        """Whether the tokenizer can split the string somehow."""
+        if self.pre_tokenizer is None:
+            return False
+        return self.pre_tokenizer._splits

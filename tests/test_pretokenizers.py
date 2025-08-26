@@ -104,3 +104,25 @@ def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: P
 def test_byte_transform(pretokenizer: PreTokenizer, should_byte_transform: bool) -> None:
     """Test whether the byte transform detection works."""
     assert pretokenizer._byte_pretokenizes == should_byte_transform
+
+
+@pytest.mark.parametrize(
+    "pretokenizer,splits",
+    [
+        [_get_default_pretokenizer(PreTokenizerType.BERT_PRETOKENIZER), True],
+        [_get_default_pretokenizer(PreTokenizerType.BYTELEVEL), False],
+        [PreTokenizerSequence(pretokenizers=[_get_default_pretokenizer(PreTokenizerType.BYTELEVEL)]), False],
+        [
+            PreTokenizerSequence(
+                pretokenizers=[
+                    PreTokenizerSequence(pretokenizers=[_get_default_pretokenizer(PreTokenizerType.BYTELEVEL)])
+                ]
+            ),
+            False,
+        ],
+        [_get_default_pretokenizer(PreTokenizerType.METASPACE), True],
+    ],
+)
+def test_splits(pretokenizer: PreTokenizer, splits: bool) -> None:
+    """Test whether a pretokenizer splits."""
+    assert pretokenizer._splits == splits

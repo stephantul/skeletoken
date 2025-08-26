@@ -277,3 +277,15 @@ def test_bos(small_tokenizer: Tokenizer) -> None:
         ]
     )
     assert tok_model.bos is None
+
+
+def test_split(small_tokenizer: Tokenizer) -> None:
+    """Test whether the split works correctly."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert not tok_model.splits
+    pretokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=False, trim_offsets=True)
+    tok_model.add_pre_tokenizer(pretokenizer)
+    assert not tok_model.splits
+    pretokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
+    tok_model.add_pre_tokenizer(pretokenizer)
+    assert tok_model.splits
