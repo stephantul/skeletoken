@@ -11,7 +11,10 @@ def _determine_collision(token: str, is_byte: bool, vocab: set[str], special_tok
             token_bytes = token_to_bytes(token)
         except ValueError:
             return token
-        new_token = token_bytes.decode("utf-8")
+        try:
+            new_token = token_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return token
     else:
         new_token = token
 
