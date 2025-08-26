@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.10, 3.11, 3.12, 3.13]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
       fail-fast: false
 
     env:
@@ -61,17 +61,7 @@ jobs:
       - name: Run tests (parallel if xdist is available) with coverage
         run: |
           set -euo pipefail
-          # Use xdist if installed; otherwise run normally
-          if python - <<'PY' 2>/dev/null; then
-          import importlib.util as u; import sys; sys.exit(0 if u.find_spec("pytest_xdist") else 1)
-          PY
-          then
-            echo "Running pytest with xdist (-n auto)"
-            coverage run --source="$COVERAGE_SOURCE" -m pytest -n auto
-          else
-            echo "pytest-xdist not found; running serial tests"
-            coverage run --source="$COVERAGE_SOURCE" -m pytest
-          fi
+          coverage run --source="$COVERAGE_SOURCE" -m pytest
 
           coverage report -m
           coverage xml -o coverage.xml
