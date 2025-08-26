@@ -79,6 +79,11 @@ def test_determine_collision() -> None:
         == "\x80"
     )
 
+    # Decode error
+    assert (
+        _determine_collision(token="\xa1", is_byte=True, vocab=set(vocabulary), special_tokens=[], seen=set()) == "\xa1"
+    )
+
 
 def test_decase() -> None:
     """Test the entire decasing procedure."""
