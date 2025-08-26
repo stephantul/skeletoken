@@ -14,6 +14,7 @@
       <img src="https://img.shields.io/badge/license-MIT-green" alt="License - MIT">
     </a>
 </div>
+
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
 # Rationale
