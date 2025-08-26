@@ -188,7 +188,7 @@ class NmtNormalizer(BaseNormalizer):
     type: Literal[NormalizerType.NMT] = NormalizerType.NMT
 
 
-class PrependedNormalizer(BaseNormalizer):
+class PrependNormalizer(BaseNormalizer):
     """
     Prepends a string to the input text.
 
@@ -261,7 +261,7 @@ Normalizer = (
     | ByteLevelNormalizer
     | LowercaseNormalizer
     | NmtNormalizer
-    | PrependedNormalizer
+    | PrependNormalizer
     | StripNormalizer
     | StripAccentsNormalizer
     | ReplaceNormalizer
