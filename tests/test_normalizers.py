@@ -18,7 +18,7 @@ from skeletoken.normalizers import (
     NormalizerSequence,
     NormalizerType,
     PrecompiledNormalizer,
-    PrependedNormalizer,
+    PrependNormalizer,
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
@@ -44,7 +44,7 @@ def _get_default_normalizer(normalizer_type: NormalizerType) -> Normalizer:  # n
     elif normalizer_type == NormalizerType.NMT:
         return NmtNormalizer()
     elif normalizer_type == NormalizerType.PREPEND:
-        return PrependedNormalizer(prepend=PrependScheme.FIRST)
+        return PrependNormalizer(prepend=PrependScheme.FIRST)
     elif normalizer_type == NormalizerType.STRIP:
         return StripNormalizer(strip_left=True, strip_right=True)
     elif normalizer_type == NormalizerType.REPLACE:
