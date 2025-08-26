@@ -33,11 +33,20 @@ class PreTokenizerSequence(BaseModel):
     def _byte_pretokenizes(self) -> bool:
         return any(x._byte_pretokenizes for x in self.pretokenizers)
 
+    @property
+    def _splits(self) -> bool:
+        return any(x._splits for x in self.pretokenizers)
+
 
 class BasePretokenizer(BaseModel):
     """A base class for pretokenizers."""
 
     _byte_pretokenizes: bool = PrivateAttr(default=False)
+
+    @property
+    def _splits(self) -> bool:
+        """Most pretokenizers split."""
+        return True
 
 
 class BertPreTokenizer(BasePretokenizer):
@@ -83,6 +92,11 @@ class ByteLevelPreTokenizer(BasePretokenizer):
     use_regex: bool
     trim_offsets: bool
     _byte_pretokenizes: bool = PrivateAttr(default=True)
+
+    @property
+    def _splits(self) -> bool:
+        """Only splits if use_regex is True."""
+        return self.use_regex
 
 
 class CharDelimiterSplitPreTokenizer(BasePretokenizer):
@@ -161,6 +175,11 @@ class MetaspacePreTokenizer(BasePretokenizer):
     replacement: str
     prepend_scheme: PrependScheme
     split: bool
+
+    @property
+    def _splits(self) -> bool:
+        """Splits if split is set to True."""
+        return self.split
 
 
 class PunctuationPreTokenizer(BasePretokenizer):

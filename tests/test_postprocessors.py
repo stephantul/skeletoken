@@ -8,6 +8,7 @@ from skeletoken.postprocessors import (
     BertPostProcessor,
     ByteLevelPostProcessor,
     PostProcessor,
+    PostProcessorSequence,
     PostProcessorType,
     RobertaPostProcessor,
     SequenceToken,
@@ -16,44 +17,47 @@ from skeletoken.postprocessors import (
     TemplatePostProcessor,
     TokenContent,
     TokenInfo,
+    get_bos_token_from_post_processor,
+    get_eos_token_from_post_processor,
 )
 
 
-def _get_default_postprocessor(normalizer_type: PostProcessorType) -> PostProcessor:  # noqa: C901
+def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostProcessor:  # noqa: C901
     """Helper function to get the default instantiation of a normalizer."""
-    if normalizer_type == PostProcessorType.BYTE_LEVEL:
+    if post_processor_type == PostProcessorType.BYTE_LEVEL:
         return ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False)
-    elif normalizer_type == PostProcessorType.BERT_PROCESSING:
+    elif post_processor_type == PostProcessorType.BERT_PROCESSING:
         return BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
-    elif normalizer_type == PostProcessorType.ROBERTA_PROCESSING:
+    elif post_processor_type == PostProcessorType.ROBERTA_PROCESSING:
         return RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False)
-    elif normalizer_type == PostProcessorType.TEMPLATE_PROCESSING:
+    elif post_processor_type == PostProcessorType.TEMPLATE_PROCESSING:
         return TemplatePostProcessor(
             single=(
-                SpecialToken(SpecialToken=TokenContent(id="single_special", type_id=0)),
-                SequenceToken(Sequence=TokenContent(id="sequence_special", type_id=1)),
-                SpecialToken(SpecialToken=TokenContent(id="single_special", type_id=0)),
+                SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
+                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
             ),
             pair=(
-                SpecialToken(SpecialToken=TokenContent(id="pair_special_1", type_id=0)),
-                SequenceToken(Sequence=TokenContent(id="pair_sequence", type_id=1)),
-                SpecialToken(SpecialToken=TokenContent(id="pair_special_2", type_id=2)),
-                SequenceToken(Sequence=TokenContent(id="pair_sequence_2", type_id=3)),
-                SpecialToken(SpecialToken=TokenContent(id="pair_special_3", type_id=4)),
+                SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
+                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
             ),
             special_tokens=SpecialTokens(
                 {
-                    "single_special": TokenInfo(id="single_special", ids=[0], tokens=["[SINGLE]"]),
-                    "pair_special_1": TokenInfo(id="pair_special_1", ids=[1], tokens=["[PAIR1]"]),
-                    "pair_sequence": TokenInfo(id="pair_sequence", ids=[2], tokens=["[PAIR_SEQ]"]),
-                    "pair_special_2": TokenInfo(id="pair_special_2", ids=[3], tokens=["[PAIR2]"]),
-                    "pair_sequence_2": TokenInfo(id="pair_sequence_2", ids=[4], tokens=["[PAIR_SEQ2]"]),
-                    "pair_special_3": TokenInfo(id="pair_special_3", ids=[5], tokens=["[PAIR3]"]),
+                    "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                    "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+                    "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
                 }
             ),
         )
+    elif post_processor_type == PostProcessorType.SEQUENCE:
+        return PostProcessorSequence(
+            post_processors=[ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False)]
+        )
     else:
-        raise ValueError(f"Unknown normalizer type: {normalizer_type}")
+        raise ValueError(f"Unknown normalizer type: {post_processor_type}")
 
 
 @pytest.mark.parametrize("post_processor_type", [PostProcessorType.BYTE_LEVEL, PostProcessorType.BERT_PROCESSING])
@@ -72,3 +76,100 @@ def test_post_processor(small_tokenizer_json: dict[str, Any], post_processor_typ
     assert tokenizer.post_processor.type == post_processor_type
 
     Tokenizer.from_str(tokenizer.model_dump_json())
+
+
+def _get_no_single_template() -> TemplatePostProcessor:
+    """Gets a template with missing things."""
+    return TemplatePostProcessor(
+        single=(),
+        pair=(
+            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
+            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+        ),
+        special_tokens=SpecialTokens(
+            {
+                "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+            }
+        ),
+    )
+
+
+def _get_no_eos_template() -> TemplatePostProcessor:
+    """Gets a template processor without eos."""
+    return TemplatePostProcessor(
+        single=(
+            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
+            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+        ),
+        pair=(
+            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
+            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+        ),
+        special_tokens=SpecialTokens(
+            {
+                "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+            }
+        ),
+    )
+
+
+def _get_no_bos_template() -> TemplatePostProcessor:
+    """Gets a template processor without bos."""
+    return TemplatePostProcessor(
+        single=(
+            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+        ),
+        pair=(
+            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+        ),
+        special_tokens=SpecialTokens(
+            {
+                "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+            }
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "post_processor,result",
+    [
+        (_get_default_postprocessor(PostProcessorType.SEQUENCE), None),
+        (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), None),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[CLS]"),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[CLS]"),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), "special_begin"),
+        (_get_no_single_template(), None),
+        (_get_no_eos_template(), "special_begin"),
+        (_get_no_bos_template(), None),
+    ],
+)
+def test_get_bos_token_from_post_processor(post_processor: PostProcessor, result: str | None) -> None:
+    """Tests getting the bos token from the post processor."""
+    bos_token = get_bos_token_from_post_processor(post_processor)
+    assert bos_token == result
+
+
+@pytest.mark.parametrize(
+    "post_processor,result",
+    [
+        (_get_default_postprocessor(PostProcessorType.SEQUENCE), None),
+        (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), None),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[SEP]"),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[SEP]"),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), "special_end"),
+        (_get_no_single_template(), None),
+        (_get_no_eos_template(), None),
+        (_get_no_bos_template(), "special_end"),
+    ],
+)
+def test_get_eos_token_from_post_processor(post_processor: PostProcessor, result: str | None) -> None:
+    """Tests getting the eos token from the post processor."""
+    eos_token = get_eos_token_from_post_processor(post_processor)
+    assert eos_token == result
