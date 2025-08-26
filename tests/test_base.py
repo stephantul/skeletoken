@@ -12,7 +12,12 @@ from skeletoken.normalizers import (
     Normalizer,
     NormalizerSequence,
 )
-from skeletoken.postprocessors import ByteLevelPostProcessor, PostProcessorSequence
+from skeletoken.postprocessors import (
+    BertPostProcessor,
+    ByteLevelPostProcessor,
+    PostProcessorSequence,
+    RobertaPostProcessor,
+)
 from skeletoken.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence
 
 
@@ -226,3 +231,49 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     tok_model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
     assert tok_model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
+
+
+def test_eos(small_tokenizer: Tokenizer) -> None:
+    """Test getting the eos token."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.eos is None
+    tok_model.post_processor = ByteLevelPostProcessor(add_prefix_space=True, trim_offsets=True, use_regex=True)
+    assert tok_model.eos is None
+    tok_model.post_processor = None
+    tok_model.post_processor = RobertaPostProcessor(
+        sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False
+    )
+    assert tok_model.eos == "[SEP]"
+    tok_model.post_processor = None
+    tok_model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
+    assert tok_model.eos == "[SEP]"
+    tok_model.post_processor = PostProcessorSequence(
+        post_processors=[
+            RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
+            BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0)),
+        ]
+    )
+    assert tok_model.eos is None
+
+
+def test_bos(small_tokenizer: Tokenizer) -> None:
+    """Test getting the eos token."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.bos is None
+    tok_model.post_processor = ByteLevelPostProcessor(add_prefix_space=True, trim_offsets=True, use_regex=True)
+    assert tok_model.bos is None
+    tok_model.post_processor = None
+    tok_model.post_processor = RobertaPostProcessor(
+        sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False
+    )
+    assert tok_model.bos == "[CLS]"
+    tok_model.post_processor = None
+    tok_model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
+    assert tok_model.bos == "[CLS]"
+    tok_model.post_processor = PostProcessorSequence(
+        post_processors=[
+            RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
+            BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0)),
+        ]
+    )
+    assert tok_model.bos is None

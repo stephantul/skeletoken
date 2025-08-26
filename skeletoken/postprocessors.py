@@ -97,3 +97,37 @@ PostProcessor = (
     BertPostProcessor | ByteLevelPostProcessor | RobertaPostProcessor | TemplatePostProcessor | PostProcessorSequence
 )
 PostProcessorDiscriminator = Annotated[PostProcessor, Field(discriminator="type")]
+
+
+def get_bos_token_from_post_processor(post_processor: PostProcessor) -> str | None:
+    """Get the beginning-of-sequence token from a post-processor."""
+    if isinstance(post_processor, PostProcessorSequence):
+        return None
+    if isinstance(post_processor, ByteLevelPostProcessor):
+        return None
+    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+        return post_processor.cls[0]
+    if isinstance(post_processor, TemplatePostProcessor):
+        single_encoding = post_processor.single
+        if not single_encoding:
+            return None
+        if not isinstance(single_encoding[0], SpecialToken):
+            return None
+        return single_encoding[0].SpecialToken.id
+
+
+def get_eos_token_from_post_processor(post_processor: PostProcessor) -> str | None:
+    """Get the end-of-sequence token from a post-processor."""
+    if isinstance(post_processor, PostProcessorSequence):
+        return None
+    if isinstance(post_processor, ByteLevelPostProcessor):
+        return None
+    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+        return post_processor.sep[0]
+    if isinstance(post_processor, TemplatePostProcessor):
+        single_encoding = post_processor.single
+        if not single_encoding:
+            return None
+        if not isinstance(single_encoding[-1], SpecialToken):
+            return None
+        return single_encoding[-1].SpecialToken.id
