@@ -1,6 +1,10 @@
 name: Run tests and upload coverage
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
@@ -87,3 +91,4 @@ jobs:
           flags: py${{ matrix.python-version }}
           fail_ci_if_error: false
           verbose: true
+          use_oidc: true
