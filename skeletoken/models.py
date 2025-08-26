@@ -45,10 +45,10 @@ class BPE(BaseModel):
 
     def to_greedy(self) -> WordPiece:
         """Convert the BPE model to a greedy WordPiece model."""
-        first_token = next(iter(self.vocab.root))
+        unk_token = self.unk_token or next(iter(self.vocab.root))
         return WordPiece(
             vocab=self.vocab,
-            unk_token=first_token,
+            unk_token=unk_token,
             continuing_subword_prefix=self.continuing_subword_prefix or "",
             max_input_chars_per_word=100,
         )
