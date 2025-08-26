@@ -1,4 +1,4 @@
-name: Run tests and upload coverage
+name: Run tests
 
 on:
   push:
@@ -62,7 +62,7 @@ jobs:
         run: make install-no-pre-commit
 
       # -------- Tests + Coverage --------
-      - name: Run tests (parallel if xdist is available) with coverage
+      - name: Run tests with coverage
         run: |
           set -euo pipefail
           coverage run --source="$COVERAGE_SOURCE" -m pytest
@@ -70,25 +70,3 @@ jobs:
           coverage report -m
           coverage xml -o coverage.xml
           coverage html -d htmlcov
-
-      # -------- Upload coverage artifacts (HTML + XML) --------
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: |
-            coverage.xml
-            htmlcov/
-          if-no-files-found: error
-          retention-days: 7
-
-      # -------- Codecov --------------
-      - name: Upload to Codecov
-        if: ${{ success() }}
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-          flags: py${{ matrix.python-version }}
-          fail_ci_if_error: false
-          verbose: true
-          use_oidc: true
