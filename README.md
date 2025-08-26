@@ -4,6 +4,16 @@
 </h2>
 <h1 align="center"> Skeletoken </h2>
 
+<div align="center">
+  <h2>
+    <a href="https://pypi.org/project/skeletoken/"><img src="https://img.shields.io/pypi/v/skeletoken?color=f29bdb" alt="Package version"></a>
+    <a href="https://codecov.io/gh/stephantul/skeletoken" >
+      <img src="https://codecov.io/gh/stephantul/skeletoken/graph/badge.svg?token=DD8BK7OZHG"/>
+    </a>
+    <a href="https://github.com/stephantul/skeletoken/blob/main/LICENSE">
+      <img src="https://img.shields.io/badge/license-MIT-green" alt="License - MIT">
+    </a>
+</div>
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
 # Rationale
