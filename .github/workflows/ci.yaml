@@ -70,3 +70,27 @@ jobs:
           coverage report -m
           coverage xml -o coverage.xml
           coverage html -d htmlcov
+
+      # -------- Upload coverage artifacts (HTML + XML) --------
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+          if-no-files-found: error
+          retention-days: 7
+
+      # -------- Codecov (recommended) --------
+      # Works without token for public repos. For private repos, add CODECOV_TOKEN secret.
+      - name: Upload to Codecov
+        if: ${{ success() }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: py${{ matrix.python-version }}
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
