@@ -1,0 +1,96 @@
+name: Run tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} • ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false
+
+    env:
+      # Path to your package for coverage
+      COVERAGE_SOURCE: skeletoken
+
+    steps:
+      # -------- Checkout --------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -------- Python setup --------
+      - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      # -------- Cache (uv + venv) --------
+      # Keyed by OS, Python version, and your lock/config files
+      - name: Cache virtualenv and uv cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('uv.lock', 'pyproject.toml', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ matrix.python-version }}-
+
+      # -------- uv + venv --------
+      - name: Set up virtual environment (uv)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv venv .venv
+          echo "VIRTUAL_ENV=.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      # -------- Dependencies --------
+      - name: Install project dependencies
+        run: make install-no-pre-commit
+
+      # -------- Tests + Coverage --------
+      - name: Run tests with coverage
+        run: |
+          set -euo pipefail
+          coverage run --source="$COVERAGE_SOURCE" -m pytest
+
+          coverage report -m
+          coverage xml -o coverage.xml
+          coverage html -d htmlcov
+
+      # -------- Upload coverage artifacts (HTML + XML) --------
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+          if-no-files-found: error
+          retention-days: 7
+
+      # -------- Codecov (recommended) --------
+      # Works without token for public repos. For private repos, add CODECOV_TOKEN secret.
+      - name: Upload to Codecov
+        if: ${{ success() }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: py${{ matrix.python-version }}
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
