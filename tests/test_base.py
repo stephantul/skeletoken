@@ -4,6 +4,7 @@ import pytest
 from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
+from skeletoken.common import PrependScheme
 from skeletoken.models import ModelType, WordPiece
 from skeletoken.normalizers import (
     ByteLevelNormalizer,
@@ -18,7 +19,7 @@ from skeletoken.postprocessors import (
     PostProcessorSequence,
     RobertaPostProcessor,
 )
-from skeletoken.pretokenizers import ByteLevelPreTokenizer, PreTokenizerSequence
+from skeletoken.pretokenizers import ByteLevelPreTokenizer, MetaspacePreTokenizer, PreTokenizerSequence
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
@@ -289,3 +290,21 @@ def test_split(small_tokenizer: Tokenizer) -> None:
     pretokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
     tok_model.add_pre_tokenizer(pretokenizer)
     assert tok_model.splits
+
+
+def test_subword_prefix(small_tokenizer: Tokenizer) -> None:
+    """Test getting the subword prefix token."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.subword_prefix == "##"
+
+
+def test_word_prefix(small_tokenizer: Tokenizer) -> None:
+    """Test getting the word prefix token."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.word_prefix == None
+
+    tok_model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
+    assert tok_model.word_prefix == "Ġ"
+
+    tok_model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
+    assert tok_model.word_prefix == "▁"

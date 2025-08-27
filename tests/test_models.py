@@ -4,7 +4,8 @@ from typing import Any, Literal, overload
 import pytest
 
 from skeletoken.base import TokenizerModel
-from skeletoken.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece
+from skeletoken.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece, get_subword_prefix_token
+from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 
 
 @overload
@@ -44,7 +45,7 @@ def _get_default_model(model_type: ModelType) -> Model:
     }
     if model_type == ModelType.BPE:
         return BPE(
-            vocab=vocab,
+            vocab=Vocabulary(vocab),
             merges=[],
             dropout=0.1,
             unk_token="[UNK]",
@@ -55,13 +56,15 @@ def _get_default_model(model_type: ModelType) -> Model:
             ignore_merges=False,
         )
     elif model_type == ModelType.WORDPIECE:
-        return WordPiece(vocab=vocab, unk_token="[UNK]", continuing_subword_prefix="", max_input_chars_per_word=100)
+        return WordPiece(
+            vocab=Vocabulary(vocab), unk_token="[UNK]", continuing_subword_prefix="", max_input_chars_per_word=100
+        )
     elif model_type == ModelType.UNIGRAM:
         p = log(1.0 / len(vocab))
         u_vocab = [(x, p) for x, _ in sorted(vocab.items(), key=lambda item: item[1], reverse=True)]
-        return Unigram(vocab=u_vocab, unk_id=2, byte_fallback=False)
+        return Unigram(vocab=UnigramVocabulary(u_vocab), unk_id=2, byte_fallback=False)
     elif model_type == ModelType.WORDLEVEL:
-        return WordLevel(vocab=vocab, unk_token="[UNK]")
+        return WordLevel(vocab=Vocabulary(vocab), unk_token="[UNK]")
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -101,3 +104,28 @@ def test_greedy(model: Model) -> None:
     tokenizer = tokenizer_model.to_tokenizer()
 
     assert tokenizer.encode("a b c d e").tokens == ["a", " ", "b", " ", "c", " ", "d", " ", "e"]
+
+
+def test_get_subword_prefix_token() -> None:
+    """Tests the continuing subword prefix behavior."""
+    wordpiece = _get_default_model(ModelType.WORDPIECE)
+    wordpiece.continuing_subword_prefix = "##"
+
+    assert get_subword_prefix_token(wordpiece) == "##"
+
+    wordpiece.continuing_subword_prefix = ""
+    assert get_subword_prefix_token(wordpiece) == ""
+
+    bpe = _get_default_model(ModelType.BPE)
+    bpe.continuing_subword_prefix = "##"
+
+    assert get_subword_prefix_token(bpe) == "##"
+
+    bpe.continuing_subword_prefix = ""
+    assert get_subword_prefix_token(bpe) == ""
+
+    unigram = _get_default_model(ModelType.UNIGRAM)
+    assert get_subword_prefix_token(unigram) is None
+
+    wordlevel = _get_default_model(ModelType.WORDLEVEL)
+    assert get_subword_prefix_token(wordlevel) is None

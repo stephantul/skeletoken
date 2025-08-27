@@ -287,3 +287,14 @@ PreTokenizer = (
     | PreTokenizerSequence
 )
 PreTokenizerDiscriminator = Annotated[PreTokenizer, Field(discriminator="type")]
+
+
+def get_metaspace(pre_tokenizer: PreTokenizerDiscriminator) -> str | None:
+    """Get the metaspace token from a pre-tokenizer."""
+    if isinstance(pre_tokenizer, PreTokenizerSequence):
+        for pt in pre_tokenizer.pretokenizers:
+            if result := get_metaspace(pt):
+                return result
+    elif isinstance(pre_tokenizer, MetaspacePreTokenizer):
+        return pre_tokenizer.replacement
+    return None

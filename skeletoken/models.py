@@ -95,3 +95,13 @@ class WordLevel(BaseModel):
 
 Model = WordPiece | BPE | Unigram | WordLevel
 ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
+
+
+def get_subword_prefix_token(model: Model) -> str | None:
+    """Get the prefix token from the model, if any."""
+    # Only WordPiece and BPE models have these.
+    if isinstance(model, WordPiece):
+        return model.continuing_subword_prefix
+    elif isinstance(model, BPE):
+        return model.continuing_subword_prefix
+    return None
