@@ -28,11 +28,10 @@ This package contains datamodels (pydantic Basemodels) that contain the same con
 # Example
 
 ```python
-from tokenizers import Tokenizer
 from skeletoken import TokenizerModel
 
-tok = Tokenizer.from_pretrained("gpt2")
-tokenizer_model = TokenizerModel.model_validate_json(tok.to_str())
+# Directly pull a tokenizer from the hub
+tokenizer_model = TokenizerModel.from_pretrained("gpt2")
 
 print(tokenizer_model.model.type)
 # ModelType.BPE
@@ -43,18 +42,17 @@ print(tokenizer_model.pre_tokenizer.type)
 Ok, now let's add a digit splitter to the tokenizer.
 
 ```python
-from tokenizers import Tokenizer
 from skeletoken import TokenizerModel
 from skeletoken.pretokenizers import DigitsPreTokenizer
 
-tok = Tokenizer.from_pretrained("gpt2")
 model = TokenizerModel.from_pretrained("gpt2")
+tok = model.to_tokenizer()
 
 # Create the digits pretokenizer
 digits = DigitsPreTokenizer(individual_digits=True)
 model = model.add_pre_tokenizer(digits)
 
-new_tok = tokenizer_model.to_tokenizer()
+new_tok = model.to_tokenizer()
 print(tok.encode("hello 123").tokens)
 # ['hello', 'Ġ123']
 print(new_tok.encode("hello 123").tokens)
