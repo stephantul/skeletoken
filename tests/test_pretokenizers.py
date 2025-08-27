@@ -21,6 +21,7 @@ from skeletoken.pretokenizers import (
     UnicodeScriptsPreTokenizer,
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
+    get_metaspace,
 )
 
 
@@ -126,3 +127,14 @@ def test_byte_transform(pretokenizer: PreTokenizer, should_byte_transform: bool)
 def test_splits(pretokenizer: PreTokenizer, splits: bool) -> None:
     """Test whether a pretokenizer splits."""
     assert pretokenizer._splits == splits
+
+
+def test_get_metaspace() -> None:
+    """Test detection of a metaspace."""
+    default = _get_default_pretokenizer(PreTokenizerType.METASPACE)
+    assert get_metaspace(default) == " "
+    assert get_metaspace(PreTokenizerSequence(pretokenizers=[default])) == " "
+
+    other_default = _get_default_pretokenizer(PreTokenizerType.BERT_PRETOKENIZER)
+    assert get_metaspace(other_default) is None
+    assert get_metaspace(PreTokenizerSequence(pretokenizers=[other_default])) is None
