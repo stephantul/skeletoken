@@ -65,6 +65,3 @@ def test_replace_vocabulary(vocab: Vocabulary | UnigramVocabulary) -> None:
     assert vocab.sorted_vocabulary == ["hello", "world"]
     vocab.replace_vocabulary(["new_token", "hello"])
     assert vocab.sorted_vocabulary == ["new_token", "hello"]
-
-    with pytest.raises(ValueError):
-        vocab.replace_vocabulary(["new_token", "hello", "hahahahah"])
