@@ -40,8 +40,6 @@ class Vocabulary(RootModel[dict[str, int]]):
 
     def replace_vocabulary(self, vocabulary: list[str]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
-        if len(vocabulary) != len(self.root):
-            raise ValueError("New vocabulary must have the same length as the old one.")
         self.root = {token: idx for idx, token in enumerate(vocabulary)}
 
 
