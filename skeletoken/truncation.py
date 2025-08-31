@@ -4,14 +4,14 @@ from pydantic import BaseModel
 
 
 class TruncationDirection(str, Enum):
-    LEFT = "left"
-    RIGHT = "right"
+    LEFT = "Left"
+    RIGHT = "Right"
 
 
 class TruncationStrategy(str, Enum):
-    LONGEST_FIRST = "longest_first"
-    ONLY_FIRST = "only_first"
-    ONLY_SECOND = "only_second"
+    LONGEST_FIRST = "LongestFirst"
+    ONLY_FIRST = "OnlyFirst"
+    ONLY_SECOND = "OnlySecond"
 
 
 class Truncation(BaseModel):

@@ -4,13 +4,13 @@ from pydantic import BaseModel
 
 
 class PaddingStrategy(str, Enum):
-    BATCH_LONGEST = "batch_longest"
-    FIXED = "fixed"
+    BATCH_LONGEST = "BatchLongest"
+    FIXED = "Fixed"
 
 
 class PaddingDirection(str, Enum):
-    LEFT = "left"
-    RIGHT = "right"
+    LEFT = "Left"
+    RIGHT = "Right"
 
 
 class Padding(BaseModel):
