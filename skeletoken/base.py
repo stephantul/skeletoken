@@ -12,6 +12,7 @@ from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import ModelDiscriminator, get_subword_prefix_token
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
+from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
     PostProcessorDiscriminator,
     PostProcessorSequence,
@@ -19,6 +20,7 @@ from skeletoken.postprocessors import (
     get_eos_token_from_post_processor,
 )
 from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, get_metaspace
+from skeletoken.truncation import Truncation
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +29,8 @@ class TokenizerModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     version: Literal["1.0"] = "1.0"
-    truncation: None = None
-    padding: None = None
+    truncation: None | Truncation = None
+    padding: None | Padding = None
     added_tokens: list[AddedToken] = Field(default_factory=list)
     normalizer: None | NormalizerDiscriminator = None
     pre_tokenizer: None | PreTokenizerDiscriminator = None
