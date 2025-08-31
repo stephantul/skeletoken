@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from skeletoken.decase.byte_handlers import text_to_token_str, token_to_bytes
 
 
