@@ -3,7 +3,7 @@ name = "skeletoken"
 description = "Datamodels for HF tokenizers"
 readme = "README.md"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 
 dependencies = [
     "tokenizers",
