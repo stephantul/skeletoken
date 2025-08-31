@@ -75,6 +75,21 @@ class Unigram(BaseModel):
             max_input_chars_per_word=100,
         )
 
+    @property
+    def unk_token(self) -> str | None:
+        """Return the unknown token, if any."""
+        if self.unk_id is None:
+            return None
+        return self.vocab.sorted_vocabulary[self.unk_id]
+
+    @unk_token.setter
+    def unk_token(self, token: str | None) -> None:
+        """Set the unknown token."""
+        if token is None:
+            self.unk_id = None
+        else:
+            self.unk_id = self.vocab.vocabulary[token]
+
 
 class WordLevel(BaseModel):
     """Data model representing a WordLevel vocabulary."""
@@ -105,3 +120,6 @@ def get_subword_prefix_token(model: Model) -> str | None:
     elif isinstance(model, BPE):
         return model.continuing_subword_prefix
     return None
+
+
+MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)

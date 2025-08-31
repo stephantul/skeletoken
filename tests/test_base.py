@@ -5,7 +5,7 @@ from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme
-from skeletoken.models import ModelType, WordPiece
+from skeletoken.models import BPE, ModelType, WordPiece
 from skeletoken.normalizers import (
     ByteLevelNormalizer,
     LowercaseNormalizer,
@@ -13,6 +13,7 @@ from skeletoken.normalizers import (
     Normalizer,
     NormalizerSequence,
 )
+from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
     BertPostProcessor,
     ByteLevelPostProcessor,
@@ -228,6 +229,7 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
 def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.added_tokens = []
     vocabulary = tok_model.model.vocab.sorted_vocabulary
     tok_model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
@@ -308,3 +310,91 @@ def test_word_prefix(small_tokenizer: Tokenizer) -> None:
 
     tok_model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
     assert tok_model.word_prefix == "▁"
+
+
+def test_get_added_token_for_form(small_tokenizer: Tokenizer) -> None:
+    """Test getting the added token for a form."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    added_token = tok_model.get_added_token_for_form("f")
+    assert added_token is not None
+    assert added_token.content == "f"
+
+    added_token = tok_model.get_added_token_for_form("zyx")
+    assert added_token is None
+
+
+def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
+    """Test replacing a token in the vocabulary."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.replace_token_in_vocabulary("f", "g")
+    assert tok_model.model.vocab["g"] is not None
+    assert tok_model.get_added_token_for_form("g") is not None
+
+
+def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
+    """Test removing a token from the vocabulary."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.get_added_token_for_form("f") is not None
+    tok_model.remove_token_from_vocabulary("f")
+    assert tok_model.get_added_token_for_form("f") is None
+
+
+def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
+    """Test setting the unknown token."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.unk_token = "new_unk"
+    assert tok_model.model.vocab["new_unk"] is not None
+    assert tok_model.get_added_token_for_form("new_unk") is not None
+
+    with pytest.raises(ValueError):
+        tok_model.unk_token = None
+
+    assert isinstance(tok_model.model, WordPiece)
+    tok_model.model = BPE(
+        vocab=tok_model.model.vocab,
+        merges=[],
+        dropout=0.0,
+        unk_token="a",
+        continuing_subword_prefix="",
+        end_of_word_suffix="",
+        fuse_unk=True,
+        byte_fallback=True,
+        ignore_merges=True,
+    )
+    tok_model.unk_token = None
+
+    tok_model.unk_token = "a"
+    tok_model.unk_token = "b"
+    tok_model.unk_token = "a"
+
+    tok_model.unk_token = None
+    tok_model.unk_token = "OSTENTATIOUS"
+
+
+def test_get_padding_token(small_tokenizer: Tokenizer) -> None:
+    """Get the padding token from the tokenizer model."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert tok_model.padding is None
+    assert tok_model.pad_token is None
+
+    tok_model.padding = Padding(pad_token="[PAD]", pad_id=3, pad_type_id=0)
+    assert tok_model.pad_token == "[PAD]"
+
+
+def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
+    """Set the padding token for the tokenizer model."""
+    tok_model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tok_model.pad_token = "[PAD]"
+    assert tok_model.get_added_token_for_form("[PAD]") is not None
+    tok_model.pad_token = None
+    tok_model.pad_token = "OSTENTATIOUS"
+    assert tok_model.get_added_token_for_form("OSTENTATIOUS") is not None
+    assert tok_model.get_added_token_for_form("[PAD]") is None
+    tok_model.added_tokens = []
+    tok_model.pad_token = "OSTENTATIOUS"
+    assert tok_model.get_added_token_for_form("OSTENTATIOUS") is not None
+    tok_model.pad_token = "OSTENTATIOUS"
+    assert tok_model.get_added_token_for_form("OSTENTATIOUS") is not None
+    assert tok_model.get_added_token_for_form("[PAD]") is None
+    tok_model.pad_token = "FUN"
+    assert tok_model.get_added_token_for_form("FUN") is not None

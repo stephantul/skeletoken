@@ -12,6 +12,7 @@ def test_addedtokens(small_tokenizer_json: dict[str, Any]) -> None:
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """
+    small_tokenizer_json["added_tokens"] = []
     token_a = AddedToken(
         content="a", single_word=True, lstrip=False, rstrip=False, normalized=False, special=False, id=11
     )
@@ -24,8 +25,8 @@ def test_addedtokens(small_tokenizer_json: dict[str, Any]) -> None:
 
     tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
     assert tokenizer.version == "1.0"
-    assert len(tokenizer.added_tokens) == 2
-    for a, b in zip(tokenizer.added_tokens, toks, strict=True):
+    assert len(tokenizer.added_tokens) == 3
+    for a, b in zip(tokenizer.added_tokens[:-1], toks, strict=True):
         assert a.content == b.content
         assert a.single_word == b.single_word
         assert a.rstrip == b.rstrip

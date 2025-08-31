@@ -1,6 +1,6 @@
 import pytest
 
-from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from skeletoken.vocabulary import UnigramVocabulary, VocabMixin, Vocabulary
 
 
 def _simple_vocabulary_fixture() -> Vocabulary:
@@ -65,3 +65,26 @@ def test_replace_vocabulary(vocab: Vocabulary | UnigramVocabulary) -> None:
     assert vocab.sorted_vocabulary == ["hello", "world"]
     vocab.replace_vocabulary(["new_token", "hello"])
     assert vocab.sorted_vocabulary == ["new_token", "hello"]
+
+
+@pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
+def test_in(vocab: Vocabulary | UnigramVocabulary) -> None:
+    """Test the vocabulary implementation."""
+    assert "hello" in vocab
+    assert "world" in vocab
+    assert "new_token" not in vocab
+
+
+@pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
+def test_getitem(vocab: Vocabulary | UnigramVocabulary) -> None:
+    """Test the vocabulary implementation."""
+    assert vocab["hello"] == 0
+    assert vocab["world"] == 1
+    with pytest.raises(KeyError):
+        vocab["new_token"]
+
+
+@pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
+def test_len(vocab: Vocabulary | UnigramVocabulary) -> None:
+    """Test the vocabulary implementation."""
+    assert len(vocab) == 2

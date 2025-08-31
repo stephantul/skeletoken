@@ -2,7 +2,24 @@
   "version": "1.0",
   "truncation": null,
   "padding": null,
-  "added_tokens": [],
+  "added_tokens": [{
+    "content": "f",
+    "special": true,
+    "single_word": false,
+    "lstrip": false,
+    "rstrip": false,
+    "normalized": true,
+    "id": 10
+  },
+  {
+    "content": "[UNK]",
+    "special": true,
+    "single_word": false,
+    "lstrip": false,
+    "rstrip": false,
+    "normalized": true,
+    "id": 2
+  }],
   "normalizer": null,
   "pre_tokenizer": null,
   "post_processor": null,

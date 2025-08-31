@@ -129,3 +129,17 @@ def test_get_subword_prefix_token() -> None:
 
     wordlevel = _get_default_model(ModelType.WORDLEVEL)
     assert get_subword_prefix_token(wordlevel) is None
+
+
+def test_unk_token_unigram() -> None:
+    """Test the unk token in unigram model."""
+    model = _get_default_model(ModelType.UNIGRAM)
+    assert model.unk_id == 2
+    assert model.unk_token == model.vocab.sorted_vocabulary[2]
+    model.unk_token = "a"
+    assert model.unk_token == "a"
+    assert model.unk_id == model.vocab["a"]
+
+    model.unk_token = None
+    assert model.unk_id is None
+    assert model.unk_token is None

@@ -16,8 +16,8 @@ class PaddingDirection(str, Enum):
 class Padding(BaseModel):
     """A padding configuration."""
 
-    strategy: PaddingStrategy
-    direction: PaddingDirection
+    strategy: PaddingStrategy = PaddingStrategy.BATCH_LONGEST
+    direction: PaddingDirection = PaddingDirection.RIGHT
     pad_to_multiple_of: int | None = None
     pad_id: int
     pad_type_id: int
