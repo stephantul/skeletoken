@@ -1,7 +1,28 @@
 from pydantic import PrivateAttr, RootModel
 
 
-class Vocabulary(RootModel[dict[str, int]]):
+class VocabMixin:
+    """Mixin class for vocabulary-related functionality."""
+
+    @property
+    def vocabulary(self) -> dict[str, int]:
+        """Returns the vocabulary mapping."""
+        raise NotImplementedError()  # pragma: no cover
+
+    def __contains__(self, token: str) -> bool:
+        """Checks if a token is in the vocabulary."""
+        return token in self.vocabulary
+
+    def __getitem__(self, token: str) -> int:
+        """Gets the ID of a token in the vocabulary."""
+        return self.vocabulary[token]
+
+    def __len__(self) -> int:
+        """Gets the number of tokens in the vocabulary."""
+        return len(self.vocabulary)
+
+
+class Vocabulary(RootModel[dict[str, int]], VocabMixin):
     """A vocabulary mapping tokens to their IDs."""
 
     @property
@@ -43,7 +64,7 @@ class Vocabulary(RootModel[dict[str, int]]):
         self.root = {token: idx for idx, token in enumerate(vocabulary)}
 
 
-class UnigramVocabulary(RootModel[list[tuple[str, float]]]):
+class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
     """A unigram vocabulary mapping tokens to their scores."""
 
     _vocabulary: dict[str, int] = PrivateAttr(default_factory=dict, init=False)

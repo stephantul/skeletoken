@@ -10,7 +10,7 @@ from tokenizers import Tokenizer
 from skeletoken.addedtoken import AddedToken
 from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
-from skeletoken.models import ModelDiscriminator, get_subword_prefix_token
+from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, get_subword_prefix_token
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
 from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
@@ -38,6 +38,27 @@ class TokenizerModel(BaseModel):
     decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
 
+    def model_post_init(self, __context: dict) -> None:
+        """Post-initialization processing."""
+        for token in self.added_tokens:
+            content = token.content
+            if content not in self.model.vocab.vocabulary:
+                self.model.vocab.add_token(content)
+        unk_token = self.unk_token
+        if unk_token:
+            added_token = self.get_added_token_for_form(unk_token)
+            if not added_token:
+                added_token = AddedToken(
+                    content=unk_token,
+                    special=True,
+                    normalized=False,
+                    single_word=True,
+                    lstrip=False,
+                    rstrip=False,
+                    id=self.model.vocab[unk_token],
+                )
+                self.added_tokens.append(added_token)
+
     def add_token_to_vocabulary(self, token: str) -> None:
         """Adds a token to the tokenizer's vocabulary."""
         self.model.vocab.add_token(token)
@@ -45,10 +66,21 @@ class TokenizerModel(BaseModel):
     def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> None:
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
         self.model.vocab.replace_token(old_token, new_token)
+        if added_token := self.get_added_token_for_form(old_token):
+            added_token.content = new_token
 
     def remove_token_from_vocabulary(self, token: str) -> None:
         """Removes a token from the vocabulary."""
         self.model.vocab.remove_token(token)
+        if added_token := self.get_added_token_for_form(token):
+            self.added_tokens.remove(added_token)
+
+    def get_added_token_for_form(self, token: str) -> AddedToken | None:
+        """Returns the added token for a given form."""
+        for added_token in self.added_tokens:
+            if added_token.content == token:
+                return added_token
+        return None
 
     def decase_vocabulary(self, remove_collisions: bool = False) -> TokenizerModel:
         """
@@ -216,3 +248,83 @@ class TokenizerModel(BaseModel):
         if self.transforms_into_bytes:
             return "Ġ"
         return get_metaspace(self.pre_tokenizer)
+
+    @property
+    def unk_token(self) -> str | None:
+        """Get the unk token, if any."""
+        return self.model.unk_token
+
+    @unk_token.setter
+    def unk_token(self, token: str | None) -> None:
+        """Set the unk token of the tokenizer model."""
+        if token is None:
+            if isinstance(self.model, MODELS_THAT_NEED_UNK):
+                raise ValueError("Cannot unset unk_token for WordPiece or WordLevel models.")
+            self.model.unk_token = None
+            return
+        old_unk_token = self.unk_token
+        if old_unk_token is None:
+            if not token in self.model.vocab:
+                self.add_token_to_vocabulary(token)
+            index = self.model.vocab[token]
+            self.added_tokens.append(
+                AddedToken(
+                    content=token, special=True, normalized=True, single_word=True, rstrip=True, lstrip=True, id=index
+                )
+            )
+        elif old_unk_token in self.model.vocab:
+            if added_token := self.get_added_token_for_form(old_unk_token):
+                added_token.content = token
+            if token not in self.model.vocab:
+                self.add_token_to_vocabulary(token)
+        self.model.unk_token = token
+
+    @property
+    def pad_token(self) -> str | None:
+        """Get the padding token, if any."""
+        if self.padding is None:
+            return None
+        return self.padding.pad_token
+
+    @pad_token.setter
+    def pad_token(self, token: str | None) -> None:
+        """Set the padding token of the tokenizer model."""
+        if token is None:
+            current_token = self.pad_token
+            if current_token is not None:
+                if old_added_token := self.get_added_token_for_form(current_token):
+                    self.added_tokens.remove(old_added_token)
+
+            self.padding = None
+            return
+        # No padding module set
+        if self.padding is None:
+            if token not in self.model.vocab:
+                self.model.vocab.add_token(token)
+            index = self.model.vocab[token]
+            self.padding = Padding(pad_id=index, pad_type_id=0, pad_token=token)
+        elif token in self.model.vocab:
+            old_token = self.padding.pad_token
+            self.padding.pad_id = self.model.vocab[token]
+            self.padding.pad_token = token
+            if old_added_token := self.get_added_token_for_form(old_token):
+                self.added_tokens.remove(old_added_token)
+        else:
+            old_pad_token = self.padding.pad_token
+            self.replace_token_in_vocabulary(old_pad_token, token)
+            self.padding.pad_token = token
+
+        added_token = self.get_added_token_for_form(token)
+        if not added_token:
+            index = self.model.vocab[token]
+            self.added_tokens.append(
+                AddedToken(
+                    content=token,
+                    special=True,
+                    normalized=True,
+                    single_word=True,
+                    rstrip=True,
+                    lstrip=True,
+                    id=index,
+                )
+            )
