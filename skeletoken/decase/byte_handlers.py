@@ -12,7 +12,7 @@ def bytes_to_unicode() -> dict[int, str]:
             output_ids.append(256 + n)
             n += 1
     output_chars = [chr(c) for c in output_ids]
-    return dict(zip(input_ids, output_chars, strict=True))
+    return dict(zip(input_ids, output_chars))
 
 
 _MAPPING = bytes_to_unicode()
