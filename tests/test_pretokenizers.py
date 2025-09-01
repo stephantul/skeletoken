@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
@@ -83,7 +82,8 @@ def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: P
     assert tokenizer.pre_tokenizer is not None
     assert tokenizer.pre_tokenizer.type == pretokenizer_type
 
-    Tokenizer.from_str(tokenizer.model_dump_json())
+    # Implicit test. If this fails, the model is incorrect.
+    tokenizer.to_tokenizer()
 
 
 @pytest.mark.parametrize(

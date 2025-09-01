@@ -1,7 +1,5 @@
 from typing import Any
 
-from tokenizers import Tokenizer
-
 from skeletoken.addedtoken import AddedToken
 from skeletoken.base import TokenizerModel
 
@@ -36,4 +34,4 @@ def test_addedtokens(small_tokenizer_json: dict[str, Any]) -> None:
         assert a.id == b.id
 
     # Implicit test. If this fails, the model is incorrect.
-    Tokenizer.from_str(tokenizer.model_dump_json())
+    tokenizer.to_tokenizer()

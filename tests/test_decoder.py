@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
@@ -67,9 +66,10 @@ def test_decoder(small_tokenizer_json: dict[str, Any], decoder_type: DecoderType
     decoder = _get_default_decoder(decoder_type)
     decoder_dict = decoder.model_dump()
     small_tokenizer_json["decoder"] = decoder_dict
-    tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
+    model = TokenizerModel.model_validate(small_tokenizer_json)
 
-    assert tokenizer.decoder is not None
-    assert tokenizer.decoder.type == decoder_type
+    assert model.decoder is not None
+    assert model.decoder.type == decoder_type
 
-    Tokenizer.from_str(tokenizer.model_dump_json())
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()

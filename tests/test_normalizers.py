@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
@@ -87,7 +86,8 @@ def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: Norma
     assert tokenizer.normalizer is not None
     assert tokenizer.normalizer.type == normalizer_type
 
-    Tokenizer.from_str(tokenizer.model_dump_json())
+    # Implicit test. If this fails, the model is incorrect.
+    tokenizer.to_tokenizer()
 
 
 @pytest.mark.parametrize(

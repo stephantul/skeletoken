@@ -76,14 +76,17 @@ def test_model(small_tokenizer_json: dict[str, Any], model_type: ModelType) -> N
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """
-    model = _get_default_model(model_type)
-    model_dict = model.model_dump()
+    internal_model = _get_default_model(model_type)
+    model_dict = internal_model.model_dump()
     small_tokenizer_json["model"] = model_dict
-    tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
+    model = TokenizerModel.model_validate(small_tokenizer_json)
 
-    assert tokenizer.model is not None
-    assert tokenizer.model.type == model_type
-    assert isinstance(tokenizer.model, model.__class__)
+    assert model.model is not None
+    assert model.model.type == model_type
+    assert isinstance(model.model, internal_model.__class__)
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
 
 
 def _get_none_unigram() -> Unigram:

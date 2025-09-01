@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-from tokenizers import Tokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.postprocessors import (
@@ -75,7 +74,8 @@ def test_post_processor(small_tokenizer_json: dict[str, Any], post_processor_typ
     assert tokenizer.post_processor is not None
     assert tokenizer.post_processor.type == post_processor_type
 
-    Tokenizer.from_str(tokenizer.model_dump_json())
+    # Implicit test. If this fails, the model is incorrect.
+    tokenizer.to_tokenizer()
 
 
 def _get_no_single_template() -> TemplatePostProcessor:
