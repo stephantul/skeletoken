@@ -122,9 +122,9 @@ class TokenizerModel(BaseModel):
         if self.post_processor is None:
             self.post_processor = post_processor
         elif isinstance(self.post_processor, PostProcessorSequence):
-            self.post_processor.post_processors.append(post_processor)
+            self.post_processor.processors.append(post_processor)
         else:
-            self.post_processor = PostProcessorSequence(post_processors=[self.post_processor, post_processor])
+            self.post_processor = PostProcessorSequence(processors=[self.post_processor, post_processor])
 
         return self
 

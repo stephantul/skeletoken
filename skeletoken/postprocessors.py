@@ -18,7 +18,7 @@ class PostProcessorSequence(BaseModel):
     """A sequence of postprocessors."""
 
     type: Literal[PostProcessorType.SEQUENCE] = PostProcessorType.SEQUENCE
-    post_processors: list[PostProcessor]
+    processors: list[PostProcessor]
 
 
 class BertPostProcessor(BaseModel):

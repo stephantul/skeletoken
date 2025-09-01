@@ -131,13 +131,13 @@ def test_add_processor(small_tokenizer: Tokenizer) -> None:
 
     # Tests adding a second post-processor and turning it into a sequence
     assert isinstance(model.post_processor, PostProcessorSequence)
-    assert len(model.post_processor.post_processors) == 2
+    assert len(model.post_processor.processors) == 2
 
     model.add_post_processor(post_processor)
 
     # Tests adding a third post-processor and keeping it as a sequence
     assert isinstance(model.post_processor, PostProcessorSequence)
-    assert len(model.post_processor.post_processors) == 3
+    assert len(model.post_processor.processors) == 3
 
 
 def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
@@ -251,7 +251,7 @@ def test_eos(small_tokenizer: Tokenizer) -> None:
     tok_model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
     assert tok_model.eos == "[SEP]"
     tok_model.post_processor = PostProcessorSequence(
-        post_processors=[
+        processors=[
             RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
             BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0)),
         ]
@@ -274,7 +274,7 @@ def test_bos(small_tokenizer: Tokenizer) -> None:
     tok_model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
     assert tok_model.bos == "[CLS]"
     tok_model.post_processor = PostProcessorSequence(
-        post_processors=[
+        processors=[
             RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
             BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0)),
         ]

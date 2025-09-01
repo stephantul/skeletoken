@@ -54,7 +54,7 @@ def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostPr
         )
     elif post_processor_type == PostProcessorType.SEQUENCE:
         return PostProcessorSequence(
-            post_processors=[ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False)]
+            processors=[ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False)]
         )
     else:
         raise ValueError(f"Unknown normalizer type: {post_processor_type}")
