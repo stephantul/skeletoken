@@ -26,7 +26,29 @@ class PaddingDirection(str, Enum):
 
 
 class Padding(BaseModel):
-    """A padding configuration."""
+    """
+    The padding configuration.
+
+    Attributes
+    ----------
+    strategy : PaddingStrategy
+        The padding strategy to use.
+        If this is BatchLongest, the input will be padded to the longest sequence in the batch.
+        If this is Fixed, the padding will be applied to a fixed amount. This allows for a
+        clever hack. By setting the strategy to Fixed, and the amount to 0, you can set a padding
+        token without actually padding.
+    direction : PaddingDirection
+        The direction to pad in. This can be either left or right.
+    pad_to_multiple_of : int | None
+        If set, the input will be padded to a multiple of this value.
+    pad_id : int
+        The ID of the padding token in the vocabulary.
+    pad_type_id : int
+        The type ID to insert when padding. This is usually 0.
+    pad_token : str
+        The form of the padding token in the vocabulary.
+
+    """
 
     strategy: PaddingStrategy = FixedStrategy(Fixed=0)
     direction: PaddingDirection = PaddingDirection.RIGHT

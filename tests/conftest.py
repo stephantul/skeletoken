@@ -4,7 +4,7 @@ from typing import Any
 from pytest import fixture
 from tokenizers import Tokenizer
 
-from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from skeletoken.merges import Merges
 
 
 @fixture(scope="function")
@@ -17,3 +17,9 @@ def small_tokenizer_json() -> dict[str, Any]:
 def small_tokenizer() -> Tokenizer:
     """Load an extremely small tokenizer for testing purposes."""
     return Tokenizer.from_file("tests/data/small_tokenizer.json")
+
+
+@fixture(scope="function")
+def small_merges() -> Merges:
+    """Load an extremely small merges for testing purposes."""
+    return Merges([("a", "b"), ("c", "d"), ("ab", "c"), ("a", "bc")])

@@ -243,8 +243,8 @@ class PrecompiledNormalizer(BaseNormalizer):
 
     Attributes
     ----------
-        precompiled_charsmap : str
-            The precompiled characters map.
+    precompiled_charsmap : str
+        The precompiled characters map.
 
     """
 

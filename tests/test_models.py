@@ -4,6 +4,7 @@ from typing import Any, Literal, overload
 import pytest
 
 from skeletoken.base import TokenizerModel
+from skeletoken.merges import Merges
 from skeletoken.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece, get_subword_prefix_token
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 
@@ -46,7 +47,7 @@ def _get_default_model(model_type: ModelType) -> Model:
     if model_type == ModelType.BPE:
         return BPE(
             vocab=Vocabulary(vocab),
-            merges=[],
+            merges=Merges([]),
             dropout=0.1,
             unk_token="[UNK]",
             continuing_subword_prefix="",
@@ -61,7 +62,7 @@ def _get_default_model(model_type: ModelType) -> Model:
         )
     elif model_type == ModelType.UNIGRAM:
         p = log(1.0 / len(vocab))
-        u_vocab = [(x, p) for x, _ in sorted(vocab.items(), key=lambda item: item[1], reverse=True)]
+        u_vocab = [(x, p) for x, _ in sorted(vocab.items(), key=lambda item: item[1])]
         return Unigram(vocab=UnigramVocabulary(u_vocab), unk_id=2, byte_fallback=False)
     elif model_type == ModelType.WORDLEVEL:
         return WordLevel(vocab=Vocabulary(vocab), unk_token="[UNK]")
@@ -146,3 +147,81 @@ def test_unk_token_unigram() -> None:
     model.unk_token = None
     assert model.unk_id is None
     assert model.unk_token is None
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
+def test_add_token(model: Model) -> None:
+    """Test the add token functionality."""
+    model.add_token("new_token")
+    assert model.vocab["new_token"] == len(model.vocab) - 1
+    assert model.vocab.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        " ",
+        "new_token",
+    ]
+    with pytest.raises(ValueError):
+        model.add_token("new_token")
+
+    if isinstance(model, BPE):
+        assert model.merges.root == [
+            ("n", "e"),
+            ("w", "_"),
+            ("t", "o"),
+            ("k", "e"),
+            ("ne", "w_"),
+            ("to", "ke"),
+            ("new_", "toke"),
+            ("new_toke", "n"),
+        ]
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
+def test_replace_token(model: Model) -> None:
+    """Test the replace token functionality."""
+    model.replace_token("a", "new_token")
+    assert model.vocab["new_token"] == 5
+    assert model.vocab.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "new_token",
+        "b",
+        "c",
+        "d",
+        "e",
+        " ",
+    ]
+    with pytest.raises(ValueError):
+        model.replace_token("new_token", "new_token")
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
+def test_remove_token(model: Model) -> None:
+    """Test the remove token functionality."""
+    model.remove_token("a")
+    assert "a" not in model.vocab
+    assert model.vocab.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "b",
+        "c",
+        "d",
+        "e",
+        " ",
+    ]
+    with pytest.raises(ValueError):
+        model.remove_token("a")
