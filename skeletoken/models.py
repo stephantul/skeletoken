@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
+from skeletoken.merges import Merges
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 
 
@@ -15,7 +16,28 @@ class ModelType(str, Enum):
     WORDLEVEL = "WordLevel"
 
 
-class WordPiece(BaseModel):
+VocabTypeVar = TypeVar("VocabTypeVar", Vocabulary, UnigramVocabulary)
+
+
+class VocabMixinMethod(Generic[VocabTypeVar]):
+    """Mixin to override token addition, removal etc."""
+
+    vocab: VocabTypeVar
+
+    def add_token(self, token: str) -> None:
+        """Add a token to the vocabulary."""
+        self.vocab.add_token(token)
+
+    def replace_token(self, old_token: str, new_token: str) -> None:
+        """Replace a token in the vocabulary."""
+        self.vocab.replace_token(old_token, new_token)
+
+    def remove_token(self, token: str) -> None:
+        """Remove a token from the vocabulary."""
+        self.vocab.remove_token(token)
+
+
+class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordPiece vocabulary."""
 
     type: Literal[ModelType.WORDPIECE] = ModelType.WORDPIECE
@@ -29,11 +51,11 @@ class WordPiece(BaseModel):
         return self
 
 
-class BPE(BaseModel):
+class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a BPE vocabulary."""
 
     type: Literal[ModelType.BPE] = ModelType.BPE
-    merges: list[tuple[str, str]]
+    merges: Merges
     vocab: Vocabulary
     dropout: float | None
     unk_token: str | None
@@ -53,8 +75,22 @@ class BPE(BaseModel):
             max_input_chars_per_word=100,
         )
 
+    def add_token(self, token: str) -> None:
+        """Add a token to the vocabulary."""
+        self.vocab.add_token(token)
+        self.merges._add_merges_for_token(token)
 
-class Unigram(BaseModel):
+    def replace_token(self, old_token: str, new_token: str) -> None:
+        """Replace a token in the vocabulary."""
+        self.vocab.replace_token(old_token, new_token)
+        self.merges._add_merges_for_token(new_token)
+
+    def remove_token(self, token: str) -> None:
+        """Remove a token from the vocabulary."""
+        self.vocab.remove_token(token)
+
+
+class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
     """Data model representing a Unigram vocabulary."""
 
     type: Literal[ModelType.UNIGRAM] = ModelType.UNIGRAM
@@ -91,7 +127,7 @@ class Unigram(BaseModel):
             self.unk_id = self.vocab.vocabulary[token]
 
 
-class WordLevel(BaseModel):
+class WordLevel(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordLevel vocabulary."""
 
     type: Literal[ModelType.WORDLEVEL] = ModelType.WORDLEVEL

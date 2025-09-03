@@ -1,6 +1,6 @@
 import pytest
 
-from skeletoken.vocabulary import UnigramVocabulary, VocabMixin, Vocabulary
+from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 
 
 def _simple_vocabulary_fixture() -> Vocabulary:

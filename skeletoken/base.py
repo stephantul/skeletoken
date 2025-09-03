@@ -137,7 +137,9 @@ class TokenizerModel(BaseModel):
         normalizer: NormalizerDiscriminator
             The normalizer to add.
         prefix: bool
-            Whether to add the normalizer as a prefix.
+            Whether to add the normalizer before the other normalizers.
+            This can be useful if, for example, one of your normalizers performs
+            a destructive transform.
 
         """
         if self.normalizer is None:
