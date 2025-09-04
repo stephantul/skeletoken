@@ -152,26 +152,36 @@ def test_unk_token_unigram() -> None:
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
 def test_add_token(model: Model) -> None:
     """Test the add token functionality."""
-    model.add_token("new_token")
-    assert model.vocab["new_token"] == len(model.vocab) - 1
-    assert model.vocab.sorted_vocabulary == [
-        "[PAD]",
-        "[SEP]",
-        "[UNK]",
-        "[CLS]",
-        "[MASK]",
-        "a",
-        "b",
-        "c",
-        "d",
-        "e",
-        " ",
-        "new_token",
-    ]
-    with pytest.raises(ValueError):
-        model.add_token("new_token")
-
+    model.add_token("new_token", is_added_token=False)
+    assert model.vocab["new_token"] == 11
     if isinstance(model, BPE):
+        assert model.vocab.sorted_vocabulary == [
+            "[PAD]",
+            "[SEP]",
+            "[UNK]",
+            "[CLS]",
+            "[MASK]",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            " ",
+            "new_token",
+            "_",
+            "k",
+            "ke",
+            "n",
+            "ne",
+            "new_",
+            "new_toke",
+            "o",
+            "t",
+            "to",
+            "toke",
+            "w",
+            "w_",
+        ]
         assert model.merges.root == [
             ("n", "e"),
             ("w", "_"),
@@ -182,28 +192,82 @@ def test_add_token(model: Model) -> None:
             ("new_", "toke"),
             ("new_toke", "n"),
         ]
+    else:
+        assert model.vocab.sorted_vocabulary == [
+            "[PAD]",
+            "[SEP]",
+            "[UNK]",
+            "[CLS]",
+            "[MASK]",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            " ",
+            "new_token",
+        ]
+    with pytest.raises(ValueError):
+        model.add_token("new_token")
 
 
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
 def test_replace_token(model: Model) -> None:
     """Test the replace token functionality."""
-    model.replace_token("a", "new_token")
-    assert model.vocab["new_token"] == 5
-    assert model.vocab.sorted_vocabulary == [
-        "[PAD]",
-        "[SEP]",
-        "[UNK]",
-        "[CLS]",
-        "[MASK]",
-        "new_token",
-        "b",
-        "c",
-        "d",
-        "e",
-        " ",
-    ]
+    model.replace_token("a", "new_token", is_added_token=False)
+    if isinstance(model, BPE):
+        assert model.vocab.sorted_vocabulary == [
+            "[PAD]",
+            "[SEP]",
+            "[UNK]",
+            "[CLS]",
+            "[MASK]",
+            "new_token",
+            "b",
+            "c",
+            "d",
+            "e",
+            " ",
+            "_",
+            "k",
+            "ke",
+            "n",
+            "ne",
+            "new_",
+            "new_toke",
+            "o",
+            "t",
+            "to",
+            "toke",
+            "w",
+            "w_",
+        ]
+        assert model.merges.root == [
+            ("n", "e"),
+            ("w", "_"),
+            ("t", "o"),
+            ("k", "e"),
+            ("ne", "w_"),
+            ("to", "ke"),
+            ("new_", "toke"),
+            ("new_toke", "n"),
+        ]
+    else:
+        assert model.vocab.sorted_vocabulary == [
+            "[PAD]",
+            "[SEP]",
+            "[UNK]",
+            "[CLS]",
+            "[MASK]",
+            "new_token",
+            "b",
+            "c",
+            "d",
+            "e",
+            " ",
+        ]
     with pytest.raises(ValueError):
-        model.replace_token("new_token", "new_token")
+        model.add_token("new_token")
 
 
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
@@ -225,3 +289,8 @@ def test_remove_token(model: Model) -> None:
     ]
     with pytest.raises(ValueError):
         model.remove_token("a")
+
+    model.replace_token("b", "x", is_added_token=True)
+    # X gets added to the vocabulary, but not as a merge.
+    if isinstance(model, BPE):
+        assert "x" not in model.merges._all_merge_tokens

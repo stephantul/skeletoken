@@ -24,11 +24,11 @@ class VocabMixinMethod(Generic[VocabTypeVar]):
 
     vocab: VocabTypeVar
 
-    def add_token(self, token: str) -> None:
+    def add_token(self, token: str, is_added_token: bool = False) -> None:
         """Add a token to the vocabulary."""
         self.vocab.add_token(token)
 
-    def replace_token(self, old_token: str, new_token: str) -> None:
+    def replace_token(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token in the vocabulary."""
         self.vocab.replace_token(old_token, new_token)
 
@@ -75,15 +75,26 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
             max_input_chars_per_word=100,
         )
 
-    def add_token(self, token: str) -> None:
+    def add_token(self, token: str, is_added_token: bool = False) -> None:
         """Add a token to the vocabulary."""
         self.vocab.add_token(token)
+        if is_added_token:
+            return
         self.merges._add_merges_for_token(token)
+        new_tokens = sorted(self.merges._all_merge_tokens - set(self.vocab.vocabulary))
+        for token in new_tokens:
+            self.vocab.add_token(token)
 
-    def replace_token(self, old_token: str, new_token: str) -> None:
+    def replace_token(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token in the vocabulary."""
         self.vocab.replace_token(old_token, new_token)
+        # Special tokens do not require merge updates.
+        if is_added_token:
+            return
         self.merges._add_merges_for_token(new_token)
+        new_tokens = sorted(self.merges._all_merge_tokens - set(self.vocab.vocabulary))
+        for token in new_tokens:
+            self.vocab.add_token(token)
 
     def remove_token(self, token: str) -> None:
         """Remove a token from the vocabulary."""

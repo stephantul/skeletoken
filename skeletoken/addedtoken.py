@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 
 class AddedToken(BaseModel):
@@ -44,3 +44,67 @@ class AddedToken(BaseModel):
     normalized: bool
     special: bool
     id: int
+
+
+class AddedTokens(RootModel[list[AddedToken]]):
+    """Represents a collection of AddedTokens."""
+
+    def get_token(self, token: str) -> AddedToken | None:
+        """Returns the added token for a given form."""
+        for added_token in self.root:
+            if added_token.content == token:
+                return added_token
+        return None
+
+    def maybe_add_token(
+        self,
+        token: str,
+        id: int,
+        is_special: bool = False,
+        normalized: bool = False,
+        single_word: bool = True,
+        lstrip: bool = True,
+        rstrip: bool = True,
+    ) -> None:
+        """Adds a new added token."""
+        # If the token already exists, update it. Don't create a new one.
+        if added_token := self.get_token(token):
+            added_token.special = is_special
+            added_token.normalized = normalized
+            added_token.single_word = single_word
+            added_token.lstrip = lstrip
+            added_token.rstrip = rstrip
+            added_token.id = id
+        else:
+            new_token = AddedToken(
+                content=token,
+                special=is_special,
+                normalized=normalized,
+                single_word=single_word,
+                lstrip=lstrip,
+                rstrip=rstrip,
+                id=id,
+            )
+            self.root.append(new_token)
+
+    def maybe_remove_token(self, token: str) -> None:
+        """Removes the added token for a given form if it exists."""
+        self.root = [added_token for added_token in self.root if added_token.content != token]
+
+    def maybe_replace_token(self, old_token: str, new_token: str) -> None:
+        """Replaces the added token for a given form, if it exists."""
+        added_token = self.get_token(old_token)
+        if added_token:
+            added_token.content = new_token
+
+    def get_special_tokens(self) -> list[AddedToken]:
+        """Returns a list of all special added tokens."""
+        return [token for token in self.root if token.special]
+
+    def get_unnormalized_tokens(self) -> list[AddedToken]:
+        """Returns a list of all unnormalized added tokens."""
+        return [token for token in self.root if not token.normalized]
+
+    def __len__(self) -> int:
+        """Returns the number of added tokens."""
+        return len(self.root)

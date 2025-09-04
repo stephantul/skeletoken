@@ -32,3 +32,8 @@ repos:
         entry: mypy
         language: python
         types: [python]
+      - id: pytest
+        name: pytest
+        entry: pytest tests/
+        language: python
+        types: [python]
