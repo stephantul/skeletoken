@@ -18,6 +18,14 @@ class DecoderType(str, Enum):
     REPLACE = "Replace"
     STRIP = "Strip"
     WORDPIECE = "WordPiece"
+    SEQUENCE = "Sequence"
+
+
+class DecoderSequence(BaseModel):
+    """A sequence of decoders."""
+
+    type: Literal[DecoderType.SEQUENCE] = DecoderType.SEQUENCE
+    decoders: list[Decoder]
 
 
 class BPEDecoder(BaseModel):
@@ -203,5 +211,6 @@ Decoder = (
     | ReplaceDecoder
     | StripDecoder
     | WordPieceDecoder
+    | DecoderSequence
 )
 DecoderDiscriminator = Annotated[Decoder, Field(discriminator="type")]
