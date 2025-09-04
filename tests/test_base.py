@@ -1,10 +1,13 @@
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import pytest
 from tokenizers import Tokenizer
 
+from skeletoken.addedtoken import AddedTokens
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme
+from skeletoken.merges import Merges
 from skeletoken.models import BPE, ModelType, WordPiece
 from skeletoken.normalizers import (
     ByteLevelNormalizer,
@@ -23,6 +26,47 @@ from skeletoken.postprocessors import (
 from skeletoken.pretokenizers import ByteLevelPreTokenizer, MetaspacePreTokenizer, PreTokenizerSequence
 
 
+def test_post_init(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test the post-initialization of the TokenizerModel."""
+    # Remove UNK from the vocab
+    small_tokenizer_json["model"]["vocab"].pop("[UNK]")
+    # Remove UNK as an added token.
+    small_tokenizer_json["added_tokens"] = []
+    # Because the unk_token on the model is still [UNK], we will re-add it.
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model.version == "1.0"
+    assert model.model is not None
+    assert isinstance(model.model, WordPiece)
+    assert isinstance(model.added_tokens, AddedTokens)
+    assert model.normalizer is None
+    assert model.pre_tokenizer is None
+    assert model.post_processor is None
+    assert model.decoder is None
+    assert model.unk_token == "[UNK]"
+    assert "[UNK]" in model.model.vocab.vocabulary
+    assert model.added_tokens.get_token("[UNK]") is not None
+
+
+def test_add_addedtoken(small_tokenizer: Tokenizer) -> None:
+    """Test the add_addedtoken functionality."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_addedtoken("[OSTENTATIOUS]")
+    # Test if it gets added to both the model and the vocabulary.
+    assert model.added_tokens.get_token("[OSTENTATIOUS]") is not None
+    assert "[OSTENTATIOUS]" in model.model.vocab
+
+
+def test_turn_into_addedtoken(small_tokenizer: Tokenizer) -> None:
+    """Test turning a regular token into an added token."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_addedtoken("[OSTENTATIOUS]")
+    # Should not crash, it is already an added token.
+    model.turn_into_addedtoken("[OSTENTATIOUS]")
+    # Should crash because it is not a regular token.
+    with pytest.raises(ValueError):
+        model.turn_into_addedtoken("bababbaa")
+
+
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
     """Test creating a TokenizerModel from a Tokenizer instance."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -30,7 +74,7 @@ def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
     assert model.version == "1.0"
     assert model.model is not None
     assert isinstance(model.model, WordPiece)
-    assert isinstance(model.added_tokens, list)
+    assert isinstance(model.added_tokens, AddedTokens)
     assert model.normalizer is None
     assert model.pre_tokenizer is None
     assert model.post_processor is None
@@ -155,7 +199,7 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert model.version == "1.0"
         assert model.model is not None
         assert isinstance(model.model, WordPiece)
-        assert isinstance(model.added_tokens, list)
+        assert isinstance(model.added_tokens, AddedTokens)
         assert model.normalizer is None
         assert model.pre_tokenizer is None
         assert model.post_processor is None
@@ -166,7 +210,7 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert model.version == "1.0"
         assert model.model is not None
         assert isinstance(model.model, WordPiece)
-        assert isinstance(model.added_tokens, list)
+        assert isinstance(model.added_tokens, AddedTokens)
         assert model.normalizer is None
         assert model.pre_tokenizer is None
         assert model.post_processor is None
@@ -247,7 +291,7 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
 def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.added_tokens = []
+    model.added_tokens = AddedTokens([])
     vocabulary = model.model.vocab.sorted_vocabulary
     model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
@@ -348,26 +392,12 @@ def test_word_prefix(small_tokenizer: Tokenizer) -> None:
     model.to_tokenizer()
 
 
-def test_get_added_token_for_form(small_tokenizer: Tokenizer) -> None:
-    """Test getting the added token for a form."""
-    model = TokenizerModel.from_tokenizer(small_tokenizer)
-    added_token = model.get_added_token_for_form("f")
-    assert added_token is not None
-    assert added_token.content == "f"
-
-    added_token = model.get_added_token_for_form("zyx")
-    assert added_token is None
-
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
-
-
 def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test replacing a token in the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.replace_token_in_vocabulary("f", "g")
     assert model.model.vocab["g"] is not None
-    assert model.get_added_token_for_form("g") is not None
+    assert model.added_tokens.get_token("g") is not None
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -376,9 +406,9 @@ def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
 def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test removing a token from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.get_added_token_for_form("f") is not None
+    assert model.added_tokens.get_token("f") is not None
     model.remove_token_from_vocabulary("f")
-    assert model.get_added_token_for_form("f") is None
+    assert model.added_tokens.get_token("f") is None
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -389,7 +419,7 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.unk_token = "new_unk"
     assert model.model.vocab["new_unk"] is not None
-    assert model.get_added_token_for_form("new_unk") is not None
+    assert model.added_tokens.get_token("new_unk") is not None
 
     with pytest.raises(ValueError):
         model.unk_token = None
@@ -397,14 +427,14 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
     assert isinstance(model.model, WordPiece)
     model.model = BPE(
         vocab=model.model.vocab,
-        merges=[],
+        merges=Merges([]),
         dropout=0.0,
         unk_token="a",
         continuing_subword_prefix="",
         end_of_word_suffix="",
         fuse_unk=True,
-        byte_fallback=True,
-        ignore_merges=True,
+        byte_fallback=False,
+        ignore_merges=False,
     )
     model.unk_token = None
 
@@ -414,7 +444,6 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
 
     model.unk_token = None
     model.unk_token = "OSTENTATIOUS"
-
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
 
@@ -436,19 +465,19 @@ def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
     """Set the padding token for the tokenizer model."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pad_token = "[PAD]"
-    assert model.get_added_token_for_form("[PAD]") is not None
+    assert model.added_tokens.get_token("[PAD]") is not None
     model.pad_token = None
     model.pad_token = "OSTENTATIOUS"
-    assert model.get_added_token_for_form("OSTENTATIOUS") is not None
-    assert model.get_added_token_for_form("[PAD]") is None
-    model.added_tokens = []
+    assert model.added_tokens.get_token("OSTENTATIOUS") is not None
+    assert model.added_tokens.get_token("[PAD]") is None
+    model.added_tokens = AddedTokens([])
     model.pad_token = "OSTENTATIOUS"
-    assert model.get_added_token_for_form("OSTENTATIOUS") is not None
+    assert model.added_tokens.get_token("OSTENTATIOUS") is not None
     model.pad_token = "OSTENTATIOUS"
-    assert model.get_added_token_for_form("OSTENTATIOUS") is not None
-    assert model.get_added_token_for_form("[PAD]") is None
+    assert model.added_tokens.get_token("OSTENTATIOUS") is not None
+    assert model.added_tokens.get_token("[PAD]") is None
     model.pad_token = "FUN"
-    assert model.get_added_token_for_form("FUN") is not None
+    assert model.added_tokens.get_token("FUN") is not None
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()

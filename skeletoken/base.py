@@ -4,10 +4,10 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from tokenizers import Tokenizer
 
-from skeletoken.addedtoken import AddedToken
+from skeletoken.addedtoken import AddedTokens
 from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, get_subword_prefix_token
@@ -31,7 +31,7 @@ class TokenizerModel(BaseModel):
     version: Literal["1.0"] = "1.0"
     truncation: None | Truncation = None
     padding: None | Padding = None
-    added_tokens: list[AddedToken] = Field(default_factory=list)
+    added_tokens: AddedTokens = AddedTokens.model_validate([])
     normalizer: None | NormalizerDiscriminator = None
     pre_tokenizer: None | PreTokenizerDiscriminator = None
     post_processor: None | PostProcessorDiscriminator = None
@@ -40,47 +40,84 @@ class TokenizerModel(BaseModel):
 
     def model_post_init(self, __context: dict) -> None:
         """Post-initialization processing."""
-        for token in self.added_tokens:
+        # Add any missing added tokens to the vocabulary.
+        for token in self.added_tokens.root:
+            # Get the content of the token
             content = token.content
             if content not in self.model.vocab.vocabulary:
-                self.model.vocab.add_token(content)
+                self._add_token_to_vocabulary(content, is_added_token=True)
+            # Retro-actively set the ID.
+            token.id = self.model.vocab[content]
         unk_token = self.unk_token
         if unk_token:
-            added_token = self.get_added_token_for_form(unk_token)
+            if unk_token not in self.model.vocab:
+                self._add_token_to_vocabulary(unk_token, is_added_token=True)
+            added_token = self.added_tokens.get_token(unk_token)
             if not added_token:
-                added_token = AddedToken(
-                    content=unk_token,
-                    special=True,
-                    normalized=False,
-                    single_word=True,
-                    lstrip=False,
-                    rstrip=False,
-                    id=self.model.vocab[unk_token],
+                self.turn_into_addedtoken(
+                    unk_token, is_special=True, normalized=False, single_word=True, lstrip=False, rstrip=False
                 )
-                self.added_tokens.append(added_token)
+
+    def add_addedtoken(
+        self,
+        token: str,
+        is_special: bool = False,
+        normalized: bool = False,
+        single_word: bool = True,
+        lstrip: bool = True,
+        rstrip: bool = True,
+    ) -> None:
+        """Adds an added token to the tokenizer model."""
+        self._add_token_to_vocabulary(token, is_added_token=True)
+        self.turn_into_addedtoken(
+            token, is_special=is_special, normalized=normalized, single_word=single_word, lstrip=lstrip, rstrip=rstrip
+        )
+
+    def turn_into_addedtoken(
+        self,
+        token: str,
+        is_special: bool = False,
+        normalized: bool = False,
+        single_word: bool = True,
+        lstrip: bool = True,
+        rstrip: bool = True,
+    ) -> None:
+        """Turns an existing token into an an added token and add it to added_tokens."""
+        if token not in self.model.vocab.vocabulary:
+            raise ValueError(
+                f"Token '{token}' not found in the vocabulary. Please add it first using `add_token_to_vocabulary` or `add_addedtoken`."
+            )
+        self.added_tokens.maybe_add_token(
+            token,
+            is_special=is_special,
+            normalized=normalized,
+            single_word=single_word,
+            lstrip=lstrip,
+            rstrip=rstrip,
+            id=self.model.vocab[token],
+        )
 
     def add_token_to_vocabulary(self, token: str) -> None:
         """Adds a token to the tokenizer's vocabulary."""
-        self.model.vocab.add_token(token)
+        self._add_token_to_vocabulary(token, is_added_token=False)
+
+    def _add_token_to_vocabulary(self, token: str, is_added_token: bool = False) -> None:
+        """Adds an added token to the vocabulary."""
+        self.model.add_token(token, is_added_token=is_added_token)
 
     def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> None:
+        """Replaces a token with another one."""
+        self._replace_token_in_vocabulary(old_token, new_token, is_added_token=False)
+
+    def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
-        self.model.vocab.replace_token(old_token, new_token)
-        if added_token := self.get_added_token_for_form(old_token):
-            added_token.content = new_token
+        self.model.replace_token(old_token, new_token, is_added_token=is_added_token)
+        self.added_tokens.maybe_replace_token(old_token, new_token)
 
     def remove_token_from_vocabulary(self, token: str) -> None:
         """Removes a token from the vocabulary."""
-        self.model.vocab.remove_token(token)
-        if added_token := self.get_added_token_for_form(token):
-            self.added_tokens.remove(added_token)
-
-    def get_added_token_for_form(self, token: str) -> AddedToken | None:
-        """Returns the added token for a given form."""
-        for added_token in self.added_tokens:
-            if added_token.content == token:
-                return added_token
-        return None
+        self.model.remove_token(token)
+        self.added_tokens.maybe_remove_token(token)
 
     def decase_vocabulary(self, remove_collisions: bool = False) -> TokenizerModel:
         """
@@ -95,10 +132,13 @@ class TokenizerModel(BaseModel):
 
         """
         # Special tokens and unnormalized added tokens need to be skipped.
-        special_tokens = [token.content for token in self.added_tokens if token.special or not token.normalized]
+        special_tokens = self.added_tokens.get_special_tokens() + self.added_tokens.get_unnormalized_tokens()
         sorted_vocab = self.model.vocab.sorted_vocabulary
         vocabulary = decase_vocabulary(
-            sorted_vocab, special_tokens, is_byte=self.transforms_into_bytes, remove_collisions=remove_collisions
+            sorted_vocab,
+            [x.content for x in special_tokens],
+            is_byte=self.transforms_into_bytes,
+            remove_collisions=remove_collisions,
         )
         self.model.vocab.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
@@ -267,18 +307,15 @@ class TokenizerModel(BaseModel):
         old_unk_token = self.unk_token
         if old_unk_token is None:
             if not token in self.model.vocab:
-                self.add_token_to_vocabulary(token)
+                self._add_token_to_vocabulary(token, is_added_token=True)
             index = self.model.vocab[token]
-            self.added_tokens.append(
-                AddedToken(
-                    content=token, special=True, normalized=True, single_word=True, rstrip=True, lstrip=True, id=index
-                )
+            self.added_tokens.maybe_add_token(
+                token=token, is_special=True, normalized=True, single_word=True, rstrip=True, lstrip=True, id=index
             )
         elif old_unk_token in self.model.vocab:
-            if added_token := self.get_added_token_for_form(old_unk_token):
-                added_token.content = token
+            self.added_tokens.maybe_replace_token(old_unk_token, token)
             if token not in self.model.vocab:
-                self.add_token_to_vocabulary(token)
+                self._add_token_to_vocabulary(token, is_added_token=True)
         self.model.unk_token = token
 
     @property
@@ -294,8 +331,7 @@ class TokenizerModel(BaseModel):
         if token is None:
             current_token = self.pad_token
             if current_token is not None:
-                if old_added_token := self.get_added_token_for_form(current_token):
-                    self.added_tokens.remove(old_added_token)
+                self.added_tokens.maybe_remove_token(current_token)
 
             self.padding = None
             return
@@ -309,24 +345,21 @@ class TokenizerModel(BaseModel):
             old_token = self.padding.pad_token
             self.padding.pad_id = self.model.vocab[token]
             self.padding.pad_token = token
-            if old_added_token := self.get_added_token_for_form(old_token):
-                self.added_tokens.remove(old_added_token)
+            self.added_tokens.maybe_remove_token(old_token)
         else:
             old_pad_token = self.padding.pad_token
-            self.replace_token_in_vocabulary(old_pad_token, token)
+            self._replace_token_in_vocabulary(old_pad_token, token, is_added_token=True)
             self.padding.pad_token = token
 
-        added_token = self.get_added_token_for_form(token)
+        added_token = self.added_tokens.get_token(token)
         if not added_token:
             index = self.model.vocab[token]
-            self.added_tokens.append(
-                AddedToken(
-                    content=token,
-                    special=True,
-                    normalized=True,
-                    single_word=True,
-                    rstrip=True,
-                    lstrip=True,
-                    id=index,
-                )
+            self.added_tokens.maybe_add_token(
+                token,
+                id=index,
+                is_special=True,
+                normalized=True,
+                single_word=True,
+                lstrip=True,
+                rstrip=True,
             )
