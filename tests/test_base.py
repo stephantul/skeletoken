@@ -3,6 +3,8 @@ from typing import Any
 
 import pytest
 from tokenizers import Tokenizer
+from tokenizers.models import BPE as TokenizersBPE
+from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.base import TokenizerModel
@@ -220,9 +222,17 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
 def test_make_greedy(small_tokenizer: Tokenizer) -> None:
     """Test whether the make greedy function works."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_pre_tokenizer(ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True))
     model.make_model_greedy()
     assert model.model.type == ModelType.WORDPIECE
     assert model.to_tokenizer()
+
+
+def test_make_greedy_fails(small_tokenizer: Tokenizer) -> None:
+    """Test whether the make greedy function fails if no split is present."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    with pytest.raises(ValueError):
+        model.make_model_greedy()
 
 
 def test_lowercase(small_tokenizer: Tokenizer) -> None:
@@ -478,6 +488,59 @@ def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
     assert model.added_tokens.get_token("[PAD]") is None
     model.pad_token = "FUN"
     assert model.added_tokens.get_token("FUN") is not None
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_from_transformers(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
+    """Test creating a TokenizerModel from a transformers tokenizer."""
+    model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
+    assert model.version == "1.0"
+    assert model.model is not None
+    assert isinstance(model.model, WordPiece)
+    assert isinstance(model.added_tokens, AddedTokens)
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_from_transformers_missing_unk(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
+    """Test creating a TokenizerModel from a transformers tokenizer."""
+    transformers_tokenizer.SPECIAL_TOKENS_ATTRIBUTES.remove("unk_token")
+    model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
+    assert model.version == "1.0"
+    assert model.model is not None
+    assert isinstance(model.added_tokens, AddedTokens)
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_from_transformers_missing_pad(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
+    """Test creating a TokenizerModel from a transformers tokenizer."""
+    transformers_tokenizer.SPECIAL_TOKENS_ATTRIBUTES.remove("pad_token")
+    model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
+    assert model.version == "1.0"
+    assert model.model is not None
+    assert isinstance(model.model, WordPiece)
+    assert isinstance(model.added_tokens, AddedTokens)
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
+    """Test creating a TokenizerModel from a transformers tokenizer."""
+    transformers_tokenizer._tokenizer.model = TokenizersBPE(
+        vocab={"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, " ": 6}, merges=[], unk_token=None
+    )  # type: ignore
+    transformers_tokenizer._tokenizer.enable_padding(pad_id=3, pad_token="[PAD]")
+
+    model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
+    assert model.version == "1.0"
+    assert model.model is not None
+    assert isinstance(model.added_tokens, AddedTokens)
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()

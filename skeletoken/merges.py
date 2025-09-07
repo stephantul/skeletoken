@@ -1,6 +1,9 @@
+import logging
 from typing import Any
 
 from pydantic import PrivateAttr, RootModel
+
+logger = logging.getLogger(__name__)
 
 _Merge = tuple[str, str]
 
@@ -18,12 +21,6 @@ class Merges(RootModel[list[_Merge]]):
         for left, right in self.root:
             self._all_merge_tokens.add(left)
             self._all_merge_tokens.add(right)
-
-    def _token_reachable(self, token: str) -> bool:
-        """Check if a merge operation is valid."""
-        if len(token) == 1:
-            return token in self._all_merge_tokens
-        return self._merge(token) == [token]
 
     def _add_merges_for_token(self, token: str) -> None:
         """Add merge operations for a specific token."""

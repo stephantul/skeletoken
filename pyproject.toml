@@ -23,6 +23,7 @@ dev = [
     "pytest-coverage",
     "ruff",
 ]
+transformers = ["transformers", "protobuf"]
 
 [tool.ruff]
 exclude = [".venv/"]

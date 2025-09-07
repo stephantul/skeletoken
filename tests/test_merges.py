@@ -14,17 +14,6 @@ def test_merges(small_merges: Merges) -> None:
     }
 
 
-def test_reachable(small_merges: Merges) -> None:
-    """Test whether a token is reachable."""
-    assert small_merges._token_reachable("abc")
-    assert small_merges._token_reachable("ab")
-    assert small_merges._token_reachable("a")
-    # Single token returns False if it is not in vocab.
-    assert not small_merges._token_reachable("e")
-    assert not small_merges._token_reachable("abcde")
-    assert not small_merges._token_reachable("abab")
-
-
 def test_merge(small_merges: Merges) -> None:
     """Test the merge function."""
     assert small_merges._merge("abc") == ["abc"]

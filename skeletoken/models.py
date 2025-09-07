@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from typing import Annotated, Generic, Literal, TypeVar
 
@@ -7,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from skeletoken.merges import Merges
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+
+logger = logging.getLogger(__name__)
 
 
 class ModelType(str, Enum):
@@ -67,7 +70,11 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
 
     def to_greedy(self) -> WordPiece:
         """Convert the BPE model to a greedy WordPiece model."""
-        unk_token = self.unk_token or next(iter(self.vocab.root))
+        if not self.unk_token:
+            logger.warning("BPE model has no unk_token, using the first token in the vocab.")
+            unk_token = self.vocab.sorted_vocabulary[0]
+        else:
+            unk_token = self.unk_token
         return WordPiece(
             vocab=self.vocab,
             unk_token=unk_token,
@@ -113,6 +120,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
         """Convert the Unigram model to a greedy WordPiece model."""
         if self.unk_id is None:
             unk_token = self.vocab.root[0][0]  # Use the first token as unk_token
+            logger.warning("Unigram model has no `unk_id`, using the first token in the vocab.")
         else:
             unk_token = self.vocab.root[self.unk_id][0]
         return WordPiece(
