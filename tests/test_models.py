@@ -98,7 +98,15 @@ def _get_none_unigram() -> Unigram:
     return model
 
 
-@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType], _get_none_unigram()])
+def _get_none_bpe() -> BPE:
+    """A BPE model with UNK_token set to None."""
+    model = _get_default_model(ModelType.BPE)
+    model.unk_token = None
+
+    return model
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType], _get_none_unigram(), _get_none_bpe()])
 def test_greedy(model: Model) -> None:
     """Tests the greedy behavior."""
     model = model.to_greedy()

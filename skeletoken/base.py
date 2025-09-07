@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 from tokenizers import Tokenizer
+from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.decase.decase import decase_vocabulary
@@ -45,15 +46,24 @@ class TokenizerModel(BaseModel):
             # Get the content of the token
             content = token.content
             if content not in self.model.vocab.vocabulary:
+                logger.warning(f"Adding missing added token '{content}' to the vocabulary.")
                 self._add_token_to_vocabulary(content, is_added_token=True)
             # Retro-actively set the ID.
-            token.id = self.model.vocab[content]
+            curr_id = token.id
+            new_id = self.model.vocab[content]
+            if curr_id != new_id:
+                logger.warning(
+                    f"Updating ID of added token '{content}' from {curr_id} to {new_id} to match vocabulary index."
+                )
+            token.id = new_id
         unk_token = self.unk_token
         if unk_token:
             if unk_token not in self.model.vocab:
+                logger.warning(f"Adding unk_token '{unk_token}' to the vocabulary.")
                 self._add_token_to_vocabulary(unk_token, is_added_token=True)
             added_token = self.added_tokens.get_token(unk_token)
             if not added_token:
+                logger.warning(f"Turning unk_token '{unk_token}' into an AddedToken.")
                 self.turn_into_addedtoken(
                     unk_token, is_special=True, normalized=False, single_word=True, lstrip=False, rstrip=False
                 )
@@ -228,6 +238,8 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
+        if not self.splits:
+            raise ValueError("Cannot make a tokenizer greedy if it does not split the input.")
         self.model = self.model.to_greedy()
         return self
 
@@ -299,20 +311,25 @@ class TokenizerModel(BaseModel):
     @unk_token.setter
     def unk_token(self, token: str | None) -> None:
         """Set the unk token of the tokenizer model."""
+        old_unk_token = self.unk_token
         if token is None:
             if isinstance(self.model, MODELS_THAT_NEED_UNK):
                 raise ValueError("Cannot unset unk_token for WordPiece or WordLevel models.")
+            if old_unk_token is not None:
+                logger.info(f"Removing unk_token '{self.model.unk_token}' from the tokenizer.")
             self.model.unk_token = None
             return
-        old_unk_token = self.unk_token
         if old_unk_token is None:
             if not token in self.model.vocab:
+                logger.info(f"Adding {token} to the vocabulary.")
                 self._add_token_to_vocabulary(token, is_added_token=True)
+            logger.info(f"Setting unk_token to '{token}'.")
             index = self.model.vocab[token]
             self.added_tokens.maybe_add_token(
                 token=token, is_special=True, normalized=True, single_word=True, rstrip=True, lstrip=True, id=index
             )
         elif old_unk_token in self.model.vocab:
+            logger.info(f"Changing unk_token from '{old_unk_token}' to '{token}'.")
             self.added_tokens.maybe_replace_token(old_unk_token, token)
             if token not in self.model.vocab:
                 self._add_token_to_vocabulary(token, is_added_token=True)
@@ -331,35 +348,83 @@ class TokenizerModel(BaseModel):
         if token is None:
             current_token = self.pad_token
             if current_token is not None:
+                logger.info(f"Removing padding token '{current_token}' from the tokenizer.")
                 self.added_tokens.maybe_remove_token(current_token)
 
             self.padding = None
             return
         # No padding module set
         if self.padding is None:
+            logger.info(f"Setting padding token to '{token}' and creating a padding module.")
             if token not in self.model.vocab:
                 self.model.vocab.add_token(token)
             index = self.model.vocab[token]
             self.padding = Padding(pad_id=index, pad_type_id=0, pad_token=token)
         elif token in self.model.vocab:
+            logger.info(f"Changing padding token to existing token '{token}'.")
             old_token = self.padding.pad_token
             self.padding.pad_id = self.model.vocab[token]
             self.padding.pad_token = token
             self.added_tokens.maybe_remove_token(old_token)
         else:
+            logger.info(f"Changing padding token to new token '{token}'.")
             old_pad_token = self.padding.pad_token
             self._replace_token_in_vocabulary(old_pad_token, token, is_added_token=True)
             self.padding.pad_token = token
 
-        added_token = self.added_tokens.get_token(token)
-        if not added_token:
-            index = self.model.vocab[token]
-            self.added_tokens.maybe_add_token(
-                token,
-                id=index,
-                is_special=True,
-                normalized=True,
-                single_word=True,
-                lstrip=True,
-                rstrip=True,
-            )
+        # We know token is in vocab here.
+        self.added_tokens.maybe_add_token(
+            token,
+            id=self.model.vocab[token],
+            is_special=True,
+            normalized=True,
+            single_word=True,
+            lstrip=True,
+            rstrip=True,
+        )
+
+    @classmethod
+    def from_transformers_tokenizer(
+        cls: type[TokenizerModel], hf_tokenizer: "PreTrainedTokenizerFast"
+    ) -> TokenizerModel:
+        """Load a HuggingFace tokenizer from a local path or a model repo."""
+        special_tokens = hf_tokenizer.special_tokens_map
+        unk_token = special_tokens.get("unk_token", None)
+        pad_token = special_tokens.get("pad_token", None)
+
+        model = cls.from_tokenizer(hf_tokenizer._tokenizer)
+        if unk_token is not None and isinstance(unk_token, str):
+            if model.unk_token is not None and model.unk_token != unk_token:
+                logger.warning(
+                    f"Overriding existing unk_token '{model.unk_token}' with the one from the HuggingFace tokenizer: '{unk_token}'."
+                )
+            if model.unk_token is None:
+                logger.warning(
+                    f"HuggingFace tokenizer defines an unk_token, but the Skeletoken model does not. Setting it to '{unk_token}'."
+                )
+            model.unk_token = unk_token
+        if pad_token is not None and isinstance(pad_token, str):
+            if model.pad_token is not None and model.pad_token != pad_token:
+                logger.warning(
+                    f"Overriding existing pad_token '{model.pad_token}' with the one from the HuggingFace tokenizer: '{pad_token}'."
+                )
+            if model.pad_token is None:
+                logger.warning(
+                    f"HuggingFace tokenizer defines a pad_token, but the Skeletoken model does not. Setting it to '{pad_token}'."
+                )
+            model.pad_token = pad_token
+
+        return model
+
+    @classmethod
+    def from_transformers(cls, path: str) -> TokenizerModel:  # pragma: nocover
+        """Load a HuggingFace tokenizer from a local path or a model repo."""
+        # Disable the transformers logger to avoid cluttering the output.
+        # If skeletoken is just installed, it will print an annoying warning.
+        transformers_logger = logging.getLogger("transformers")
+        transformers_logger.disabled = True
+        from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+
+        transformers_logger.disabled = False
+        hf_tokenizer: PreTrainedTokenizerFast = PreTrainedTokenizerFast.from_pretrained(path)
+        return cls.from_transformers_tokenizer(hf_tokenizer)
