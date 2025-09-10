@@ -18,6 +18,7 @@ from skeletoken.postprocessors import (
     TokenInfo,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    maybe_replace_token_in_post_processor,
 )
 
 
@@ -142,11 +143,11 @@ def _get_no_bos_template() -> TemplatePostProcessor:
     [
         (_get_default_postprocessor(PostProcessorType.SEQUENCE), None),
         (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), None),
-        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[CLS]"),
-        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[CLS]"),
-        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), "special_begin"),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), ["[CLS]"]),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), ["[CLS]"]),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), ["[BEGIN]"]),
         (_get_no_single_template(), None),
-        (_get_no_eos_template(), "special_begin"),
+        (_get_no_eos_template(), ["[BEGIN]"]),
         (_get_no_bos_template(), None),
     ],
 )
@@ -161,15 +162,43 @@ def test_get_bos_token_from_post_processor(post_processor: PostProcessor, result
     [
         (_get_default_postprocessor(PostProcessorType.SEQUENCE), None),
         (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), None),
-        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[SEP]"),
-        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[SEP]"),
-        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), "special_end"),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), ["[SEP]"]),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), ["[SEP]"]),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), ["[END]"]),
         (_get_no_single_template(), None),
         (_get_no_eos_template(), None),
-        (_get_no_bos_template(), "special_end"),
+        (_get_no_bos_template(), ["[END]"]),
     ],
 )
 def test_get_eos_token_from_post_processor(post_processor: PostProcessor, result: str | None) -> None:
     """Tests getting the eos token from the post processor."""
     eos_token = get_eos_token_from_post_processor(post_processor)
     assert eos_token == result
+
+
+@pytest.mark.parametrize(
+    "post_processor,old_token,new_token",
+    [
+        (_get_default_postprocessor(PostProcessorType.SEQUENCE), "a", "b"),
+        (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), "a", "b"),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[CLS]", "[AB]"),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[CLS]", "[AB]"),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), "[SEP]", "[AB]"),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), "[SEP]", "[AB]"),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), "[END]", "[END]"),
+    ],
+)
+def test_maybe_replace_token_in_post_processor(post_processor: PostProcessor, old_token: str, new_token: str) -> None:
+    """Tests maybe replace the token in post processor."""
+    result = maybe_replace_token_in_post_processor(old_token, new_token, 11, post_processor)
+    if isinstance(result, PostProcessorSequence):
+        # No change, because it has a single post-processor.
+        assert result == post_processor
+    if isinstance(result, (RobertaPostProcessor, BertPostProcessor)) and old_token == "[CLS]":
+        assert result.cls == (new_token, 11)
+        assert result.sep == ("[SEP]", 1)
+    if isinstance(result, (RobertaPostProcessor, BertPostProcessor)) and old_token == "[SEP]":
+        assert result.cls == ("[CLS]", 0)
+        assert result.sep == (new_token, 11)
+    if isinstance(result, TemplatePostProcessor):
+        assert result.special_tokens["special_end"].tokens == [new_token]

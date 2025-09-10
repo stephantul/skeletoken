@@ -19,6 +19,7 @@ from skeletoken.postprocessors import (
     PostProcessorSequence,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    maybe_replace_token_in_post_processor,
 )
 from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, get_metaspace
 from skeletoken.truncation import Truncation
@@ -123,6 +124,10 @@ class TokenizerModel(BaseModel):
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
         self.model.replace_token(old_token, new_token, is_added_token=is_added_token)
         self.added_tokens.maybe_replace_token(old_token, new_token)
+        if self.post_processor is not None:
+            self.post_processor = maybe_replace_token_in_post_processor(
+                old_token, new_token, self.model.vocab[new_token], self.post_processor
+            )
 
     def remove_token_from_vocabulary(self, token: str) -> None:
         """Removes a token from the vocabulary."""
@@ -267,15 +272,15 @@ class TokenizerModel(BaseModel):
         return False
 
     @property
-    def eos(self) -> str | None:
-        """Get the end-of-sequence token."""
+    def eos(self) -> list[str] | None:
+        """Get the end-of-sequence tokens."""
         if self.post_processor is None:
             return None
         return get_eos_token_from_post_processor(self.post_processor)
 
     @property
-    def bos(self) -> str | None:
-        """Get the beginning-of-sequence token."""
+    def bos(self) -> list[str] | None:
+        """Get the beginning-of-sequence tokens."""
         if self.post_processor is None:
             return None
         return get_bos_token_from_post_processor(self.post_processor)
@@ -333,6 +338,10 @@ class TokenizerModel(BaseModel):
             self.added_tokens.maybe_replace_token(old_unk_token, token)
             if token not in self.model.vocab:
                 self._add_token_to_vocabulary(token, is_added_token=True)
+            if self.post_processor is not None:
+                self.post_processor = maybe_replace_token_in_post_processor(
+                    old_unk_token, token, self.model.vocab[token], self.post_processor
+                )
         self.model.unk_token = token
 
     @property
@@ -348,8 +357,7 @@ class TokenizerModel(BaseModel):
         if token is None:
             current_token = self.pad_token
             if current_token is not None:
-                logger.info(f"Removing padding token '{current_token}' from the tokenizer.")
-                self.added_tokens.maybe_remove_token(current_token)
+                logger.info("Removing padding token from the tokenizer.")
 
             self.padding = None
             return
@@ -362,10 +370,8 @@ class TokenizerModel(BaseModel):
             self.padding = Padding(pad_id=index, pad_type_id=0, pad_token=token)
         elif token in self.model.vocab:
             logger.info(f"Changing padding token to existing token '{token}'.")
-            old_token = self.padding.pad_token
             self.padding.pad_id = self.model.vocab[token]
             self.padding.pad_token = token
-            self.added_tokens.maybe_remove_token(old_token)
         else:
             logger.info(f"Changing padding token to new token '{token}'.")
             old_pad_token = self.padding.pad_token
