@@ -49,6 +49,10 @@ class AddedToken(BaseModel):
 class AddedTokens(RootModel[list[AddedToken]]):
     """Represents a collection of AddedTokens."""
 
+    def __getitem__(self, index: int) -> AddedToken:
+        """Get an addedtoken by index."""
+        return self.root[index]
+
     def get_token(self, token: str) -> AddedToken | None:
         """Returns the added token for a given form."""
         for added_token in self.root:

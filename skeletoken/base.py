@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict
 from tokenizers import Tokenizer
-from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.decase.decase import decase_vocabulary
@@ -23,6 +22,9 @@ from skeletoken.postprocessors import (
 )
 from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, get_metaspace
 from skeletoken.truncation import Truncation
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerFast
 
 logger = logging.getLogger(__name__)
 
@@ -390,9 +392,7 @@ class TokenizerModel(BaseModel):
         )
 
     @classmethod
-    def from_transformers_tokenizer(
-        cls: type[TokenizerModel], hf_tokenizer: "PreTrainedTokenizerFast"
-    ) -> TokenizerModel:
+    def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:
         """Load a HuggingFace tokenizer from a local path or a model repo."""
         special_tokens = hf_tokenizer.special_tokens_map
         unk_token = special_tokens.get("unk_token", None)
@@ -429,8 +429,8 @@ class TokenizerModel(BaseModel):
         # If skeletoken is just installed, it will print an annoying warning.
         transformers_logger = logging.getLogger("transformers")
         transformers_logger.disabled = True
-        from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+        from transformers import AutoTokenizer
 
         transformers_logger.disabled = False
-        hf_tokenizer: PreTrainedTokenizerFast = PreTrainedTokenizerFast.from_pretrained(path)
+        hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
         return cls.from_transformers_tokenizer(hf_tokenizer)
