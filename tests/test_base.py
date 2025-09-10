@@ -24,6 +24,13 @@ from skeletoken.postprocessors import (
     ByteLevelPostProcessor,
     PostProcessorSequence,
     RobertaPostProcessor,
+    SequenceToken,
+    SpecialToken,
+    SpecialTokens,
+    TemplatePostProcessor,
+    TokenContent,
+    TokenInfo,
+    TokenSequence,
 )
 from skeletoken.pretokenizers import ByteLevelPreTokenizer, MetaspacePreTokenizer, PreTokenizerSequence
 
@@ -298,6 +305,26 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
     model.to_tokenizer()
 
 
+def test_replace_token_template(small_tokenizer: Tokenizer) -> None:
+    """Test replace token interface."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    t = TokenInfo(id="bos", ids=[1], tokens=["a"])
+    s = SpecialTokens({"bos": t})
+    tok = SpecialToken(SpecialToken=TokenContent(id="bos", type_id=1))
+    seq = SequenceToken(Sequence=TokenContent(id="A", type_id=0))
+    sequence = TokenSequence((tok, seq, tok))
+    pair_seq = TokenSequence((tok, seq, tok, seq, tok))
+    model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)
+    with pytest.raises(ValueError):
+        model.replace_token_in_vocabulary("a", "b")
+    model.replace_token_in_vocabulary("b", "x")
+    assert "b" not in model.model.vocab.vocabulary
+    assert "x" in model.model.vocab.vocabulary
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
 def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -321,10 +348,10 @@ def test_eos(small_tokenizer: Tokenizer) -> None:
     model.post_processor = RobertaPostProcessor(
         sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False
     )
-    assert model.eos == "[SEP]"
+    assert model.eos == ["[SEP]"]
     model.post_processor = None
     model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
-    assert model.eos == "[SEP]"
+    assert model.eos == ["[SEP]"]
     model.post_processor = PostProcessorSequence(
         processors=[
             RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
@@ -347,10 +374,10 @@ def test_bos(small_tokenizer: Tokenizer) -> None:
     model.post_processor = RobertaPostProcessor(
         sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False
     )
-    assert model.bos == "[CLS]"
+    assert model.bos == ["[CLS]"]
     model.post_processor = None
     model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0))
-    assert model.bos == "[CLS]"
+    assert model.bos == ["[CLS]"]
     model.post_processor = PostProcessorSequence(
         processors=[
             RobertaPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False),
@@ -458,6 +485,26 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
     model.to_tokenizer()
 
 
+def test_set_unk_token_template(small_tokenizer: Tokenizer) -> None:
+    """Test setting the unknown token."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    t = TokenInfo(id="bos", ids=[1], tokens=["a"])
+    s = SpecialTokens({"bos": t})
+    tok = SpecialToken(SpecialToken=TokenContent(id="bos", type_id=1))
+    seq = SequenceToken(Sequence=TokenContent(id="A", type_id=0))
+    sequence = TokenSequence((tok, seq, tok))
+    pair_seq = TokenSequence((tok, seq, tok, seq, tok))
+    model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)
+    model.unk_token = "a"
+    model.unk_token = "b"
+
+    assert isinstance(model.post_processor, TemplatePostProcessor)
+    assert model.post_processor.special_tokens["bos"].tokens == ["b"]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
 def test_get_padding_token(small_tokenizer: Tokenizer) -> None:
     """Get the padding token from the tokenizer model."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -479,13 +526,12 @@ def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
     model.pad_token = None
     model.pad_token = "OSTENTATIOUS"
     assert model.added_tokens.get_token("OSTENTATIOUS") is not None
-    assert model.added_tokens.get_token("[PAD]") is None
+    assert model.added_tokens.get_token("[PAD]") is not None
     model.added_tokens = AddedTokens([])
     model.pad_token = "OSTENTATIOUS"
     assert model.added_tokens.get_token("OSTENTATIOUS") is not None
     model.pad_token = "OSTENTATIOUS"
     assert model.added_tokens.get_token("OSTENTATIOUS") is not None
-    assert model.added_tokens.get_token("[PAD]") is None
     model.pad_token = "FUN"
     assert model.added_tokens.get_token("FUN") is not None
 

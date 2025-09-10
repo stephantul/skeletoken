@@ -79,7 +79,10 @@ class TokenInfo(BaseModel):
     tokens: list[str]
 
 
-class SpecialTokens(RootModel[dict[str, TokenInfo]]): ...
+class SpecialTokens(RootModel[dict[str, TokenInfo]]):
+    def __getitem__(self, key: str) -> TokenInfo:
+        """Gets a token."""
+        return self.root[key]
 
 
 # Simple type alias for a sequence of tokens for a template post-processor.
@@ -88,9 +91,9 @@ TokenSequence = tuple[SpecialToken | SequenceToken, ...]
 
 class TemplatePostProcessor(BaseModel):
     type: Literal[PostProcessorType.TEMPLATE_PROCESSING] = PostProcessorType.TEMPLATE_PROCESSING
-    single: TokenSequence | None
-    pair: TokenSequence | None
-    special_tokens: SpecialTokens | None
+    single: TokenSequence
+    pair: TokenSequence
+    special_tokens: SpecialTokens
 
 
 PostProcessor = (
@@ -99,35 +102,88 @@ PostProcessor = (
 PostProcessorDiscriminator = Annotated[PostProcessor, Field(discriminator="type")]
 
 
-def get_bos_token_from_post_processor(post_processor: PostProcessor) -> str | None:
+def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str] | None:
     """Get the beginning-of-sequence token from a post-processor."""
     if isinstance(post_processor, PostProcessorSequence):
         return None
     if isinstance(post_processor, ByteLevelPostProcessor):
         return None
     if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
-        return post_processor.cls[0]
+        return [post_processor.cls[0]]
     if isinstance(post_processor, TemplatePostProcessor):
         single_encoding = post_processor.single
         if not single_encoding:
             return None
         if not isinstance(single_encoding[0], SpecialToken):
             return None
-        return single_encoding[0].SpecialToken.id
+        identifier = single_encoding[0].SpecialToken.id
+        return post_processor.special_tokens.root[identifier].tokens
 
 
-def get_eos_token_from_post_processor(post_processor: PostProcessor) -> str | None:
+def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str] | None:
     """Get the end-of-sequence token from a post-processor."""
     if isinstance(post_processor, PostProcessorSequence):
         return None
     if isinstance(post_processor, ByteLevelPostProcessor):
         return None
     if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
-        return post_processor.sep[0]
+        return [post_processor.sep[0]]
     if isinstance(post_processor, TemplatePostProcessor):
         single_encoding = post_processor.single
         if not single_encoding:
             return None
         if not isinstance(single_encoding[-1], SpecialToken):
             return None
-        return single_encoding[-1].SpecialToken.id
+        identifier = single_encoding[-1].SpecialToken.id
+        return post_processor.special_tokens[identifier].tokens
+
+
+def maybe_replace_token_in_post_processor(
+    old_token: str, new_token: str, index: int, post_processor: PostProcessorDiscriminator
+) -> PostProcessor:
+    """
+    Replace a token in a post-processor, if it exists.
+
+    Parameters
+    ----------
+    old_token : str
+        The token to replace.
+    new_token : str
+        The new token to insert.
+    index : int
+        The new index to insert.
+    post_processor : PostProcessor
+        The post-processor to replace the token in.
+
+    """
+    post_processor = post_processor.model_copy(deep=True)
+    if isinstance(post_processor, PostProcessorSequence):
+        return PostProcessorSequence(
+            processors=[
+                maybe_replace_token_in_post_processor(old_token, new_token, index, p) for p in post_processor.processors
+            ]
+        )
+    if isinstance(post_processor, ByteLevelPostProcessor):
+        # Has no tokens.
+        return post_processor
+    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+        # cls and sep can be the same token.
+        if old_token == post_processor.cls[0]:
+            post_processor.cls = (new_token, index)
+        if old_token == post_processor.sep[0]:
+            post_processor.sep = (new_token, index)
+    if isinstance(post_processor, TemplatePostProcessor):
+        for special_token in post_processor.special_tokens.root.values():
+            new_tokens = []
+            new_ids = []
+            for token, id in zip(special_token.tokens, special_token.ids):
+                if token == old_token:
+                    new_tokens.append(new_token)
+                    new_ids.append(index)
+                else:
+                    new_tokens.append(token)
+                    new_ids.append(id)
+            special_token.tokens = new_tokens
+            special_token.ids = new_ids
+
+    return post_processor
