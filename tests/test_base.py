@@ -32,7 +32,14 @@ from skeletoken.postprocessors import (
     TokenInfo,
     TokenSequence,
 )
-from skeletoken.pretokenizers import ByteLevelPreTokenizer, MetaspacePreTokenizer, PreTokenizerSequence
+from skeletoken.pretokenizers import (
+    Behavior,
+    ByteLevelPreTokenizer,
+    MetaspacePreTokenizer,
+    PreTokenizerSequence,
+    SplitPreTokenizer,
+    StringPattern,
+)
 
 
 def test_post_init(small_tokenizer_json: dict[str, Any]) -> None:
@@ -590,3 +597,46 @@ def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> N
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_model_delta(small_tokenizer: Tokenizer) -> None:
+    """Test the model delta functionality."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_token_to_vocabulary("new_token")
+    model.remove_token_from_vocabulary("a")
+    model.replace_token_in_vocabulary("b", "x")
+    model.add_addedtoken("[ADDED]")
+    model.unk_token = "new_unk"
+    model.pad_token = "[PAD]"
+    delta = model.model_delta
+    assert delta.token_mapping == {7: 6, 8: 7, 9: 8}
+    assert delta.new_vocabulary_size == 13
+    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12, "f": 9}
+
+
+def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
+    """Test the model delta functionality."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_pre_tokenizer(
+        SplitPreTokenizer(pattern=StringPattern(String=" "), behavior=Behavior.ISOLATED, invert=False)
+    )
+    model = model.make_model_greedy()
+    model.unk_token = "[UNK]"
+    unk = model.added_tokens.get_token("[UNK]")
+    length_tokens = len(model.added_tokens)
+    assert unk is not None
+    unk_id = unk.id
+    model.pad_token = "[UNK]"
+    pad = model.added_tokens.get_token("[UNK]")
+    assert pad is not None
+    pad_id = pad.id
+    assert unk_id == pad_id
+    assert len(model.added_tokens) == length_tokens
+
+    assert model.unk_token == "[UNK]"
+    assert model.pad_token == "[UNK]"
+
+    tokenizer = model.to_tokenizer()
+    encoded = tokenizer.encode("abcdef")
+    assert encoded.tokens == ["[UNK]", "f"]
+    assert encoded.ids == [2, 10]

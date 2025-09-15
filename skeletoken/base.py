@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 from tokenizers import Tokenizer
 
 from skeletoken.addedtoken import AddedTokens
@@ -24,7 +24,9 @@ from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequ
 from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerFast
+    from transformers import PreTrainedTokenizerFast  # pragma: nocover
+
+    from skeletoken.model_delta import ModelDelta  # pragma: nocover
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +43,11 @@ class TokenizerModel(BaseModel):
     post_processor: None | PostProcessorDiscriminator = None
     decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
-    original_tokenizer: TokenizerModel | None = None
+    _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
 
     def model_post_init(self, __context: dict) -> None:
         """Post-initialization processing."""
-        self.original_tokenizer = self.model_copy(deep=True)
+        self._original_tokenizer = self.model_copy(deep=True)
         # Add any missing added tokens to the vocabulary.
         for token in self.added_tokens.root:
             # Get the content of the token
@@ -437,3 +439,10 @@ class TokenizerModel(BaseModel):
         transformers_logger.disabled = False
         hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
         return cls.from_transformers_tokenizer(hf_tokenizer)
+
+    @property
+    def model_delta(self) -> ModelDelta:
+        """Get the model delta between the original tokenizer and the current one."""
+        from skeletoken.model_delta import compute_model_delta
+
+        return compute_model_delta(self._original_tokenizer, self)
