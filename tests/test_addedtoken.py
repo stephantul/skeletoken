@@ -67,3 +67,5 @@ def test_addedtokens_object() -> None:
     assert len(tokens) == 1
     assert tokens.root[0].id == 10
     assert tokens.root[0].normalized is True
+
+    assert tokens[0] == tokens.root[0]

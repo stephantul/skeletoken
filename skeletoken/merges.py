@@ -22,19 +22,25 @@ class Merges(RootModel[list[_Merge]]):
             self._all_merge_tokens.add(left)
             self._all_merge_tokens.add(right)
 
-    def _add_merges_for_token(self, token: str) -> None:
+    def _add_merges_for_token(self, token: str) -> list[str]:
         """Add merge operations for a specific token."""
         # Convert to tuple for typing.
         token_form = tuple(self._merge(token))
+        added_merges = []
         while len(token_form) > 1:
             for index in range(0, len(token_form) - 1, 2):
                 left, right = token_form[index], token_form[index + 1]
                 bigram = (left, right)
                 self.root.append(bigram)
                 self._merge_index[bigram] = len(self.root) - 1
+                if left not in self._all_merge_tokens:
+                    added_merges.append(left)
+                if right not in self._all_merge_tokens:
+                    added_merges.append(right)
                 self._all_merge_tokens.add(left)
                 self._all_merge_tokens.add(right)
             token_form = tuple(self._merge(token))
+        return sorted(set(added_merges))
 
     def _merge(self, token: str) -> list[str]:
         """Merge a token with its subword components."""

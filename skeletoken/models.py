@@ -95,13 +95,13 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     def replace_token(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token in the vocabulary."""
         self.vocab.replace_token(old_token, new_token)
-        # Special tokens do not require merge updates.
+        # Added tokens do not require merge updates.
         if is_added_token:
             return
-        self.merges._add_merges_for_token(new_token)
-        new_tokens = sorted(self.merges._all_merge_tokens - set(self.vocab.vocabulary))
+        new_tokens = self.merges._add_merges_for_token(new_token)
         for token in new_tokens:
-            self.vocab.add_token(token)
+            if token not in self.vocab.vocabulary:
+                self.vocab.add_token(token)
 
     def remove_token(self, token: str) -> None:
         """Remove a token from the vocabulary."""
