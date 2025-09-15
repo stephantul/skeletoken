@@ -41,9 +41,11 @@ class TokenizerModel(BaseModel):
     post_processor: None | PostProcessorDiscriminator = None
     decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
+    original_tokenizer: TokenizerModel | None = None
 
     def model_post_init(self, __context: dict) -> None:
         """Post-initialization processing."""
+        self.original_tokenizer = self.model_copy(deep=True)
         # Add any missing added tokens to the vocabulary.
         for token in self.added_tokens.root:
             # Get the content of the token
@@ -120,7 +122,8 @@ class TokenizerModel(BaseModel):
 
     def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> None:
         """Replaces a token with another one."""
-        self._replace_token_in_vocabulary(old_token, new_token, is_added_token=False)
+        is_added_token = self.added_tokens.get_token(old_token) is not None
+        self._replace_token_in_vocabulary(old_token, new_token, is_added_token=is_added_token)
 
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
