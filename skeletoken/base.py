@@ -49,7 +49,8 @@ class TokenizerModel(BaseModel):
         """Post-initialization processing."""
         self._original_tokenizer = self.model_copy(deep=True)
         # Add any missing added tokens to the vocabulary.
-        for token in self.added_tokens.root:
+        # Sort to fill up the vocabulary in order.
+        for token in sorted(self.added_tokens.root, key=lambda x: x.id):
             # Get the content of the token
             content = token.content
             if content not in self.model.vocab.vocabulary:
