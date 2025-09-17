@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
-from skeletoken.common import Behavior, PrependScheme, RegexPattern, StringPattern
+from skeletoken.common import Behavior, PrependScheme, RegexPattern, StringPattern, coerce_string_regex_pattern
 
 
 class PreTokenizerType(str, Enum):
@@ -228,6 +228,13 @@ class SplitPreTokenizer(BasePretokenizer):
     pattern: StringPattern | RegexPattern
     behavior: Behavior
     invert: bool
+
+    @field_validator("pattern", mode="before")
+    @classmethod
+    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict:
+        if isinstance(v, (StringPattern, RegexPattern)):
+            return v
+        return coerce_string_regex_pattern(v)
 
 
 class WhitespacePreTokenizer(BasePretokenizer):

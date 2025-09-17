@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from tokenizers import Tokenizer
 
 from skeletoken.addedtoken import AddedTokens
@@ -37,7 +37,7 @@ class TokenizerModel(BaseModel):
     version: Literal["1.0"] = "1.0"
     truncation: None | Truncation = None
     padding: None | Padding = None
-    added_tokens: AddedTokens = AddedTokens.model_validate([])
+    added_tokens: AddedTokens = Field(default_factory=lambda: AddedTokens.model_validate([]))
     normalizer: None | NormalizerDiscriminator = None
     pre_tokenizer: None | PreTokenizerDiscriminator = None
     post_processor: None | PostProcessorDiscriminator = None

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
-from skeletoken.common import RegexPattern, StringPattern
+from skeletoken.common import RegexPattern, StringPattern, coerce_string_regex_pattern
 
 
 class NormalizerType(str, Enum):
@@ -233,6 +233,11 @@ class ReplaceNormalizer(BaseNormalizer):
     type: Literal[NormalizerType.REPLACE] = NormalizerType.REPLACE
     pattern: StringPattern | RegexPattern
     content: str
+
+    @field_validator("pattern", mode="before")
+    @classmethod
+    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict:
+        return coerce_string_regex_pattern(v)
 
 
 class PrecompiledNormalizer(BaseNormalizer):
