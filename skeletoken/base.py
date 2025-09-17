@@ -10,7 +10,7 @@ from tokenizers import Tokenizer
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
-from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, get_subword_prefix_token
+from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
 from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
@@ -254,10 +254,12 @@ class TokenizerModel(BaseModel):
         """Convert the TokenizerModel back to a Tokenizer instance."""
         return Tokenizer.from_str(self.model_dump_json())
 
-    def make_model_greedy(self) -> TokenizerModel:
+    def make_model_greedy(self, max_input_chars_per_word: int = 100) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
         self.model = self.model.to_greedy()
-        self.add_pre_tokenizer(FixedLengthPreTokenizer(length=100))
+        assert isinstance(self.model, WordPiece)
+        self.model.max_input_chars_per_word = max_input_chars_per_word
+        self.add_pre_tokenizer(FixedLengthPreTokenizer(length=max_input_chars_per_word))
         return self
 
     @property
