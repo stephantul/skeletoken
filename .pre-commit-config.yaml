@@ -27,13 +27,14 @@ repos:
       - id: ruff-format
   - repo: local
     hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: python
+        types: [python]
+        pass_filenames: false
       - id: mypy
         name: mypy
         entry: mypy
-        language: python
-        types: [python]
-      - id: pytest
-        name: pytest
-        entry: pytest tests/
         language: python
         types: [python]
