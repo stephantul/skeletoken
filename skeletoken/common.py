@@ -1,5 +1,7 @@
+import re
 from enum import Enum
 
+import regex
 from pydantic import BaseModel
 
 
@@ -13,6 +15,22 @@ class RegexPattern(BaseModel):
     """A regex pattern for use in a replace."""
 
     Regex: str
+
+
+def coerce_string_regex_pattern(
+    v: str | regex.Pattern | re.Pattern | dict | StringPattern | RegexPattern,
+) -> dict | StringPattern | RegexPattern:
+    """Helper function that turns a string or regex pattern into the appropriate dict."""
+    # Users can pass: str, compiled regex, or the tagged dict forms
+    if isinstance(v, (StringPattern, RegexPattern)):
+        return v
+    if isinstance(v, str):
+        return {"String": v}
+    if isinstance(v, (regex.Pattern, re.Pattern)):
+        return {"Regex": v.pattern}
+    if isinstance(v, dict) and (("String" in v) or ("Regex" in v)):
+        return v
+    raise TypeError("pattern must be a string, a compiled regex, or a dict like {'String': ...} / {'Regex': ...}")
 
 
 class PrependScheme(str, Enum):

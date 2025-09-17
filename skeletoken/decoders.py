@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from skeletoken.common import PrependScheme, RegexPattern, StringPattern
+from skeletoken.common import PrependScheme, RegexPattern, StringPattern, coerce_string_regex_pattern
 
 
 class DecoderType(str, Enum):
@@ -71,6 +71,9 @@ class ByteLevelDecoder(BaseModel):
         behavior for sentence-initial tokens, and is recommended to be set to True.
     trim_offsets : bool
         Whether to trim the offsets of the tokens.
+    use_regex : bool
+        Whether the regex was used for splitting. If this is not set, no splitting was performed. The
+        regex used is the same as in the ByteLevel pretokenizer.
 
     """
 
@@ -150,6 +153,11 @@ class ReplaceDecoder(BaseModel):
     type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE
     pattern: StringPattern | RegexPattern
     content: str
+
+    @field_validator("pattern", mode="before")
+    @classmethod
+    def _coerce_content(cls, v: Any) -> StringPattern | RegexPattern | dict:
+        return coerce_string_regex_pattern(v)
 
 
 class StripDecoder(BaseModel):
