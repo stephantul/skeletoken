@@ -20,7 +20,12 @@ from skeletoken.postprocessors import (
     get_eos_token_from_post_processor,
     maybe_replace_token_in_post_processor,
 )
-from skeletoken.pretokenizers import PreTokenizerDiscriminator, PreTokenizerSequence, get_metaspace
+from skeletoken.pretokenizers import (
+    FixedLengthPreTokenizer,
+    PreTokenizerDiscriminator,
+    PreTokenizerSequence,
+    get_metaspace,
+)
 from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
@@ -251,9 +256,8 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        if not self.splits:
-            raise ValueError("Cannot make a tokenizer greedy if it does not split the input.")
         self.model = self.model.to_greedy()
+        self.add_pre_tokenizer(FixedLengthPreTokenizer(length=100))
         return self
 
     @property

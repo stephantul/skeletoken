@@ -33,6 +33,7 @@ from skeletoken.postprocessors import (
 from skeletoken.pretokenizers import (
     Behavior,
     ByteLevelPreTokenizer,
+    FixedLengthPreTokenizer,
     MetaspacePreTokenizer,
     PreTokenizerSequence,
     SplitPreTokenizer,
@@ -238,13 +239,16 @@ def test_make_greedy(small_tokenizer: Tokenizer) -> None:
     model.make_model_greedy()
     assert model.model.type == ModelType.WORDPIECE
     assert model.to_tokenizer()
-
-
-def test_make_greedy_fails(small_tokenizer: Tokenizer) -> None:
-    """Test whether the make greedy function fails if no split is present."""
-    model = TokenizerModel.from_tokenizer(small_tokenizer)
-    with pytest.raises(ValueError):
-        model.make_model_greedy()
+    pre_tok_length = None
+    if model.pre_tokenizer is not None:
+        if isinstance(model.pre_tokenizer, PreTokenizerSequence):
+            for pt in model.pre_tokenizer.pretokenizers:
+                if isinstance(pt, FixedLengthPreTokenizer):
+                    pre_tok_length = pt.length
+        elif isinstance(model.pre_tokenizer, FixedLengthPreTokenizer):
+            pre_tok_length = model.pre_tokenizer.length
+    assert pre_tok_length is not None
+    assert pre_tok_length == model.model.max_input_chars_per_word
 
 
 def test_lowercase(small_tokenizer: Tokenizer) -> None:
