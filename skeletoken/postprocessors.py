@@ -148,6 +148,9 @@ class TemplatePostProcessor(BaseModel):
             if token.type == "SpecialToken":
                 if token.id not in self.special_tokens:
                     raise ValueError(f"Special token {token.id} not defined in special_tokens.")
+        for token_name, t in self.special_tokens.items():
+            if token_name != t.id:
+                raise ValueError(f"Special token name {token_name} does not match its id {t.id}.")
 
 
 PostProcessor = (

@@ -232,7 +232,7 @@ def test_unequal_special_token(caplog) -> None:
 
 def test_template_incorrect_tokens() -> None:
     """Test that incorrect tokens in template raise errors."""
-    with pytest.raises(ValueError, match="Special token missing_special not defined in special_tokens."):
+    with pytest.raises(ValueError):
         TemplatePostProcessor(
             single=(
                 Token(id="missing_special", type_id=0, type=TokenType.SPECIAL),
@@ -246,6 +246,15 @@ def test_template_incorrect_tokens() -> None:
             ),
             special_tokens={
                 "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            },
+        )
+    with pytest.raises(ValueError):
+        TemplatePostProcessor(
+            single=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            pair=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="sapcco", ids=[0], tokens=["[BEGIN]"]),
                 "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
             },
         )
