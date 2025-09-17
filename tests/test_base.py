@@ -24,13 +24,11 @@ from skeletoken.postprocessors import (
     ByteLevelPostProcessor,
     PostProcessorSequence,
     RobertaPostProcessor,
-    SequenceToken,
-    SpecialToken,
-    SpecialTokens,
+    SpecialTokenInfo,
     TemplatePostProcessor,
-    TokenContent,
-    TokenInfo,
+    Token,
     TokenSequence,
+    TokenType,
 )
 from skeletoken.pretokenizers import (
     Behavior,
@@ -315,12 +313,13 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
 def test_replace_token_template(small_tokenizer: Tokenizer) -> None:
     """Test replace token interface."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    t = TokenInfo(id="bos", ids=[1], tokens=["a"])
-    s = SpecialTokens({"bos": t})
-    tok = SpecialToken(SpecialToken=TokenContent(id="bos", type_id=1))
-    seq = SequenceToken(Sequence=TokenContent(id="A", type_id=0))
+    t = SpecialTokenInfo(id="bos", ids=[1], tokens=["a"])
+    s = {"bos": t}
+    tok = Token(id="bos", type_id=0, type=TokenType.SPECIAL)
+    seq = Token(id="A", type_id=0, type=TokenType.SEQUENCE)
+    seq2 = Token(id="B", type_id=1, type=TokenType.SEQUENCE)
     sequence = TokenSequence((tok, seq, tok))
-    pair_seq = TokenSequence((tok, seq, tok, seq, tok))
+    pair_seq = TokenSequence((tok, seq, tok, seq2, tok))
     model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)
     with pytest.raises(ValueError):
         model.replace_token_in_vocabulary("a", "b")
@@ -495,10 +494,10 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
 def test_set_unk_token_template(small_tokenizer: Tokenizer) -> None:
     """Test setting the unknown token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    t = TokenInfo(id="bos", ids=[1], tokens=["a"])
-    s = SpecialTokens({"bos": t})
-    tok = SpecialToken(SpecialToken=TokenContent(id="bos", type_id=1))
-    seq = SequenceToken(Sequence=TokenContent(id="A", type_id=0))
+    t = SpecialTokenInfo(id="bos", ids=[1], tokens=["a"])
+    s = {"bos": t}
+    tok = Token(id="bos", type_id=1, type=TokenType.SPECIAL)
+    seq = Token(id="A", type_id=0, type=TokenType.SEQUENCE)
     sequence = TokenSequence((tok, seq, tok))
     pair_seq = TokenSequence((tok, seq, tok, seq, tok))
     model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)

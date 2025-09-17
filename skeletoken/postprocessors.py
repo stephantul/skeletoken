@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, SerializationInfo, model_serializer, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 class PostProcessorType(str, Enum):
@@ -53,6 +56,27 @@ class ByteLevelPostProcessor(BaseModel):
 
 
 class RobertaPostProcessor(BaseModel):
+    """
+    The RoBERTa postprocessor.
+
+    This adds the SEP and CLS tokens to the sequence.
+    Note that this processor is actually never used, even RoBERTa uses
+    the TemplatePostProcessor, see below.
+
+    Attributes
+    ----------
+    sep : tuple[str, int]
+        The SEP token and its token id.
+    cls : tuple[str, int]
+        The CLS token and its token id.
+    trim_offsets : bool
+        Whether to trim the offsets of the tokens.
+    add_prefix_space : bool
+        Whether to add a space before the first token. This leads to more consistent
+        behavior for sentence-initial tokens, and is recommended to be set to True.
+
+    """
+
     type: Literal[PostProcessorType.ROBERTA_PROCESSING] = PostProcessorType.ROBERTA_PROCESSING
     sep: tuple[str, int]
     cls: tuple[str, int]
@@ -60,40 +84,70 @@ class RobertaPostProcessor(BaseModel):
     add_prefix_space: bool
 
 
-class TokenContent(BaseModel):
+class TokenType(str, Enum):
+    SPECIAL = "SpecialToken"
+    SEQUENCE = "Sequence"
+
+
+class Token(BaseModel):
     id: str
     type_id: int
+    type: TokenType
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_format(cls, v) -> dict:
+        """Parse either {'SpecialToken': {...}} or {'Sequence': {...}}."""
+        if isinstance(v, dict):
+            # Two types:
+            # 1. {"Sequence": {... }} or {"SpecialToken": {...}}
+            # 2. {"id": ..., "type_id": ..., "type": ...}
+            if len(v) == 1:
+                t = next(iter(v))
+                v = v[t]
+            else:
+                t = v["type"]
+            inner = {**v}
+            inner["type"] = TokenType(t)
+            return inner
+        raise TypeError("Token must be a dict or a Token instance.")
+
+    @model_serializer
+    def serializer(self, info: SerializationInfo) -> dict[str, Any]:
+        """Serialization to either {'SpecialToken': {...}} or {'Sequence': {...}}."""
+        data = {"id": self.id, "type_id": self.type_id}
+        return {self.type: data}
 
 
-class SpecialToken(BaseModel):
-    SpecialToken: TokenContent
+class SpecialTokenInfo(BaseModel):
+    """Information about a special token used in a template post-processor."""
 
-
-class SequenceToken(BaseModel):
-    Sequence: TokenContent
-
-
-class TokenInfo(BaseModel):
     id: str
     ids: list[int]
     tokens: list[str]
 
-
-class SpecialTokens(RootModel[dict[str, TokenInfo]]):
-    def __getitem__(self, key: str) -> TokenInfo:
-        """Gets a token."""
-        return self.root[key]
+    def model_post_init(self, __context: dict) -> None:
+        """Validates that ids and tokens have the same length."""
+        if len(self.ids) != len(self.tokens):
+            logger.warning("ids and tokens must have the same length. Ids: %s, tokens: %s", self.ids, self.tokens)
 
 
 # Simple type alias for a sequence of tokens for a template post-processor.
-TokenSequence = tuple[SpecialToken | SequenceToken, ...]
+TokenSequence = tuple[Token, ...]
 
 
 class TemplatePostProcessor(BaseModel):
     type: Literal[PostProcessorType.TEMPLATE_PROCESSING] = PostProcessorType.TEMPLATE_PROCESSING
     single: TokenSequence
     pair: TokenSequence
-    special_tokens: SpecialTokens
+    special_tokens: dict[str, SpecialTokenInfo]
+
+    def model_post_init(self, __context: dict) -> None:
+        """Validates that all special tokens in single and pair are defined in special_tokens."""
+        for token in self.single + self.pair:
+            if token.type == "SpecialToken":
+                if token.id not in self.special_tokens:
+                    raise ValueError(f"Special token {token.id} not defined in special_tokens.")
 
 
 PostProcessor = (
@@ -114,10 +168,10 @@ def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         single_encoding = post_processor.single
         if not single_encoding:
             return None
-        if not isinstance(single_encoding[0], SpecialToken):
+        if single_encoding[0].type != TokenType.SPECIAL:
             return None
-        identifier = single_encoding[0].SpecialToken.id
-        return post_processor.special_tokens.root[identifier].tokens
+        identifier = single_encoding[0].id
+        return post_processor.special_tokens[identifier].tokens
 
 
 def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str] | None:
@@ -132,9 +186,9 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         single_encoding = post_processor.single
         if not single_encoding:
             return None
-        if not isinstance(single_encoding[-1], SpecialToken):
+        if single_encoding[-1].type != TokenType.SPECIAL:
             return None
-        identifier = single_encoding[-1].SpecialToken.id
+        identifier = single_encoding[-1].id
         return post_processor.special_tokens[identifier].tokens
 
 
@@ -173,7 +227,7 @@ def maybe_replace_token_in_post_processor(
         if old_token == post_processor.sep[0]:
             post_processor.sep = (new_token, index)
     if isinstance(post_processor, TemplatePostProcessor):
-        for special_token in post_processor.special_tokens.root.values():
+        for special_token in post_processor.special_tokens.values():
             new_tokens = []
             new_ids = []
             for token, id in zip(special_token.tokens, special_token.ids):
