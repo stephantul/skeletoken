@@ -232,8 +232,6 @@ class SplitPreTokenizer(BasePretokenizer):
     @field_validator("pattern", mode="before")
     @classmethod
     def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict:
-        if isinstance(v, (StringPattern, RegexPattern)):
-            return v
         return coerce_string_regex_pattern(v)
 
 

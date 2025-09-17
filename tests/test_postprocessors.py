@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import pytest
@@ -10,12 +11,10 @@ from skeletoken.postprocessors import (
     PostProcessorSequence,
     PostProcessorType,
     RobertaPostProcessor,
-    SequenceToken,
-    SpecialToken,
-    SpecialTokens,
+    SpecialTokenInfo,
     TemplatePostProcessor,
-    TokenContent,
-    TokenInfo,
+    Token,
+    TokenType,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
     maybe_replace_token_in_post_processor,
@@ -33,24 +32,22 @@ def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostPr
     elif post_processor_type == PostProcessorType.TEMPLATE_PROCESSING:
         return TemplatePostProcessor(
             single=(
-                SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
-                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
             ),
             pair=(
-                SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
-                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
-                SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-                SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
             ),
-            special_tokens=SpecialTokens(
-                {
-                    "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
-                    "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
-                    "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
-                }
-            ),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+                "sequence": SpecialTokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+            },
         )
     elif post_processor_type == PostProcessorType.SEQUENCE:
         return PostProcessorSequence(
@@ -84,17 +81,15 @@ def _get_no_single_template() -> TemplatePostProcessor:
     return TemplatePostProcessor(
         single=(),
         pair=(
-            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
-            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+            Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+            Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+            Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
         ),
-        special_tokens=SpecialTokens(
-            {
-                "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
-                "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
-                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
-            }
-        ),
+        special_tokens={
+            "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+            "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            "sequence": SpecialTokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+        },
     )
 
 
@@ -102,19 +97,17 @@ def _get_no_eos_template() -> TemplatePostProcessor:
     """Gets a template processor without eos."""
     return TemplatePostProcessor(
         single=(
-            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
-            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+            Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+            Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
         ),
         pair=(
-            SpecialToken(SpecialToken=TokenContent(id="special_begin", type_id=0)),
-            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
+            Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+            Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
         ),
-        special_tokens=SpecialTokens(
-            {
-                "special_begin": TokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
-                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
-            }
-        ),
+        special_tokens={
+            "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+            "sequence": SpecialTokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+        },
     )
 
 
@@ -122,19 +115,17 @@ def _get_no_bos_template() -> TemplatePostProcessor:
     """Gets a template processor without bos."""
     return TemplatePostProcessor(
         single=(
-            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+            Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+            Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
         ),
         pair=(
-            SequenceToken(Sequence=TokenContent(id="sequence", type_id=2)),
-            SpecialToken(SpecialToken=TokenContent(id="special_end", type_id=1)),
+            Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+            Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
         ),
-        special_tokens=SpecialTokens(
-            {
-                "special_end": TokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
-                "sequence": TokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
-            }
-        ),
+        special_tokens={
+            "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            "sequence": SpecialTokenInfo(id="sequence", ids=[2], tokens=["[SEQ]"]),
+        },
     )
 
 
@@ -202,3 +193,68 @@ def test_maybe_replace_token_in_post_processor(post_processor: PostProcessor, ol
         assert result.sep == (new_token, 11)
     if isinstance(result, TemplatePostProcessor):
         assert result.special_tokens["special_end"].tokens == [new_token]
+
+
+def test_parse_token() -> None:
+    """Test the Token parsing."""
+    t = Token(id="A", type_id=0, type=TokenType.SPECIAL)
+    assert t.id == "A"
+    assert t.type_id == 0
+    assert t.type == TokenType.SPECIAL
+
+    t_dict = {"id": "B", "type_id": 1, "type": "Sequence"}
+    t2 = Token.model_validate(t_dict)
+    assert t2.id == "B"
+    assert t2.type_id == 1
+    assert t2.type == TokenType.SEQUENCE
+
+    t_dict = {"Sequence": {"id": "B", "type_id": 1}}
+    t2 = Token.model_validate(t_dict)
+    assert t2.id == "B"
+    assert t2.type_id == 1
+    assert t2.type == TokenType.SEQUENCE
+
+    t3 = Token.model_validate(t2)
+    assert t3 == t2
+
+    with pytest.raises(TypeError):
+        Token.model_validate(11)  # type: ignore[arg-type]
+
+
+def test_unequal_special_token(caplog) -> None:
+    """Test that unequal special tokens are not equal."""
+    with caplog.at_level(logging.WARNING):
+        SpecialTokenInfo(id="A", ids=[0], tokens=["a", "b"])
+
+    assert "ids and tokens must have the same length." in caplog.text
+    assert caplog.records[0].levelname == "WARNING"
+
+
+def test_template_incorrect_tokens() -> None:
+    """Test that incorrect tokens in template raise errors."""
+    with pytest.raises(ValueError):
+        TemplatePostProcessor(
+            single=(
+                Token(id="missing_special", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
+            pair=(
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            },
+        )
+    with pytest.raises(ValueError):
+        TemplatePostProcessor(
+            single=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            pair=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="sapcco", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            },
+        )
