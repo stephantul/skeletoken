@@ -502,8 +502,9 @@ def test_set_unk_token_template(small_tokenizer: Tokenizer) -> None:
     s = {"bos": t}
     tok = Token(id="bos", type_id=1, type=TokenType.SPECIAL)
     seq = Token(id="A", type_id=0, type=TokenType.SEQUENCE)
+    seq2 = Token(id="B", type_id=0, type=TokenType.SEQUENCE)
     sequence = TokenSequence((tok, seq, tok))
-    pair_seq = TokenSequence((tok, seq, tok, seq, tok))
+    pair_seq = TokenSequence((tok, seq, tok, seq2, tok))
     model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)
     model.unk_token = "a"
     model.unk_token = "b"
