@@ -144,13 +144,30 @@ class TemplatePostProcessor(BaseModel):
 
     def model_post_init(self, __context: dict) -> None:
         """Validates that all special tokens in single and pair are defined in special_tokens."""
-        for token in self.single + self.pair:
-            if token.type == "SpecialToken":
-                if token.id not in self.special_tokens:
-                    raise ValueError(f"Special token {token.id} not defined in special_tokens.")
         for token_name, t in self.special_tokens.items():
             if token_name != t.id:
                 raise ValueError(f"Special token name {token_name} does not match its id {t.id}.")
+        num_types = _count_and_check_types(self.single, self.special_tokens)
+        if num_types != 1:
+            raise ValueError("Single sequence template can only have one sequence type.")
+        num_types = _count_and_check_types(self.pair, self.special_tokens)
+        if num_types != 2:
+            raise ValueError("Pair sequence template can only have two sequence types.")
+
+
+def _count_and_check_types(tokens: TokenSequence, special_tokens: dict[str, SpecialTokenInfo]) -> int:
+    """Count the number of unique type_ids in a sequence of tokens."""
+    sequence_tokens = 0
+    unique_types = set()
+    for token in tokens:
+        if token.type == TokenType.SEQUENCE:
+            sequence_tokens += 1
+            unique_types.add(token.id)
+        if token.type == TokenType.SPECIAL and token.id not in special_tokens:
+            raise ValueError(f"Special token {token.id} is not defined in special_tokens.")
+    if sequence_tokens != len(unique_types):
+        raise ValueError("All sequence tokens must have a unique id.")
+    return sequence_tokens
 
 
 PostProcessor = (
@@ -169,8 +186,6 @@ def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return [post_processor.cls[0]]
     if isinstance(post_processor, TemplatePostProcessor):
         single_encoding = post_processor.single
-        if not single_encoding:
-            return None
         if single_encoding[0].type != TokenType.SPECIAL:
             return None
         identifier = single_encoding[0].id
@@ -187,8 +202,6 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return [post_processor.sep[0]]
     if isinstance(post_processor, TemplatePostProcessor):
         single_encoding = post_processor.single
-        if not single_encoding:
-            return None
         if single_encoding[-1].type != TokenType.SPECIAL:
             return None
         identifier = single_encoding[-1].id
