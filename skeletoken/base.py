@@ -158,6 +158,11 @@ class TokenizerModel(BaseModel):
             This leads to smaller models, but also a mismatch between tokenizers, which
             should be remedied manually.
 
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with a decased vocabulary.
+
         """
         # Special tokens and unnormalized added tokens need to be skipped.
         special_tokens = self.added_tokens.get_special_tokens() + self.added_tokens.get_unnormalized_tokens()
@@ -208,6 +213,11 @@ class TokenizerModel(BaseModel):
             Whether to add the normalizer before the other normalizers.
             This can be useful if, for example, one of your normalizers performs
             a destructive transform.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the added normalizer.
 
         """
         if self.normalizer is None:

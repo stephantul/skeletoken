@@ -13,10 +13,11 @@ class ModelDelta(BaseModel):
     ----------
     token_mapping : dict[int, int]
         A mapping from old token IDs to new token IDs.
-    new_tokens : list[int]
-        A list of token IDs that were added in the modified model.
-    removed_tokens : list[int]
-        A list of token IDs that were removed in the modified model.
+    new_tokens : dict[str, int]
+        A mapping from new token strings to their IDs. This is useful for inferring
+        contents of the new tokens.
+    new_vocabulary_size : int
+        The size of the new vocabulary in the modified model.
 
     """
 

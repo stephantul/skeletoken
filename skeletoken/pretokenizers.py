@@ -59,6 +59,11 @@ class BertPreTokenizer(BasePretokenizer):
     so: ",,," will be pretokenized as [",", ",", ","], despite these
     not being separated by spaces.
 
+    Attributes
+    ----------
+    type : Literal[PreTokenizerType.BERT_PRETOKENIZER]
+        The type of the pretokenizer. This is always "BertPreTokenizer".
+
     """
 
     type: Literal[PreTokenizerType.BERT_PRETOKENIZER] = PreTokenizerType.BERT_PRETOKENIZER
@@ -77,6 +82,8 @@ class ByteLevelPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.BYTELEVEL]
+        The type of the pretokenizer. This is always "ByteLevel".
     add_prefix_space : bool
         Whether to add a space before the first token. This is desirable because it
         creates more correspondence between tokens.
@@ -84,6 +91,8 @@ class ByteLevelPreTokenizer(BasePretokenizer):
         Whether to use regex for splitting. If this is not set, no splitting is performed.
     trim_offsets: bool
         Doesn't do anything
+    _byte_pretokenizes: bool
+        Whether this pretokenizer produces byte-level tokens. This is always True.
 
     """
 
@@ -107,6 +116,8 @@ class CharDelimiterSplitPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.CHARDELIMITERSPLIT]
+        The type of the pretokenizer. This is always "CharDelimiterSplit".
     delimiter : str
         The character to split on.
 
@@ -124,12 +135,15 @@ class DigitsPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.DIGITS]
+        The type of the pretokenizer. This is always "Digits".
     individual_digits : bool
         If set, this splits on individual digits. If not, this splits on groups of digits.
         e.g. "111" -> ["1", "1", "1"] if this is set.
 
     """
 
+    #: The type of the pretokenizer.
     type: Literal[PreTokenizerType.DIGITS] = PreTokenizerType.DIGITS
     individual_digits: bool
 
@@ -140,6 +154,8 @@ class FixedLengthPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.FIXEDLENGTH]
+        The type of the pretokenizer. This is always "FixedLength".
     length : int
         The length of each sequence.
 
@@ -158,6 +174,8 @@ class MetaspacePreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.METASPACE]
+        The type of the pretokenizer. This is always "Metaspace".
     replacement : str
         The character to replace spaces with.
     prepend_scheme : PrependScheme
@@ -190,6 +208,8 @@ class PunctuationPreTokenizer(BasePretokenizer):
 
     Attributes
     ----------
+    type : Literal[PreTokenizerType.PUNCTUATION]
+        The type of the pretokenizer. This is always "Punctuation".
     behavior : Behavior
         See the Behavior docstring for how this functions.
 
@@ -204,14 +224,18 @@ class SplitPreTokenizer(BasePretokenizer):
     Split a sequence on a specified pattern.
 
     The specified pattern can either be a regex or a string. The string and regex
-    should be specified as follows:
+    can be specified as follows:
 
     {"String": my_string}
     or
     {"Regex": my_regex}
 
+    Or can be added directly as a string or a re.regex or regex.regex Pattern object.
+
     Attributes
     ----------
+    type : Literal[PreTokenizerType.SPLIT]
+        The type of the pretokenizer. This is always "Split".
     pattern : StringPattern | RegexPattern
         The pattern to split on.
         If you use a regex, it should be a valid regex pattern.
@@ -251,7 +275,12 @@ class WhitespaceSplitPreTokenizer(BasePretokenizer):
     """
     Literally only splits on whitespace.
 
-    It's not really desirable, and can be considered a variant of CharDelimiterSplit.
+    This isn't really desirable, and can be considered a variant of CharDelimiterSplit.
+
+    Attributes
+    ----------
+    type : Literal[PreTokenizerType.WHITESPACESPLIT]
+        The type of the pretokenizer. This is always "WhitespaceSplit".
 
     """
 
@@ -264,6 +293,11 @@ class UnicodeScriptsPreTokenizer(BasePretokenizer):
 
     This is interesting when training multilingual tokenizers, because this guarantees
     that the tokenizer will split on script and language boundaries.
+
+    Attributes
+    ----------
+    type : Literal[PreTokenizerType.UNICODESCRIPTS]
+        The type of the pretokenizer. This is always "UnicodeScripts".
 
     Examples
     --------

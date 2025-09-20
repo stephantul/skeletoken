@@ -57,11 +57,11 @@ ignore = [
 ]
 
 [tool.pydoclint]
-style = "sphinx"
+style = "numpy"
 exclude = "test_"
 allow-init-docstring = true
-arg-type-hints-in-docstring = false
-check-return-types = false
+arg-type-hints-in-docstring = true
+check-return-types = true
 require-return-section-when-returning-nothing = false
 
 [tool.mypy]

@@ -34,6 +34,8 @@ class BertPostProcessor(BaseModel):
 
     Attributes
     ----------
+    type : Literal[PostProcessorType.BERT_PROCESSING]
+        The type of the postprocessor. This is always "BertProcessing".
     sep : tuple[str, int]
         The SEP token and its token id.
     cls : tuple[str, int]
@@ -65,6 +67,8 @@ class RobertaPostProcessor(BaseModel):
 
     Attributes
     ----------
+    type : Literal[PostProcessorType.ROBERTA_PROCESSING]
+        The type of the postprocessor. This is always "RobertaProcessing".
     sep : tuple[str, int]
         The SEP token and its token id.
     cls : tuple[str, int]
@@ -222,8 +226,13 @@ def maybe_replace_token_in_post_processor(
         The new token to insert.
     index : int
         The new index to insert.
-    post_processor : PostProcessor
+    post_processor : PostProcessorDiscriminator
         The post-processor to replace the token in.
+
+    Returns
+    -------
+    PostProcessor
+        The post-processor with the token replaced, if it existed.
 
     """
     post_processor = post_processor.model_copy(deep=True)

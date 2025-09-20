@@ -37,6 +37,8 @@ class BPEDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.BPEDECODER]
+        The type of the decoder. This is always "BPEDecoder".
     suffix : str
         The suffix to use for BPE tokenization.
 
@@ -66,6 +68,8 @@ class ByteLevelDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.BYTELEVEL]
+        The type of the decoder. This is always "ByteLevel".
     add_prefix_space : bool
         Whether to add a space before the first token. This leads to more consistent
         behavior for sentence-initial tokens, and is recommended to be set to True.
@@ -93,6 +97,8 @@ class CTCDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.CTC]
+        The type of the decoder. This is always "CTC".
     pad_token : str
         The padding token to remove.
     word_delimiter_token : str
@@ -127,6 +133,8 @@ class MetaspaceDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.METASPACE]
+        The type of the decoder. This is always "Metaspace".
     replacement : str
         The string to replace the metaspace tokens with.
     prepend_scheme : PrependScheme
@@ -173,6 +181,8 @@ class StripDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.STRIP]
+        The type of the decoder. This is always "Strip".
     content : str
         The content to strip.
     start : int
@@ -196,6 +206,8 @@ class WordPieceDecoder(BaseModel):
 
     Attributes
     ----------
+    type : Literal[DecoderType.WORDPIECE]
+        The type of the decoder. This is always "WordPiece".
     prefix : str
         The subword prefix to use for WordPiece tokenization. This is usually
         '##'.

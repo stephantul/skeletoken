@@ -112,14 +112,18 @@ class BertNormalizer(BaseNormalizer):
     """
     The normalization used by the original BERT.
 
-    Parameters
+    Attributes
     ----------
+    type : Literal[NormalizerType.BERTNORMALIZER]
+        The type of the normalizer. This is always "BertNormalizer".
     clean_text : bool
         If set, this normalizes whitespace and removes any control characters.
     handle_chinese_chars : bool
         If set, it surrounds any Chinese characters in the text with spaces so that they are pretokenized correctly.
     strip_accents : bool | None
         If set, this removes all accents from the text.
+    lowercase : bool
+        If set, this lowercases the text.
 
     """
 
@@ -192,8 +196,10 @@ class PrependNormalizer(BaseNormalizer):
     """
     Prepends a string to the input text.
 
-    Parameters
+    Attributes
     ----------
+    type : Literal[NormalizerType.PREPEND]
+        The type of the normalizer. This is always "Prepend".
     prepend : str
         The string to prepend to a text.
 
@@ -207,8 +213,10 @@ class StripNormalizer(BaseNormalizer):
     """
     Strips whitespace from the left and/or right side of the input text.
 
-    Parameters
+    Attributes
     ----------
+    type : Literal[NormalizerType.STRIP]
+        The type of the normalizer. This is always "Strip".
     strip_left : bool
         If set, this removes whitespace from the left side.
     strip_right : bool
@@ -248,6 +256,8 @@ class PrecompiledNormalizer(BaseNormalizer):
 
     Attributes
     ----------
+    type : Literal[NormalizerType.PRECOMPILED]
+        The type of the normalizer. This is always "Precompiled".
     precompiled_charsmap : str
         The precompiled characters map.
 
