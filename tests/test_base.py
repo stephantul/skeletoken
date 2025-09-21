@@ -644,3 +644,18 @@ def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
     encoded = tokenizer.encode("abcdef")
     assert encoded.tokens == ["[UNK]", "f"]
     assert encoded.ids == [2, 10]
+
+
+def test_token_to_id_and_id_to_token(small_tokenizer: Tokenizer) -> None:
+    """Test the tokens_to_ids and ids_to_tokens methods."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tokens = ["a", "b", "c", "d", "f"]
+    ids = model.tokens_to_ids(tokens)
+    assert ids == [5, 6, 7, 8, 10]
+    recovered_tokens = model.ids_to_tokens(ids)
+    assert recovered_tokens == tokens
+
+    tokenizer = model.to_tokenizer()
+    encoded = tokenizer.encode_batch(["a", "b", "c", "d", "f"])
+    assert [enc.tokens[0] for enc in encoded] == tokens
+    assert [enc.ids[0] for enc in encoded] == ids

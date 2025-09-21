@@ -463,3 +463,12 @@ class TokenizerModel(BaseModel):
         from skeletoken.model_delta import compute_model_delta
 
         return compute_model_delta(self._original_tokenizer, self)
+
+    def tokens_to_ids(self, tokens: list[str]) -> list[int]:
+        """Convert a list of tokens to their corresponding IDs."""
+        return [self.model.vocab[token] for token in tokens]
+
+    def ids_to_tokens(self, ids: list[int]) -> list[str]:
+        """Convert a list of IDs to their corresponding tokens."""
+        inv_vocab = self.model.vocab.sorted_vocabulary
+        return [inv_vocab[id] for id in ids]
