@@ -659,3 +659,53 @@ def test_token_to_id_and_id_to_token(small_tokenizer: Tokenizer) -> None:
     encoded = tokenizer.encode_batch(["a", "b", "c", "d", "f"])
     assert [enc.tokens[0] for enc in encoded] == tokens
     assert [enc.ids[0] for enc in encoded] == ids
+
+
+def test_to_transformers(small_tokenizer: Tokenizer) -> None:
+    """Test saving and loading a tokenizer model."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    transformers_tokenizer = model.to_transformers()
+    assert transformers_tokenizer.pad_token is None
+    assert transformers_tokenizer.unk_token == "[UNK]"
+
+    model.pad_token = "[PAD]"
+    transformers_tokenizer = model.to_transformers()
+    assert transformers_tokenizer.pad_token == "[PAD]"
+
+    model.post_processor = RobertaPostProcessor(
+        sep=("[SEP]", 1), cls=("[CLS]", 0), trim_offsets=True, add_prefix_space=False
+    )
+    assert model.eos == ["[SEP]"]
+    assert model.bos == ["[CLS]"]
+    transformers_tokenizer = model.to_transformers()
+    assert transformers_tokenizer.eos_token == "[SEP]"
+    assert transformers_tokenizer.bos_token == "[CLS]"
+
+    model.post_processor = TemplatePostProcessor(
+        special_tokens={
+            "sep": SpecialTokenInfo(id="sep", ids=[1, 2], tokens=["[SEP]", "</s>"]),
+            "cls": SpecialTokenInfo(id="cls", ids=[0, 1], tokens=["[CLS]", "<s>"]),
+        },
+        single=TokenSequence(
+            (
+                Token(id="cls", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+                Token(id="sep", type_id=1, type=TokenType.SPECIAL),
+            )
+        ),
+        pair=TokenSequence(
+            (
+                Token(id="cls", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+                Token(id="sep", type_id=1, type=TokenType.SPECIAL),
+                Token(id="B", type_id=1, type=TokenType.SEQUENCE),
+                Token(id="sep", type_id=1, type=TokenType.SPECIAL),
+            )
+        ),
+    )
+    assert model.eos == ["[SEP]", "</s>"]
+    assert model.bos == ["[CLS]", "<s>"]
+
+    transformers_tokenizer = model.to_transformers()
+    assert transformers_tokenizer.eos_token is None
+    assert transformers_tokenizer.bos_token is None
