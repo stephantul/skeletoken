@@ -67,6 +67,22 @@ class Merges(RootModel[list[_Merge]]):
 
         return chars
 
+    def _remove_merges_for_token(self, token: str) -> None:
+        """Remove merges from the list of merges."""
+        # If the token is part of the merge index, other tokens depend on it.
+        # This makes the model crash.
+        if token in self._all_merge_tokens:
+            new_root = []
+            for merge in self.root:
+                joined_merge = "".join(merge)
+                if token not in merge and token != joined_merge:
+                    new_root.append(merge)
+
+            self.root = new_root
+            # Rebuild the index.
+            self._merge_index = {merge: i for i, merge in enumerate(self.root)}
+            self._all_merge_tokens.remove(token)
+
 
 def _bigrams(chars: list[str]) -> list[_Merge]:
     """Calculate the bigrams of a string."""

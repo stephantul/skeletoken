@@ -106,6 +106,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     def remove_token(self, token: str) -> None:
         """Remove a token from the vocabulary."""
         self.vocab.remove_token(token)
+        self.merges._remove_merges_for_token(token)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
