@@ -111,9 +111,11 @@ print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 Here's a rough roadmap:
 
 * ✅ Add automated lowercasing (see [blog](https://stephantul.github.io/tokenization/casing/2025/08/01/uncasing/))
-* Add vocabulary changes + checks (e.g., check the merge table if a token is added)
+* ✅ Add vocabulary changes + checks (e.g., check the merge table if a token is added)
 * ✅ Add helper functions for adding modules
-* Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
+* ✅ Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
+* Add a front end for the Hugging Face trainer
+* Integrate with sentencepiece :)
 
 # Installation
 
