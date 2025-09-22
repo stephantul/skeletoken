@@ -1064,8 +1064,10 @@ name = "skeletoken"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "protobuf" },
     { name = "pydantic" },
     { name = "tokenizers" },
+    { name = "transformers" },
 ]
 
 [package.optional-dependencies]
@@ -1078,23 +1080,19 @@ dev = [
     { name = "pytest-coverage" },
     { name = "ruff" },
 ]
-transformers = [
-    { name = "protobuf" },
-    { name = "transformers" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "protobuf", marker = "extra == 'transformers'" },
+    { name = "protobuf" },
     { name = "pydantic" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-coverage", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tokenizers" },
-    { name = "transformers", marker = "extra == 'transformers'" },
+    { name = "transformers" },
 ]
 
 [[package]]

@@ -8,6 +8,8 @@ requires-python = ">=3.10"
 dependencies = [
     "tokenizers",
     "pydantic",
+    "transformers",
+    "protobuf",
 ]
 
 [build-system]
@@ -23,7 +25,6 @@ dev = [
     "pytest-coverage",
     "ruff",
 ]
-transformers = ["transformers", "protobuf"]
 
 [tool.ruff]
 exclude = [".venv/"]
