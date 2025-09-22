@@ -255,7 +255,7 @@ def maybe_replace_token_in_post_processor(
         for special_token in post_processor.special_tokens.values():
             new_tokens = []
             new_ids = []
-            for token, id in zip(special_token.tokens, special_token.ids):
+            for token, id in zip(special_token.tokens, special_token.ids, strict=True):
                 if token == old_token:
                     new_tokens.append(new_token)
                     new_ids.append(index)

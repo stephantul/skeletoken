@@ -56,7 +56,7 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
             raise ValueError(f"Token '{token}' does not exist in vocabulary.")
         self.root.pop(token)
         # Rebuild the vocabulary to ensure indices are contiguous
-        sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]))
+        sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]), strict=True)
         self.root = {token: idx for idx, token in enumerate(sorted_tokens)}
 
     def replace_vocabulary(self, vocabulary: list[str]) -> None:
@@ -82,7 +82,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
 
     def model_post_init(self, __context: dict) -> None:
         """Initializes the vocabulary."""
-        tokens, scores = zip(*self.root) if self.root else ([], [])
+        tokens, scores = zip(*self.root, strict=True) if self.root else ([], [])
         self._vocabulary = {token: idx for idx, token in enumerate(tokens)}
         self._min_score = min(scores, default=-100.0)
 
@@ -108,7 +108,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
         if token not in self._vocabulary:
             raise ValueError(f"Token '{token}' does not exist in vocabulary.")
         idx = self._vocabulary.pop(token)
-        sorted_tokens, _ = zip(*sorted(self._vocabulary.items(), key=lambda x: x[1]))
+        sorted_tokens, _ = zip(*sorted(self._vocabulary.items(), key=lambda x: x[1]), strict=True)
         self._vocabulary = {token: idx for idx, token in enumerate(sorted_tokens)}
 
         self.root.pop(idx)

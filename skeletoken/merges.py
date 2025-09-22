@@ -70,7 +70,7 @@ class Merges(RootModel[list[_Merge]]):
 
 def _bigrams(chars: list[str]) -> list[_Merge]:
     """Calculate the bigrams of a string."""
-    return list(zip(chars[:-1], chars[1:]))
+    return list(zip(chars[:-1], chars[1:], strict=True))
 
 
 def _merge(token: list[str], bigram: _Merge) -> list[str]:

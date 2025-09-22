@@ -364,7 +364,7 @@ class TokenizerModel(BaseModel):
             self.model.unk_token = None
             return
         if old_unk_token is None:
-            if not token in self.model.vocab:
+            if token not in self.model.vocab:
                 logger.info(f"Adding {token} to the vocabulary.")
                 self._add_token_to_vocabulary(token, is_added_token=True)
             logger.info(f"Setting unk_token to '{token}'.")

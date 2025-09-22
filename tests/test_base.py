@@ -427,7 +427,7 @@ def test_subword_prefix(small_tokenizer: Tokenizer) -> None:
 def test_word_prefix(small_tokenizer: Tokenizer) -> None:
     """Test getting the word prefix token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.word_prefix == None
+    assert model.word_prefix is None
 
     model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
     assert model.word_prefix == "Ġ"

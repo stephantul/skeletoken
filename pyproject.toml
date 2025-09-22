@@ -37,6 +37,7 @@ select = [
     "ANN",
     # Complexity: Enforce a maximum cyclomatic complexity
     "C90",
+    "B",
     # Pydocstyle: Enforce docstrings
     "D",
     # Unused imports
