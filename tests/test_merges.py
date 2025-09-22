@@ -60,3 +60,13 @@ def test_add_merges(small_merges: Merges, token: str, before: list[str], added: 
     small_merges._add_merges_for_token(token)
     assert small_merges._merge(token) == [token]
     assert small_merges.root == added
+
+
+def test_remove_merges(small_merges: Merges) -> None:
+    """Test whether merges are removed."""
+    # Original merges are [("a", "b"), ("c", "d"), ("ab", "c"), ("a", "bc")]
+    # For the string "ab", we remove ("a", "b") and ("ab", "c")
+    # We remove ("a", "b") because "ab" is the result of that merge
+    # We also remove ("ab", "c") because it contains "ab" as a subpart
+    small_merges._remove_merges_for_token("ab")
+    assert small_merges.root == [("c", "d"), ("a", "bc")]
