@@ -26,7 +26,7 @@ def small_tokenizer_json(request: FixtureRequest) -> dict[str, Any]:
     return json.load(open(_get_tokenizers_path(name), "r", encoding="utf-8"))
 
 
-@fixture(scope="module")
+@fixture(scope="function")
 def small_tokenizer(request: FixtureRequest) -> Tokenizer:
     """Load an extremely small tokenizer for testing purposes."""
     name = getattr(request, "param", None) or "wordpiece"

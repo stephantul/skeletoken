@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from tokenizers import Tokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.decase.decase import decase_vocabulary
@@ -29,8 +30,6 @@ from skeletoken.pretokenizers import (
 from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerFast  # pragma: nocover
-
     from skeletoken.model_delta import ModelDelta  # pragma: nocover
 
 logger = logging.getLogger(__name__)
@@ -241,18 +240,32 @@ class TokenizerModel(BaseModel):
     def from_pretrained(cls: type[TokenizerModel], path_or_repo: str | Path) -> TokenizerModel:
         """Create a TokenizerModel from a pretrained tokenizer."""
         path = Path(path_or_repo)
-        tokenizer: Tokenizer
         if path.exists() and path.is_dir():
+            try:
+                return cls.from_transformers(str(path))
+            except Exception:
+                pass
             if not (path / "tokenizer.json").exists():
                 raise FileNotFoundError(
                     f"No tokenizer.json found in the directory: {path}. Please provide a valid path."
                 )
             # If a tokenizer.json file exists, load it directly
-            tokenizer = Tokenizer.from_file(str(path / "tokenizer.json"))
+            return cls.from_tokenizer(Tokenizer.from_file(str(path / "tokenizer.json")))
         elif path.exists() and path.is_file():
-            tokenizer = Tokenizer.from_file(str(path))
-        else:
-            tokenizer = Tokenizer.from_pretrained(str(path))  # pragma: nocover
+            return cls.from_tokenizer(Tokenizer.from_file(str(path)))
+
+        return cls._load_remote(path_or_repo)  # pragma: nocover
+
+    @classmethod
+    def _load_remote(cls: type[TokenizerModel], path_or_repo: str | Path) -> TokenizerModel:  # pragma: nocover
+        """Load a remote tokenizer from a HuggingFace repo."""
+        try:
+            return cls.from_transformers(str(path_or_repo))
+        except Exception as e:
+            logger.info(f"Tried to load tokenizer as a Hugging Face tokenizer, but failed: {e}")
+            pass
+        tokenizer = Tokenizer.from_pretrained(str(path_or_repo))
+
         return cls.from_tokenizer(tokenizer)
 
     @classmethod
@@ -341,6 +354,8 @@ class TokenizerModel(BaseModel):
     def unk_token(self, token: str | None) -> None:
         """Set the unk token of the tokenizer model."""
         old_unk_token = self.unk_token
+        if old_unk_token == token:
+            return
         if token is None:
             if isinstance(self.model, MODELS_THAT_NEED_UNK):
                 raise ValueError("Cannot unset unk_token for WordPiece or WordLevel models.")
@@ -445,17 +460,30 @@ class TokenizerModel(BaseModel):
         return model
 
     @classmethod
-    def from_transformers(cls, path: str) -> TokenizerModel:  # pragma: nocover
+    def from_transformers(cls, path: str | Path) -> TokenizerModel:  # pragma: nocover
         """Load a HuggingFace tokenizer from a local path or a model repo."""
-        # Disable the transformers logger to avoid cluttering the output.
-        # If skeletoken is just installed, it will print an annoying warning.
-        transformers_logger = logging.getLogger("transformers")
-        transformers_logger.disabled = True
-        from transformers import AutoTokenizer
-
-        transformers_logger.disabled = False
         hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
         return cls.from_transformers_tokenizer(hf_tokenizer)
+
+    def to_transformers(
+        self, tokenizer_class: type[PreTrainedTokenizerFast] = PreTrainedTokenizerFast
+    ) -> PreTrainedTokenizerFast:
+        """Convert the TokenizerModel to a HuggingFace tokenizer."""
+        tok = tokenizer_class(tokenizer_object=self.to_tokenizer())
+        tok.pad_token = self.pad_token
+        tok.unk_token = self.unk_token
+        if self.bos:
+            if len(self.bos) > 1:
+                logger.warning(f"Tokenizer has multiple bos tokens: {self.bos}. Not setting it automatically.")
+            else:
+                tok.bos_token = self.bos[0]
+        if self.eos:
+            if len(self.eos) > 1:
+                logger.warning(f"Tokenizer has multiple eos tokens: {self.eos}. Not setting it automatically.")
+            else:
+                tok.eos_token = self.eos[0]
+
+        return tok
 
     @property
     def model_delta(self) -> ModelDelta:
