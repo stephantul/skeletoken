@@ -25,6 +25,14 @@ Furthermore, `tokenizers` does not give reasonable errors when parsing a tokeniz
 
 This package contains datamodels (pydantic Basemodels) that contain the same constraints as the `tokenizers` package. In other words, if you can create a model in this package, the `tokenizers` package can parse it. This allows you to progressively edit tokenizer json files, all the while getting productive error messages.
 
+# Installation
+
+Install it via pip
+
+```bash
+pip install skeletoken
+```
+
 # Example
 
 ```python
@@ -39,7 +47,7 @@ print(tokenizer_model.pre_tokenizer.type)
 # PreTokenizerType.BYTELEVEL
 ```
 
-Ok, now let's add a digit splitter to the tokenizer.
+Now let's add a digit splitter to the tokenizer.
 
 ```python
 from skeletoken import TokenizerModel
@@ -116,14 +124,6 @@ Here's a rough roadmap:
 * ✅ Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
 * Add a front end for the Hugging Face trainer
 * Integrate with sentencepiece :)
-
-# Installation
-
-Install it via pip
-
-```bash
-pip install skeletoken
-```
 
 # License
 
