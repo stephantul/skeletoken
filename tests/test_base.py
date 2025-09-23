@@ -709,3 +709,18 @@ def test_to_transformers(small_tokenizer: Tokenizer) -> None:
     transformers_tokenizer = model.to_transformers()
     assert transformers_tokenizer.eos_token is None
     assert transformers_tokenizer.bos_token is None
+
+
+def test_vocabulary(small_tokenizer: Tokenizer) -> None:
+    """Test the vocabulary property."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    vocab = model.vocabulary
+    assert isinstance(vocab, dict)
+    assert len(vocab) == len(model.model.vocab)
+    assert model.vocabulary_size == len(model.model.vocab)
+    assert model.vocabulary == model.model.vocab.vocabulary
+    assert model.sorted_vocabulary == model.model.vocab.sorted_vocabulary
+
+    tokenizer = model.to_tokenizer()
+    assert len(tokenizer.get_vocab()) == len(model.model.vocab)
+    assert tokenizer.get_vocab() == model.model.vocab.vocabulary
