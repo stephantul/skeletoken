@@ -500,3 +500,18 @@ class TokenizerModel(BaseModel):
         """Convert a list of IDs to their corresponding tokens."""
         inv_vocab = self.model.vocab.sorted_vocabulary
         return [inv_vocab[id] for id in ids]
+
+    @property
+    def vocabulary_size(self) -> int:
+        """Get the size of the vocabulary."""
+        return len(self.model.vocab)
+
+    @property
+    def vocabulary(self) -> dict[str, int]:
+        """Get the vocabulary as a dictionary."""
+        return self.model.vocab.vocabulary
+
+    @property
+    def sorted_vocabulary(self) -> list[str]:
+        """Get the sorted vocabulary as a list of tokens."""
+        return self.model.vocab.sorted_vocabulary
