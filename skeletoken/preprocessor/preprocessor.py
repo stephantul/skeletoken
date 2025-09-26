@@ -16,11 +16,19 @@ class Preprocessor:
 
     def __call__(self, sequence: str) -> list[str]:
         """Apply the normalizer and pretokenizer to the input sequence."""
+        return self.preprocess(sequence)
+
+    def preprocess(self, sequence: str) -> list[str]:
+        """Preprocess a single sequence."""
         if self.normalizer is not None:
             sequence = self.normalizer.normalize_str(sequence)
         if self.pretokenizer is not None:
             return [text for text, offsets in self.pretokenizer.pre_tokenize_str(sequence)]
         return [sequence]
+
+    def preprocess_sequences(self, sequences: list[str]) -> list[list[str]]:
+        """Preprocess a list of sequences using multithreading."""
+        return [self(seq) for seq in sequences]
 
     @classmethod
     def from_tokenizer_model(cls, model: TokenizerModel) -> Preprocessor:
