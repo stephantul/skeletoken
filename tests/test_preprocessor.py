@@ -30,6 +30,12 @@ def test_preprocessor() -> None:
     assert preprocessor.normalizer is not None
     assert preprocessor.pretokenizer is not None
     assert preprocessor("This is a test.") == ["this", "is", "a", "test", "."]
+    assert preprocessor("This is a test.") == preprocessor.preprocess("This is a test.")
+
+    assert preprocessor.preprocess_sequences(["This is a test.", "Another test!"]) == [
+        ["this", "is", "a", "test", "."],
+        ["another", "test", "!"],
+    ]
 
 
 def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:
