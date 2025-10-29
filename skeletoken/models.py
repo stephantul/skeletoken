@@ -39,6 +39,10 @@ class VocabMixinMethod(Generic[VocabTypeVar]):
         """Remove a token from the vocabulary."""
         self.vocab.remove_token(token)
 
+    def remove_tokens(self, tokens: list[str]) -> None:
+        """Remove multiple tokens from the vocabulary."""
+        self.vocab.remove_tokens(tokens)
+
 
 class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordPiece vocabulary."""
@@ -107,6 +111,12 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         """Remove a token from the vocabulary."""
         self.vocab.remove_token(token)
         self.merges._remove_merges_for_token(token)
+
+    def remove_tokens(self, tokens: list[str]) -> None:
+        """Remove multiple tokens from the vocabulary."""
+        self.vocab.remove_tokens(tokens)
+        for token in tokens:
+            self.merges._remove_merges_for_token(token)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
