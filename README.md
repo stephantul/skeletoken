@@ -122,7 +122,7 @@ Here's a rough roadmap:
 * ✅ Add vocabulary changes + checks (e.g., check the merge table if a token is added)
 * ✅ Add helper functions for adding modules
 * ✅ Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
-* Add a front end for the Hugging Face trainer
+* ✅ Add a front end for the Hugging Face trainer
 * Integrate with sentencepiece :)
 
 # License
