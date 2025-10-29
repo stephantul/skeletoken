@@ -4,8 +4,6 @@ from tokenizers.normalizers import Normalizer as BaseNormalizer
 from tokenizers.pre_tokenizers import PreTokenizer as BasePretokenizer
 
 from skeletoken.base import TokenizerModel
-from skeletoken.preprocessor.normalizer import create_normalizer
-from skeletoken.preprocessor.pretokenizer import create_pretokenizer
 
 
 class Preprocessor:
@@ -23,7 +21,7 @@ class Preprocessor:
         if self.normalizer is not None:
             sequence = self.normalizer.normalize_str(sequence)
         if self.pretokenizer is not None:
-            return [text for text, offsets in self.pretokenizer.pre_tokenize_str(sequence)]
+            return [text for text, _ in self.pretokenizer.pre_tokenize_str(sequence)]
         return [sequence]
 
     def preprocess_sequences(self, sequences: list[str]) -> list[list[str]]:
@@ -33,6 +31,11 @@ class Preprocessor:
     @classmethod
     def from_tokenizer_model(cls, model: TokenizerModel) -> Preprocessor:
         """Set the normalizer and pretokenizer from a TokenizerModel."""
-        normalizer = create_normalizer(model.normalizer) if model.normalizer is not None else None
-        pretokenizer = create_pretokenizer(model.pre_tokenizer) if model.pre_tokenizer is not None else None
-        return cls(normalizer=normalizer, pretokenizer=pretokenizer)
+        tokenizer = model.to_tokenizer()
+        return cls(normalizer=tokenizer.normalizer, pretokenizer=tokenizer.pre_tokenizer)
+
+    @classmethod
+    def from_pretrained(cls, name: str) -> Preprocessor:
+        """Create a Preprocessor from a pretrained tokenizer model name."""
+        model = TokenizerModel.from_pretrained(name)
+        return cls.from_tokenizer_model(model)
