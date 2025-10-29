@@ -52,9 +52,14 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
 
     def remove_token(self, token: str) -> None:
         """Removes tokens from the vocabulary."""
-        if token not in self.root:
-            raise ValueError(f"Token '{token}' does not exist in vocabulary.")
-        self.root.pop(token)
+        self.remove_tokens([token])
+
+    def remove_tokens(self, tokens: list[str]) -> None:
+        """Removes multiple tokens from the vocabulary."""
+        for token in tokens:
+            if token not in self.root:
+                raise ValueError(f"Token '{token}' does not exist in vocabulary.")
+            self.root.pop(token)
         # Rebuild the vocabulary to ensure indices are contiguous
         sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]), strict=True)
         self.root = {token: idx for idx, token in enumerate(sorted_tokens)}
@@ -105,13 +110,18 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
 
     def remove_token(self, token: str) -> None:
         """Removes a token from the vocabulary."""
-        if token not in self._vocabulary:
-            raise ValueError(f"Token '{token}' does not exist in vocabulary.")
-        idx = self._vocabulary.pop(token)
-        sorted_tokens, _ = zip(*sorted(self._vocabulary.items(), key=lambda x: x[1]), strict=True)
-        self._vocabulary = {token: idx for idx, token in enumerate(sorted_tokens)}
+        self.remove_tokens([token])
 
-        self.root.pop(idx)
+    def remove_tokens(self, tokens: list[str]) -> None:
+        """Removes multiple tokens from the vocabulary."""
+        indices_to_remove = set()
+        for token in tokens:
+            token_idx = self._vocabulary.get(token)
+            if token_idx is None:
+                raise ValueError(f"Token '{token}' does not exist in vocabulary.")
+            indices_to_remove.add(token_idx)
+        self.root = [item for idx, item in enumerate(self.root) if idx not in indices_to_remove]
+        self._vocabulary = {token: idx for idx, (token, _) in enumerate(self.root)}
 
     def replace_vocabulary(self, vocabulary: list[str]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""

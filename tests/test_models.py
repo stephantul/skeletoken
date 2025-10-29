@@ -302,3 +302,29 @@ def test_remove_token(model: Model) -> None:
     # X gets added to the vocabulary, but not as a merge.
     if isinstance(model, BPE):
         assert "x" not in model.merges._all_merge_tokens
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
+def test_remove_tokens(model: Model) -> None:
+    """Test the remove token functionality."""
+    model.remove_tokens(["a", "b", "c"])
+    assert "a" not in model.vocab
+    assert "b" not in model.vocab
+    assert "c" not in model.vocab
+    assert model.vocab.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "d",
+        "e",
+        " ",
+    ]
+    with pytest.raises(ValueError):
+        model.remove_token("a")
+
+    model.replace_token("d", "x", is_added_token=True)
+    # X gets added to the vocabulary, but not as a merge.
+    if isinstance(model, BPE):
+        assert "x" not in model.merges._all_merge_tokens

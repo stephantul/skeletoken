@@ -724,3 +724,15 @@ def test_vocabulary(small_tokenizer: Tokenizer) -> None:
     tokenizer = model.to_tokenizer()
     assert len(tokenizer.get_vocab()) == len(model.model.vocab)
     assert tokenizer.get_vocab() == model.model.vocab.vocabulary
+
+
+def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test removing multiple tokens from the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    tokens_to_remove = ["a", "b", "c"]
+    model.batch_remove_tokens_from_vocabulary(tokens_to_remove)
+    for token in tokens_to_remove:
+        assert token not in model.model.vocab.vocabulary
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()

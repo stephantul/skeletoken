@@ -146,6 +146,24 @@ class TokenizerModel(BaseModel):
         self.model.remove_token(token)
         self.added_tokens.maybe_remove_token(token)
 
+    def batch_remove_tokens_from_vocabulary(self, tokens: list[str]) -> None:
+        """
+        Removes multiple tokens from the vocabulary.
+
+        This is a convenience method that removes tokens from the vocabulary.
+        Because removal requires compactifying the original vocabulary, this is more
+        efficient than doing it in multiple passes.
+
+        Parameters
+        ----------
+        tokens: list[str]
+            The list of tokens to remove from the vocabulary.
+
+        """
+        for token in tokens:
+            self.added_tokens.maybe_remove_token(token)
+        self.model.remove_tokens(tokens)
+
     def decase_vocabulary(self, remove_collisions: bool = False) -> TokenizerModel:
         """
         Decases the vocabulary.
