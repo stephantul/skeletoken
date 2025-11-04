@@ -48,6 +48,8 @@ class TokenizerModel(BaseModel):
     decoder: None | DecoderDiscriminator = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
+    # Remapping from old token IDs to new token IDs after vocabulary changes.
+    _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
 
     def model_post_init(self, __context: dict) -> None:
         """Post-initialization processing."""
@@ -199,6 +201,12 @@ class TokenizerModel(BaseModel):
             is_byte=self.transforms_into_bytes,
             lower=lower,
         )
+        mapping: dict[int, int] = {}
+        for i, token in enumerate(vocabulary):
+            if token is None:
+                continue
+            mapping[i] = len(mapping)
+        self._id_remapping = mapping
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
             self.add_normalizer(LowercaseNormalizer(), prefix=True)

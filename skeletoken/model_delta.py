@@ -34,16 +34,21 @@ def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> M
     # Compute the mapping
     token_mapping = {}
     new_tokens = {}
-    new_vocab = modified.model.vocab.vocabulary
-    old_vocab = original.model.vocab.vocabulary
-    for token, new_id in new_vocab.items():
-        if token in old_vocab:
-            old_id = old_vocab[token]
-            if old_id != new_id:
-                token_mapping[old_id] = new_id
+    new_vocab = modified.sorted_vocabulary
+    old_vocab = original.vocabulary
+    inv_id_remapping = {v: k for k, v in modified._id_remapping.items()}
+    for i, token in enumerate(new_vocab):
+        if index := inv_id_remapping.get(i):
+            # This is an old token
+            token_mapping[i] = index
+        elif token in old_vocab:
+            # This is an old token that got a new index
+            old_index = old_vocab[token]
+            token_mapping[i] = old_index
         else:
-            new_tokens[token] = new_id
+            # This is a new token
+            new_tokens[token] = i
     # Compute new tokens
-    new_vocabulary_size = len(modified.model.vocab)
+    new_vocabulary_size = len(modified.vocabulary)
 
     return ModelDelta(token_mapping=token_mapping, new_tokens=new_tokens, new_vocabulary_size=new_vocabulary_size)
