@@ -43,6 +43,10 @@ class VocabMixinMethod(Generic[VocabTypeVar]):
         """Remove multiple tokens from the vocabulary."""
         self.vocab.remove_tokens(tokens)
 
+    def replace_vocabulary(self, vocabulary: list[str]) -> None:
+        """Completely replaces the vocabulary by a vocabulary of the same length."""
+        self.vocab.replace_vocabulary(vocabulary)
+
 
 class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordPiece vocabulary."""
@@ -117,6 +121,22 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         self.vocab.remove_tokens(tokens)
         for token in tokens:
             self.merges._remove_merges_for_token(token)
+
+    def replace_vocabulary(self, vocabulary: list[str]) -> None:
+        """Completely replaces the vocabulary by a vocabulary of the same length."""
+        vocab = self.vocab.root
+        merge_index = []
+        for left, right in self.merges.root:
+            merge_index.append((vocab[left], vocab[right]))
+        self.vocab.replace_vocabulary(vocabulary)
+        new_merges = []
+        for left_idx, right_idx in merge_index:
+            left, right = vocabulary[left_idx], vocabulary[right_idx]
+            token = left + right
+            if token in self.vocab.vocabulary:
+                new_merges.append((left, right))
+        self.merges.root = new_merges
+        self.merges.model_post_init({})
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
