@@ -43,11 +43,12 @@ def _get_default_model(model_type: ModelType) -> Model:
         "d": 8,
         "e": 9,
         " ": 10,
+        "de": 11,
     }
     if model_type == ModelType.BPE:
         return BPE(
             vocab=Vocabulary(vocab),
-            merges=Merges([]),
+            merges=Merges([("d", "e")]),
             dropout=0.1,
             unk_token="[UNK]",
             continuing_subword_prefix="",
@@ -161,7 +162,7 @@ def test_unk_token_unigram() -> None:
 def test_add_token(model: Model) -> None:
     """Test the add token functionality."""
     model.add_token("new_token", is_added_token=False)
-    assert model.vocab["new_token"] == 11
+    assert model.vocab["new_token"] == 12
     if isinstance(model, BPE):
         assert model.vocab.sorted_vocabulary == [
             "[PAD]",
@@ -175,6 +176,7 @@ def test_add_token(model: Model) -> None:
             "d",
             "e",
             " ",
+            "de",
             "new_token",
             "_",
             "k",
@@ -191,6 +193,7 @@ def test_add_token(model: Model) -> None:
             "w_",
         ]
         assert model.merges.root == [
+            ("d", "e"),
             ("n", "e"),
             ("w", "_"),
             ("t", "o"),
@@ -213,6 +216,7 @@ def test_add_token(model: Model) -> None:
             "d",
             "e",
             " ",
+            "de",
             "new_token",
         ]
     with pytest.raises(ValueError):
@@ -236,6 +240,7 @@ def test_replace_token(model: Model) -> None:
             "d",
             "e",
             " ",
+            "de",
             "_",
             "k",
             "ke",
@@ -251,6 +256,7 @@ def test_replace_token(model: Model) -> None:
             "w_",
         ]
         assert model.merges.root == [
+            ("d", "e"),
             ("n", "e"),
             ("w", "_"),
             ("t", "o"),
@@ -273,6 +279,7 @@ def test_replace_token(model: Model) -> None:
             "d",
             "e",
             " ",
+            "de",
         ]
     with pytest.raises(ValueError):
         model.add_token("new_token")
@@ -294,6 +301,7 @@ def test_remove_token(model: Model) -> None:
         "d",
         "e",
         " ",
+        "de",
     ]
     with pytest.raises(ValueError):
         model.remove_token("a")
@@ -320,6 +328,7 @@ def test_remove_tokens(model: Model) -> None:
         "d",
         "e",
         " ",
+        "de",
     ]
     with pytest.raises(ValueError):
         model.remove_token("a")
@@ -328,3 +337,17 @@ def test_remove_tokens(model: Model) -> None:
     # X gets added to the vocabulary, but not as a merge.
     if isinstance(model, BPE):
         assert "x" not in model.merges._all_merge_tokens
+
+
+def test_merges_for_bpe() -> None:
+    """Test that merges are correctly computed for BPE."""
+    model = _get_default_model(ModelType.BPE)
+    model.replace_vocabulary(["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])
+
+    # Merges should contain all merges needed to construct "new_token"
+    expected_merges = model.merges.root
+    assert model.merges.root == expected_merges
+
+    model = _get_default_model(ModelType.BPE)
+    with pytest.raises(ValueError):
+        model.replace_vocabulary(["[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])

@@ -66,6 +66,13 @@ def test_replace_vocabulary(vocab: Vocabulary | UnigramVocabulary) -> None:
     vocab.replace_vocabulary(["new_token", "hello"])
     assert vocab.sorted_vocabulary == ["new_token", "hello"]
 
+    if isinstance(vocab, UnigramVocabulary):
+        with pytest.raises(ValueError):
+            vocab.replace_vocabulary(["a", "b", "c"])
+    else:
+        # Should not raise for regular vocabulary
+        vocab.replace_vocabulary(["only_one_token"])
+
 
 @pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
 def test_in(vocab: Vocabulary | UnigramVocabulary) -> None:

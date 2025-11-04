@@ -190,7 +190,7 @@ class TokenizerModel(BaseModel):
             is_byte=self.transforms_into_bytes,
             remove_collisions=remove_collisions,
         )
-        self.model.vocab.replace_vocabulary(vocabulary)
+        self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
             self.add_normalizer(LowercaseNormalizer(), prefix=True)
 
