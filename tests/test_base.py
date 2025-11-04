@@ -736,3 +736,14 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
+    """Test the removal of uppercase tokens from the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.remove_uppercase()
+    # This tokenizer does not assign any special tokens, so this is true.
+    assert model.sorted_vocabulary == ["[UNK]", "a", "b", "c", "d", " ", "f"]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()

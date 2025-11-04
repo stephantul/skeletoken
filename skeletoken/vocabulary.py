@@ -64,9 +64,10 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
         sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]), strict=True)
         self.root = {token: idx for idx, token in enumerate(sorted_tokens)}
 
-    def replace_vocabulary(self, vocabulary: list[str]) -> None:
+    def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
-        self.root = {token: idx for idx, token in enumerate(vocabulary)}
+        vocabulary_no_none = [token for token in vocabulary if token is not None]
+        self.root = {token: idx for idx, token in enumerate(vocabulary_no_none)}
 
 
 class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
@@ -123,9 +124,14 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
         self.root = [item for idx, item in enumerate(self.root) if idx not in indices_to_remove]
         self._vocabulary = {token: idx for idx, (token, _) in enumerate(self.root)}
 
-    def replace_vocabulary(self, vocabulary: list[str]) -> None:
+    def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
         if len(vocabulary) != len(self.root):
             raise ValueError("New vocabulary must be of the same length as the existing vocabulary.")
-        self.root = [(token, self.root[idx][1]) for idx, token in enumerate(vocabulary)]
-        self._vocabulary = {token: idx for idx, token in enumerate(vocabulary)}
+        new_root = []
+        for (_, score), new in zip(self.root, vocabulary, strict=True):
+            if new is None:
+                continue
+            new_root.append((new, score))
+        self.root = new_root
+        self._vocabulary = {token: idx for idx, (token, _) in enumerate(new_root)}

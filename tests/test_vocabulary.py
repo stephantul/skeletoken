@@ -73,6 +73,9 @@ def test_replace_vocabulary(vocab: Vocabulary | UnigramVocabulary) -> None:
         # Should not raise for regular vocabulary
         vocab.replace_vocabulary(["only_one_token"])
 
+    vocab.replace_vocabulary(["a", None])
+    assert vocab.sorted_vocabulary == ["a"]
+
 
 @pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
 def test_in(vocab: Vocabulary | UnigramVocabulary) -> None:

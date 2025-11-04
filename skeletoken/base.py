@@ -164,16 +164,21 @@ class TokenizerModel(BaseModel):
             self.added_tokens.maybe_remove_token(token)
         self.model.remove_tokens(tokens)
 
-    def decase_vocabulary(self, remove_collisions: bool = False) -> TokenizerModel:
+    def remove_uppercase(self) -> TokenizerModel:
+        """
+        Remove all uppercase tokens from the vocabulary.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with uppercase tokens removed.
+
+        """
+        return self._decase(lower=False)
+
+    def decase_vocabulary(self) -> TokenizerModel:
         """
         Decases the vocabulary.
-
-        Parameters
-        ----------
-        remove_collisions: bool
-            If this is set, any tokens that are colliding after lowercasing will be removed from the vocabulary.
-            This leads to smaller models, but also a mismatch between tokenizers, which
-            should be remedied manually.
 
         Returns
         -------
@@ -181,6 +186,10 @@ class TokenizerModel(BaseModel):
             The tokenizer model with a decased vocabulary.
 
         """
+        return self._decase(lower=True)
+
+    def _decase(self, lower: bool) -> TokenizerModel:
+        """Private method to decase the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
         special_tokens = self.added_tokens.get_special_tokens() + self.added_tokens.get_unnormalized_tokens()
         sorted_vocab = self.model.vocab.sorted_vocabulary
@@ -188,7 +197,7 @@ class TokenizerModel(BaseModel):
             sorted_vocab,
             [x.content for x in special_tokens],
             is_byte=self.transforms_into_bytes,
-            remove_collisions=remove_collisions,
+            lower=lower,
         )
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:

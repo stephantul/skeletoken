@@ -342,7 +342,7 @@ def test_remove_tokens(model: Model) -> None:
 def test_merges_for_bpe() -> None:
     """Test that merges are correctly computed for BPE."""
     model = _get_default_model(ModelType.BPE)
-    model.replace_vocabulary(["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])
+    model.replace_vocabulary(["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", None])
 
     # Merges should contain all merges needed to construct "new_token"
     expected_merges = model.merges.root
