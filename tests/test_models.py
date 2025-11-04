@@ -349,4 +349,5 @@ def test_merges_for_bpe() -> None:
     assert model.merges.root == expected_merges
 
     model = _get_default_model(ModelType.BPE)
-    model.replace_vocabulary(["[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])
+    with pytest.raises(ValueError):
+        model.replace_vocabulary(["[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])

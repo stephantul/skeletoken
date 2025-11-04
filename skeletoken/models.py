@@ -125,6 +125,8 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     def replace_vocabulary(self, vocabulary: list[str]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
         vocab = self.vocab.root
+        if len(vocabulary) != len(vocab):
+            raise ValueError("New vocabulary must be of the same length as the existing vocabulary.")
         merge_index = []
         for left, right in self.merges.root:
             merge_index.append((vocab[left], vocab[right]))
