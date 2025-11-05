@@ -143,6 +143,16 @@ class TokenizerModel(BaseModel):
                 old_token, new_token, self.model.vocab[new_token], self.post_processor
             )
 
+    def _remap_added_token_ids(self) -> None:
+        """Remap the IDs of added tokens to match the vocabulary."""
+        for token in self.added_tokens.root:
+            content = token.content
+            if content in self.model.vocab.vocabulary:
+                new_id = self.model.vocab[content]
+                if token.id != new_id:
+                    logger.info(f"Remapping ID of added token '{content}' from {token.id} to {new_id}.")
+                    token.id = new_id
+
     def remove_token_from_vocabulary(self, token: str) -> None:
         """Removes a token from the vocabulary."""
         self.model.remove_token(token)
@@ -210,6 +220,7 @@ class TokenizerModel(BaseModel):
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
             self.add_normalizer(LowercaseNormalizer(), prefix=True)
+        self._remap_added_token_ids()
 
         return self
 
