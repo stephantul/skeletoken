@@ -152,6 +152,11 @@ class TokenizerModel(BaseModel):
                 if token.id != new_id:
                     logger.info(f"Remapping ID of added token '{content}' from {token.id} to {new_id}.")
                     token.id = new_id
+        if self.post_processor is not None:
+            for added_token in self.added_tokens.root:
+                self.post_processor = maybe_replace_token_in_post_processor(
+                    added_token.content, added_token.content, added_token.id, self.post_processor
+                )
 
     def remove_token_from_vocabulary(self, token: str) -> None:
         """Removes a token from the vocabulary."""

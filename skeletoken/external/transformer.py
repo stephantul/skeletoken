@@ -26,7 +26,8 @@ def _remap_embeddings(embeddings: torch.Tensor, shift_mapping: dict[int, int]) -
 
     """
     embeddings = embeddings.clone()
-    _, embedding_dim = embeddings.shape
+    if not shift_mapping:
+        return embeddings
 
     from_map, to_map = zip(*shift_mapping.items(), strict=True)
     to_map_tensor = torch.tensor(to_map, dtype=torch.long, device=embeddings.device)
@@ -56,6 +57,7 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     vocab_size = tokenizer_model.vocabulary_size
     mapping = tokenizer_model._id_remapping
     embedding = model.get_input_embeddings()
+    assert isinstance(embedding, torch.nn.Embedding)
     weight = _remap_embeddings(embedding.weight, mapping)
     embedding.weight.data = weight
     model.resize_token_embeddings(vocab_size)
