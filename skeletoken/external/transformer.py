@@ -55,8 +55,9 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     """
     vocab_size = tokenizer_model.vocabulary_size
     mapping = tokenizer_model._id_remapping
-    embedding = model.resize_token_embeddings(vocab_size)
+    embedding = model.get_input_embeddings()
     weight = _remap_embeddings(embedding.weight, mapping)
     embedding.weight.data = weight
+    model.resize_token_embeddings(vocab_size)
 
     return model
