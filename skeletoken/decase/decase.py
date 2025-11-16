@@ -20,7 +20,7 @@ def _determine_collision(
     else:
         new_token = token
 
-    lowered_token = new_token.casefold()
+    lowered_token = new_token.lower()
 
     if not lower and lowered_token != new_token:
         return None
