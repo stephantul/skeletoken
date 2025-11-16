@@ -351,3 +351,102 @@ def test_merges_for_bpe() -> None:
     model = _get_default_model(ModelType.BPE)
     with pytest.raises(ValueError):
         model.replace_vocabulary(["[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"])
+
+
+def test_replace_vocabulary_models() -> None:
+    """Test replace_vocabulary behavior across model types (non-BPE and BPE specifics)."""
+    # WordPiece and WordLevel should delegate to Vocabulary.replace_vocabulary.
+    for model_type in (ModelType.WORDPIECE, ModelType.WORDLEVEL):
+        model = _get_default_model(model_type)
+        # Replace last token with None to simulate removal
+        new_vocab = ["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", None]
+        model.replace_vocabulary(new_vocab)
+        # The None should be removed and vocabulary indices compacted
+        assert "de" not in model.vocab.vocabulary
+        assert model.vocab.sorted_vocabulary == [
+            "[PAD]",
+            "[SEP]",
+            "[UNK]",
+            "[CLS]",
+            "[MASK]",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            " ",
+        ]
+
+    # Unigram must keep the same length; _get_default_model Unigram has length 12
+    unigram = _get_default_model(ModelType.UNIGRAM)
+    with pytest.raises(ValueError):
+        # shorter list should raise
+        unigram.replace_vocabulary(["[PAD]", "[SEP]"])
+
+    # BPE: replacing vocabulary should update merges to only include valid tokens
+    bpe = _get_default_model(ModelType.BPE)
+    # Remove the 'de' token by setting its entry to None
+    bpe.replace_vocabulary(["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", None])
+    # 'de' was formed by merging 'd' and 'e', removing it should also remove that merge
+    assert ("d", "e") not in bpe.merges.root
+
+
+def test_bpe_replace_vocabulary_preserve_and_variants() -> None:
+    """Focused tests to exercise different branches in BPE.replace_vocabulary."""
+    # Base vocabulary tokens in order (indices 0..11)
+    base = ["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", "e", " ", "de"]
+
+    # 1) Preserve merges when vocabulary unchanged
+    bpe = _get_default_model(ModelType.BPE)
+    original_merges = list(bpe.merges.root)
+    bpe.replace_vocabulary(list(base))
+    assert bpe.merges.root == original_merges
+
+    # 2) Remove merge when merged token is removed (vocabulary[index] is None)
+    bpe = _get_default_model(ModelType.BPE)
+    v: list[str | None] = list(base)
+    v[11] = None  # remove 'de'
+    bpe.replace_vocabulary(v)
+    assert ("d", "e") not in bpe.merges.root
+
+    # 3) Skip merge when left token is removed (vocabulary[left_idx] is None)
+    bpe = _get_default_model(ModelType.BPE)
+    v = list(base)
+    v[8] = None  # remove 'd'
+    # keep 'de' present so the code reaches the left/right None check
+    assert v[11] is not None
+    bpe.replace_vocabulary(v)
+    assert ("d", "e") not in bpe.merges.root
+
+    # 4) Merge computed but concatenation not present in new vocab -> not added
+    bpe = _get_default_model(ModelType.BPE)
+    v = list(base)
+    # rename 'd' and 'e' such that 'de' won't be equal to their concatenation
+    v[8] = "x"
+    v[9] = "y"
+    # keep slot 11 but set to something different than 'xy'
+    v[11] = "not_xy"
+    bpe.replace_vocabulary(v)
+    # after replacement there should be no ('x','y') merge because 'xy' is not in vocab
+    assert ("x", "y") not in bpe.merges.root
+
+
+def test_bpe_replace_vocabulary_concat_present() -> None:
+    """Ensure the code path where the concatenated merge token exists is exercised."""
+    bpe = _get_default_model(ModelType.BPE)
+    # Add tokens x, y and their concatenation xy to the vocabulary
+    bpe.vocab.add_token("x")
+    bpe.vocab.add_token("y")
+    bpe.vocab.add_token("xy")
+    # Add the merge and rebuild merge indices
+    bpe.merges.root.append(("x", "y"))
+    bpe.merges.model_post_init({})
+
+    # Build the new vocabulary list in index order and call replace_vocabulary
+    root_list: list[str | None] = [None] * len(bpe.vocab.root)
+    for tok, idx in bpe.vocab.root.items():
+        root_list[idx] = tok
+
+    # Call replace_vocabulary with identical list; this should preserve the ('x','y') merge
+    bpe.replace_vocabulary(root_list)
+    assert ("x", "y") in bpe.merges.root

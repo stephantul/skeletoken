@@ -747,3 +747,37 @@ def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
+    """Test remapping an added token to a different token."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_addedtoken("[NEW_TOKEN]")
+    new_token = model.added_tokens.get_token("[NEW_TOKEN]")
+    assert new_token is not None
+    new_token_id = new_token.id
+    assert new_token_id is not None
+    assert model.model.vocab["[NEW_TOKEN]"] == new_token_id
+    model.post_processor = TemplatePostProcessor(
+        special_tokens={
+            "bos": SpecialTokenInfo(id="bos", ids=[3], tokens=["[NEW_TOKEN]"]),
+        },
+        single=TokenSequence(
+            (
+                Token(id="bos", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+            )
+        ),
+        pair=TokenSequence(
+            (
+                Token(id="bos", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+                Token(id="B", type_id=1, type=TokenType.SEQUENCE),
+            )
+        ),
+    )
+    model._remap_added_token_ids()
+    assert model.post_processor.special_tokens["bos"].ids == [new_token.id]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()

@@ -145,8 +145,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         new_merges = []
         for left_idx, right_idx in merge_index:
             left_token, right_token = vocabulary[left_idx], vocabulary[right_idx]
-            if left_token is None or right_token is None:
-                continue
+            assert left_token is not None and right_token is not None
             token = left_token + right_token
             if token in self.vocab.vocabulary:
                 new_merges.append((left_token, right_token))
