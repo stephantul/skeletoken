@@ -43,7 +43,7 @@ class VocabMixinMethod(Generic[VocabTypeVar]):
         """Remove multiple tokens from the vocabulary."""
         self.vocab.remove_tokens(tokens)
 
-    def replace_vocabulary(self, vocabulary: list[str]) -> None:
+    def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
         self.vocab.replace_vocabulary(vocabulary)
 
@@ -122,21 +122,33 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         for token in tokens:
             self.merges._remove_merges_for_token(token)
 
-    def replace_vocabulary(self, vocabulary: list[str]) -> None:
-        """Completely replaces the vocabulary by a vocabulary of the same length."""
+    def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
+        """Completely replaces the vocabulary with a vocabulary of the same length."""
         vocab = self.vocab.root
         if len(vocabulary) != len(vocab):
             raise ValueError("New vocabulary must be of the same length as the existing vocabulary.")
-        merge_index = []
+        current_vocab = self.vocab.vocabulary
+        merge_index: list[tuple[int, int]] = []
         for left, right in self.merges.root:
-            merge_index.append((vocab[left], vocab[right]))
+            # We know that this merge leads somewhere
+            merge_token = left + right
+            index = current_vocab[merge_token]
+            # No need to merge things that are removed
+            if vocabulary[index] is None:
+                continue
+            left_idx = current_vocab[left]
+            right_idx = current_vocab[right]
+            if vocabulary[left_idx] is None or vocabulary[right_idx] is None:
+                continue
+            merge_index.append((left_idx, right_idx))
         self.vocab.replace_vocabulary(vocabulary)
         new_merges = []
         for left_idx, right_idx in merge_index:
-            left, right = vocabulary[left_idx], vocabulary[right_idx]
-            token = left + right
+            left_token, right_token = vocabulary[left_idx], vocabulary[right_idx]
+            assert left_token is not None and right_token is not None
+            token = left_token + right_token
             if token in self.vocab.vocabulary:
-                new_merges.append((left, right))
+                new_merges.append((left_token, right_token))
         self.merges.root = new_merges
         self.merges.model_post_init({})
 

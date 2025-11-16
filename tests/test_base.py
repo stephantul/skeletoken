@@ -613,7 +613,7 @@ def test_model_delta(small_tokenizer: Tokenizer) -> None:
     model.unk_token = "new_unk"
     model.pad_token = "[PAD]"
     delta = model.model_delta
-    assert delta.token_mapping == {7: 6, 8: 7, 9: 8}
+    assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 7, 7: 8, 8: 9}
     assert delta.new_vocabulary_size == 13
     assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12, "f": 9}
 
@@ -733,6 +733,51 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
     model.batch_remove_tokens_from_vocabulary(tokens_to_remove)
     for token in tokens_to_remove:
         assert token not in model.model.vocab.vocabulary
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
+    """Test the removal of uppercase tokens from the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.remove_uppercase()
+    # This tokenizer does not assign any special tokens, so this is true.
+    assert model.sorted_vocabulary == ["[UNK]", "a", "b", "c", "d", " ", "f"]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
+    """Test remapping an added token to a different token."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.add_addedtoken("[NEW_TOKEN]")
+    new_token = model.added_tokens.get_token("[NEW_TOKEN]")
+    assert new_token is not None
+    new_token_id = new_token.id
+    assert new_token_id is not None
+    assert model.model.vocab["[NEW_TOKEN]"] == new_token_id
+    model.post_processor = TemplatePostProcessor(
+        special_tokens={
+            "bos": SpecialTokenInfo(id="bos", ids=[3], tokens=["[NEW_TOKEN]"]),
+        },
+        single=TokenSequence(
+            (
+                Token(id="bos", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+            )
+        ),
+        pair=TokenSequence(
+            (
+                Token(id="bos", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+                Token(id="B", type_id=1, type=TokenType.SEQUENCE),
+            )
+        ),
+    )
+    model._remap_added_token_ids()
+    assert model.post_processor.special_tokens["bos"].ids == [new_token.id]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
