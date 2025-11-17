@@ -46,12 +46,12 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     model : T
         The model whose embeddings are to be reshaped.
     tokenizer_model : TokenizerModel
-        The tokenizer model whose vocabulary size will be used.
+        The tokenizer model whose vocabulary will be used to update the embeddings.
 
     Returns
     -------
     T
-        The reshaped model.
+        The model with an updated embedding and vocabulary.
 
     """
     vocab_size = tokenizer_model.vocabulary_size
