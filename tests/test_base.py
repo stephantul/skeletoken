@@ -5,6 +5,7 @@ import pytest
 from tokenizers import Tokenizer
 from tokenizers.models import BPE as TokenizersBPE
 from transformers import PreTrainedTokenizerFast
+from transformers.models.gpt2 import GPT2TokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.base import TokenizerModel
@@ -737,6 +738,20 @@ def test_to_transformers(small_tokenizer: Tokenizer) -> None:
     transformers_tokenizer = model.to_transformers()
     assert transformers_tokenizer.eos_token is None
     assert transformers_tokenizer.bos_token is None
+
+
+def test_to_transformers_to_class(small_tokenizer: Tokenizer) -> None:
+    """Test saving and loading a tokenizer model."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    transformers_tokenizer = model.to_transformers(tokenizer_class=PreTrainedTokenizerFast)
+    assert isinstance(transformers_tokenizer, PreTrainedTokenizerFast)
+
+    transformers_tokenizer = model.to_transformers(tokenizer_class=GPT2TokenizerFast)
+    assert isinstance(transformers_tokenizer, GPT2TokenizerFast)
+
+    model._original_class = GPT2TokenizerFast
+    transformers_tokenizer = model.to_transformers()
+    assert isinstance(transformers_tokenizer, GPT2TokenizerFast)
 
 
 def test_vocabulary(small_tokenizer: Tokenizer) -> None:
