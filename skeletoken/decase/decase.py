@@ -1,12 +1,19 @@
+from skeletoken.addedtoken import AddedToken
 from skeletoken.decase.byte_handlers import text_to_token_str, token_to_bytes
 
 
 def _determine_collision(
-    token: str, is_byte: bool, vocab: set[str], special_tokens: list[str], seen: set[str], lower: bool
+    token: str, is_byte: bool, vocab: set[str], added_tokens: dict[str, AddedToken], seen: set[str], lower: bool
 ) -> str | None:
     """Determine whether a given token, when lowered, collides with another."""
-    if token in special_tokens:
-        return token
+    if added_token := added_tokens.get(token):
+        # If we get here, the token is an added token.
+        if added_token.normalized:
+            # The added token is already normalized
+            return token
+        else:
+            # This token will be normalized
+            return token.lower()
     if is_byte:
         # Convert token from bytes to a string.
         try:
@@ -34,7 +41,9 @@ def _determine_collision(
     return lowered_token
 
 
-def decase_vocabulary(vocabulary: list[str], special_tokens: list[str], is_byte: bool, lower: bool) -> list[str | None]:
+def decase_vocabulary(
+    vocabulary: list[str], added_tokens: list[AddedToken], is_byte: bool, lower: bool
+) -> list[str | None]:
     """Lowercase the vocabulary of a tokenizer."""
     uncased_vocab: list[str | None] = []
     # seen keeps track of lowered tokens that were not in vocab before.
@@ -42,8 +51,10 @@ def decase_vocabulary(vocabulary: list[str], special_tokens: list[str], is_byte:
     seen: set[str] = set()
     vocab_set = set(vocabulary)
 
+    added_token_dict = {at.content: at for at in added_tokens}
+
     for token in vocabulary:
-        lowered = _determine_collision(token, is_byte, vocab_set, special_tokens, seen, lower)
+        lowered = _determine_collision(token, is_byte, vocab_set, added_token_dict, seen, lower)
         uncased_vocab.append(lowered)
         if isinstance(lowered, str):
             seen.add(lowered)

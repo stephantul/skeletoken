@@ -105,10 +105,6 @@ class AddedTokens(RootModel[list[AddedToken]]):
         """Returns a list of all special added tokens."""
         return [token for token in self.root if token.special]
 
-    def get_unnormalized_tokens(self) -> list[AddedToken]:
-        """Returns a list of all unnormalized added tokens."""
-        return [token for token in self.root if not token.normalized]
-
     def __len__(self) -> int:
         """Returns the number of added tokens."""
         return len(self.root)

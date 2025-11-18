@@ -46,12 +46,12 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     model : T
         The model whose embeddings are to be reshaped.
     tokenizer_model : TokenizerModel
-        The tokenizer model whose vocabulary size will be used.
+        The tokenizer model whose vocabulary will be used to update the embeddings.
 
     Returns
     -------
     T
-        The reshaped model.
+        The model with an updated embedding and vocabulary.
 
     """
     vocab_size = tokenizer_model.vocabulary_size
@@ -61,5 +61,13 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     weight = _remap_embeddings(embedding.weight, mapping)
     embedding.weight.data = weight
     model.resize_token_embeddings(vocab_size)
+
+    for key in model.config:
+        if key == "vocab_size":
+            setattr(model.config, key, vocab_size)
+        elif key.endswith("_id"):
+            current_id = getattr(model.config, key)
+            if isinstance(current_id, int) and current_id in mapping:
+                setattr(model.config, key, mapping[current_id])
 
     return model
