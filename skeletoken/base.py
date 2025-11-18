@@ -566,3 +566,18 @@ class TokenizerModel(BaseModel):
     def sorted_vocabulary(self) -> list[str]:
         """Get the sorted vocabulary as a list of tokens."""
         return self.model.vocab.sorted_vocabulary
+
+    @property
+    def unk_token_id(self) -> int | None:
+        """Get the ID of the unk token, if any."""
+        unk_token = self.unk_token
+        if unk_token is None:
+            return None
+        return self.model.vocab[unk_token]
+
+    @property
+    def pad_token_id(self) -> int | None:
+        """Get the ID of the pad token, if any."""
+        if self.pad_token is None:
+            return None
+        return self.model.vocab[self.pad_token]
