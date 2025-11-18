@@ -152,6 +152,7 @@ class TokenizerModel(BaseModel):
                 if token.id != new_id:
                     logger.info(f"Remapping ID of added token '{content}' from {token.id} to {new_id}.")
                     token.id = new_id
+        self.pad_token = self.pad_token  # Trigger pad_token remapping
         if self.post_processor is not None:
             for added_token in self.added_tokens.root:
                 self.post_processor = maybe_replace_token_in_post_processor(
@@ -208,11 +209,10 @@ class TokenizerModel(BaseModel):
     def _decase(self, lower: bool) -> TokenizerModel:
         """Private method to decase the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
-        special_tokens = self.added_tokens.get_special_tokens() + self.added_tokens.get_unnormalized_tokens()
         sorted_vocab = self.model.vocab.sorted_vocabulary
         vocabulary = decase_vocabulary(
             sorted_vocab,
-            [x.content for x in special_tokens],
+            self.added_tokens.root,
             is_byte=self.transforms_into_bytes,
             lower=lower,
         )

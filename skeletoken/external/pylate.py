@@ -38,8 +38,7 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     tokenizer_class = model.tokenizer.__class__
     new_tokenizer = tokenizer_model.to_transformers(tokenizer_class=tokenizer_class)
     # Override the model input names to match ColBERT's expectations.
-    if new_tokenizer.model_input_names != ["input_ids", "attention_mask"]:
-        new_tokenizer.model_input_names = ["input_ids", "attention_mask"]
+
     model.tokenizer = new_tokenizer
 
     if model.skiplist_words is not None:

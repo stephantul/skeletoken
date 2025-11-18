@@ -348,6 +348,34 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     model.to_tokenizer()
 
 
+def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
+    """Test the decasing of the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.added_tokens = AddedTokens([])
+    model.add_addedtoken("ADD", is_special=False, normalized=True)
+    model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
+    vocabulary = model.model.vocab.sorted_vocabulary
+    model.decase_vocabulary()
+    # This tokenizer does not assign any special tokens, so this is true.
+    assert model.model.vocab.sorted_vocabulary == [x.lower() if x not in {"ADD"} else x for x in vocabulary]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
+    """Test the decasing of the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.added_tokens = AddedTokens([])
+    model.add_addedtoken("ADD", is_special=False, normalized=True)
+    model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
+    model.remove_uppercase()
+    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f", "ADD", "add_keep"]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
 def test_eos(small_tokenizer: Tokenizer) -> None:
     """Test getting the eos token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
