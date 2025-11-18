@@ -809,3 +809,41 @@ def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_get_pad_token_id(small_tokenizer: Tokenizer) -> None:
+    """Test getting the padding token ID from the tokenizer model."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert model.pad_token_id is None
+
+    model.pad_token = "[PAD_IN_DE_KORF]"
+    assert model.pad_token_id == 11
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_get_unk_token_id(small_tokenizer: Tokenizer) -> None:
+    """Test getting the unknown token ID from the tokenizer model."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.model = BPE(
+        vocab=model.model.vocab,  # type: ignore
+        merges=Merges([]),
+        dropout=0.0,
+        unk_token="[UNK]",
+        continuing_subword_prefix="",
+        end_of_word_suffix="",
+        fuse_unk=True,
+        byte_fallback=False,
+        ignore_merges=False,
+    )
+    assert model.unk_token_id == 2
+
+    model.unk_token = "[UNKY]"
+    assert model.unk_token_id == 11
+
+    model.unk_token = None
+    assert model.unk_token_id is None
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
