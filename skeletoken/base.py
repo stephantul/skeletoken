@@ -50,6 +50,7 @@ class TokenizerModel(BaseModel):
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
     # Remapping from old token IDs to new token IDs after vocabulary changes.
     _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
+    _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
 
     def model_post_init(self, __context: dict) -> None:
         """Post-initialization processing."""
@@ -508,6 +509,7 @@ class TokenizerModel(BaseModel):
                 )
             model.pad_token = pad_token
 
+        model._original_class = type(hf_tokenizer)
         return model
 
     @classmethod
@@ -516,10 +518,13 @@ class TokenizerModel(BaseModel):
         hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
         return cls.from_transformers_tokenizer(hf_tokenizer)
 
-    def to_transformers(
-        self, tokenizer_class: type[PreTrainedTokenizerFast] = PreTrainedTokenizerFast
-    ) -> PreTrainedTokenizerFast:
+    def to_transformers(self, tokenizer_class: type[PreTrainedTokenizerFast] | None = None) -> PreTrainedTokenizerFast:
         """Convert the TokenizerModel to a HuggingFace tokenizer."""
+        if tokenizer_class is None:
+            if self._original_class is not None:
+                tokenizer_class = self._original_class
+            else:
+                tokenizer_class = PreTrainedTokenizerFast
         tok = tokenizer_class(tokenizer_object=self.to_tokenizer())
         tok.pad_token = self.pad_token
         tok.unk_token = self.unk_token

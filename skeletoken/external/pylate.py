@@ -35,11 +35,11 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     if model.document_prefix is not None:
         model.document_prefix_id = tokenizer_model.tokens_to_ids([model.document_prefix])[0]
 
-    tokenizer_class = model.tokenizer.__class__
-    new_tokenizer = tokenizer_model.to_transformers(tokenizer_class=tokenizer_class)
-    # Override the model input names to match ColBERT's expectations.
-
+    current_tokenizer = model.tokenizer
+    new_tokenizer = tokenizer_model.to_transformers()
     model.tokenizer = new_tokenizer
+    model.tokenizer.model_max_length = current_tokenizer.model_max_length
+    model.tokenizer.model_input_names = current_tokenizer.model_input_names
 
     if model.skiplist_words is not None:
         model.skiplist = [new_tokenizer.convert_tokens_to_ids(word) for word in model.skiplist_words]
