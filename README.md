@@ -15,6 +15,15 @@
     </a>
 </div>
 
+<div align="center">
+  <h2>
+    <a href="#installation"><strong>Installation</strong></a> |
+    <a href="#example"><strong>Example</strong></a> |
+    <a href="#roadmap"><strong>Roadmap</strong></a> |
+    <a href="./docs/"><strong>Documentation</strong></a>
+  </h2>
+</div>
+
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
 # Rationale
@@ -122,8 +131,8 @@ Here's a rough roadmap:
 * ✅ Add vocabulary changes + checks (e.g., check the merge table if a token is added)
 * ✅ Add helper functions for adding modules
 * ✅ Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
-* Add a front end for the Hugging Face trainer
-* Integrate with sentencepiece :)
+* ✅ Add a front end for the Hugging Face trainer
+* ✅ Add automatic model editing
 
 # License
 
