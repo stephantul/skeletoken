@@ -862,3 +862,39 @@ def test_get_unk_token_id(small_tokenizer: Tokenizer) -> None:
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_add_pad_token_post_init(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test adding a pad token after initialization from a file."""
+    small_tokenizer_json["padding"] = {
+        "strategy": {"Fixed": 0},
+        "direction": "Right",
+        "pad_to_multiple_of": None,
+        "pad_id": 40000,
+        "pad_type_id": 0,
+        "pad_token": "[ZAAAA]",
+    }
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model.pad_token == "[ZAAAA]"
+    assert model.pad_token_id == 11
+    added_token = model.added_tokens.get_token("[ZAAAA]")
+    assert added_token is not None
+    assert model.pad_token_id == added_token.id
+
+
+def test_add_pad_token_post_init_overlap(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test adding a pad token after initialization from a file."""
+    small_tokenizer_json["padding"] = {
+        "strategy": {"Fixed": 0},
+        "direction": "Right",
+        "pad_to_multiple_of": None,
+        "pad_id": 5,
+        "pad_type_id": 0,
+        "pad_token": "[ZAAAA]",
+    }
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model.pad_token == "[ZAAAA]"
+    assert model.pad_token_id == 11
+    added_token = model.added_tokens.get_token("[ZAAAA]")
+    assert added_token is not None
+    assert model.pad_token_id == added_token.id
