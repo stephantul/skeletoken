@@ -52,7 +52,7 @@ class TokenizerModel(BaseModel):
     _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
 
-    def model_post_init(self, __context: dict) -> None:
+    def model_post_init(self, __context: dict) -> None:  # noqa: C901
         """Post-initialization processing."""
         self._original_tokenizer = self.model_copy(deep=True)
         # Add any missing added tokens to the vocabulary.
@@ -82,6 +82,31 @@ class TokenizerModel(BaseModel):
                 self.turn_into_addedtoken(
                     unk_token, is_special=True, normalized=False, single_word=True, lstrip=False, rstrip=False
                 )
+        pad_token = self.pad_token
+        if pad_token:
+            if pad_token not in self.model.vocab:
+                current_pad_token_id = self.pad_token_id
+                assert current_pad_token_id is not None
+                if current_pad_token_id > self.vocabulary_size:
+                    logger.warning(
+                        f"pad_token_id {current_pad_token_id} is greater than vocabulary size {self.vocabulary_size}."
+                    )
+                else:
+                    current_index_token = self.sorted_vocabulary[current_pad_token_id]
+                    logger.warning(
+                        f"pad_token '{pad_token}' not found in vocabulary, but pad_token_id {current_pad_token_id} maps to existing token '{current_index_token}'."
+                    )
+                self._add_token_to_vocabulary(pad_token, is_added_token=True)
+                logger.warning(
+                    f"Adding pad_token '{pad_token}' to the vocabulary with id: {self.model.vocab[pad_token]}."
+                )
+            added_token = self.added_tokens.get_token(pad_token)
+            if not added_token:
+                logger.warning(f"Turning pad_token '{pad_token}' into an AddedToken.")
+                self.turn_into_addedtoken(
+                    pad_token, is_special=True, normalized=True, single_word=True, lstrip=True, rstrip=True
+                )
+            self.pad_token = pad_token
 
     def add_addedtoken(
         self,
@@ -585,4 +610,5 @@ class TokenizerModel(BaseModel):
         """Get the ID of the pad token, if any."""
         if self.pad_token is None:
             return None
-        return self.model.vocab[self.pad_token]
+        assert self.padding is not None
+        return self.padding.pad_id
