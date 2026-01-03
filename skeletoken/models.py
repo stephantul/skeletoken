@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -19,13 +19,10 @@ class ModelType(str, Enum):
     WORDLEVEL = "WordLevel"
 
 
-VocabTypeVar = TypeVar("VocabTypeVar", Vocabulary, UnigramVocabulary)
-
-
-class VocabMixinMethod(Generic[VocabTypeVar]):
+class VocabMixinMethod:
     """Mixin to override token addition, removal etc."""
 
-    vocab: VocabTypeVar
+    vocab: Vocabulary | UnigramVocabulary
 
     def add_token(self, token: str, is_added_token: bool = False) -> None:
         """Add a token to the vocabulary."""
@@ -48,7 +45,7 @@ class VocabMixinMethod(Generic[VocabTypeVar]):
         self.vocab.replace_vocabulary(vocabulary)
 
 
-class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
+class WordPiece(BaseModel, VocabMixinMethod):
     """Data model representing a WordPiece vocabulary."""
 
     type: Literal[ModelType.WORDPIECE] = ModelType.WORDPIECE
@@ -62,7 +59,7 @@ class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
         return self
 
 
-class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
+class BPE(BaseModel, VocabMixinMethod):
     """Data model representing a BPE vocabulary."""
 
     type: Literal[ModelType.BPE] = ModelType.BPE
@@ -153,7 +150,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         self.merges.model_post_init({})
 
 
-class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
+class Unigram(BaseModel, VocabMixinMethod):
     """Data model representing a Unigram vocabulary."""
 
     type: Literal[ModelType.UNIGRAM] = ModelType.UNIGRAM
@@ -191,7 +188,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
             self.unk_id = self.vocab.vocabulary[token]
 
 
-class WordLevel(BaseModel, VocabMixinMethod[Vocabulary]):
+class WordLevel(BaseModel, VocabMixinMethod):
     """Data model representing a WordLevel vocabulary."""
 
     type: Literal[ModelType.WORDLEVEL] = ModelType.WORDLEVEL
