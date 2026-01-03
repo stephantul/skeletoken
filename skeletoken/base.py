@@ -94,7 +94,8 @@ class TokenizerModel(BaseModel):
                 else:
                     current_index_token = self.sorted_vocabulary[current_pad_token_id]
                     logger.warning(
-                        f"pad_token '{pad_token}' not found in vocabulary, but pad_token_id {current_pad_token_id} maps to existing token '{current_index_token}'."
+                        f"pad_token '{pad_token}' not found in vocabulary, but pad_token_id {current_pad_token_id} "
+                        f"maps to existing token '{current_index_token}'."
                     )
                 self._add_token_to_vocabulary(pad_token, is_added_token=True)
                 logger.warning(
@@ -135,7 +136,8 @@ class TokenizerModel(BaseModel):
         """Turns an existing token into an an added token and add it to added_tokens."""
         if token not in self.model.vocab.vocabulary:
             raise ValueError(
-                f"Token '{token}' not found in the vocabulary. Please add it first using `add_token_to_vocabulary` or `add_addedtoken`."
+                f"Token '{token}' not found in the vocabulary. Please add it first using "
+                "`add_token_to_vocabulary` or `add_addedtoken`."
             )
         self.added_tokens.maybe_add_token(
             token,
@@ -516,21 +518,25 @@ class TokenizerModel(BaseModel):
         if unk_token is not None and isinstance(unk_token, str):
             if model.unk_token is not None and model.unk_token != unk_token:
                 logger.warning(
-                    f"Overriding existing unk_token '{model.unk_token}' with the one from the HuggingFace tokenizer: '{unk_token}'."
+                    f"Overriding existing unk_token '{model.unk_token}' with the one from "
+                    f"the HuggingFace tokenizer: '{unk_token}'."
                 )
             if model.unk_token is None:
                 logger.warning(
-                    f"HuggingFace tokenizer defines an unk_token, but the Skeletoken model does not. Setting it to '{unk_token}'."
+                    "HuggingFace tokenizer defines an unk_token, but the Skeletoken model does not. "
+                    f"Setting it to '{unk_token}'."
                 )
             model.unk_token = unk_token
         if pad_token is not None and isinstance(pad_token, str):
             if model.pad_token is not None and model.pad_token != pad_token:
                 logger.warning(
-                    f"Overriding existing pad_token '{model.pad_token}' with the one from the HuggingFace tokenizer: '{pad_token}'."
+                    f"Overriding existing pad_token '{model.pad_token}' "
+                    f"with the one from the HuggingFace tokenizer: '{pad_token}'."
                 )
             if model.pad_token is None:
                 logger.warning(
-                    f"HuggingFace tokenizer defines a pad_token, but the Skeletoken model does not. Setting it to '{pad_token}'."
+                    "HuggingFace tokenizer defines a pad_token, but the Skeletoken model does not."
+                    f"Setting it to '{pad_token}'."
                 )
             model.pad_token = pad_token
 
