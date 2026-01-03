@@ -44,6 +44,34 @@ pip install skeletoken
 
 # Example
 
+Here's some examples of what skeletoken can do:
+
+## Autofixing a tokenizer
+
+`skeletoken` autofixes any tokenizer you load. See [automatic checks](./docs/2_automatic_checks.md) to see what gets fixed automatically. For example, the [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) tokenizer has a lot of special tokens that are not part of the regular tokenizer vocabulary. This leads to a mismatch between the size of a tokenizer and the number of tokens that tokenizer can produce.
+
+```python
+from transformers import AutoTokenizer
+from skeletoken import TokenizerModel
+
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B")
+# Mismatch due to missing special tokens
+print(tokenizer.vocab_size)  # 151643
+print(len(tokenizer))  # 151669
+
+# Load a model from the hub.
+tokenizer_model = TokenizerModel.from_pretrained("Qwen/Qwen3-0.6B")
+# Convert the tokenizer to transformers
+tokenizer = tokenizer_model.to_transformers()
+print(tokenizer.vocab_size)  # 151669
+print(len(tokenizer))  # 151669
+
+```
+
+## Adding components to a tokenizer
+
+`skeletoken` can add components to a tokenizer. First we load one, and inspect it:
+
 ```python
 from skeletoken import TokenizerModel
 
@@ -56,7 +84,7 @@ print(tokenizer_model.pre_tokenizer.type)
 # PreTokenizerType.BYTELEVEL
 ```
 
-Now let's add a digit splitter to the tokenizer.
+We can then add a digit splitter to the tokenizer.
 
 ```python
 from skeletoken import TokenizerModel
