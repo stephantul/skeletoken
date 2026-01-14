@@ -66,7 +66,7 @@ def test_post_init(small_tokenizer_json: dict[str, Any]) -> None:
 def test_add_addedtoken(small_tokenizer: Tokenizer) -> None:
     """Test the add_addedtoken functionality."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_addedtoken("[OSTENTATIOUS]")
+    model = model.add_addedtoken("[OSTENTATIOUS]")
     # Test if it gets added to both the model and the vocabulary.
     assert model.added_tokens.get_token("[OSTENTATIOUS]") is not None
     assert "[OSTENTATIOUS]" in model.model.vocab
@@ -75,12 +75,12 @@ def test_add_addedtoken(small_tokenizer: Tokenizer) -> None:
 def test_turn_into_addedtoken(small_tokenizer: Tokenizer) -> None:
     """Test turning a regular token into an added token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_addedtoken("[OSTENTATIOUS]")
+    model = model.add_addedtoken("[OSTENTATIOUS]")
     # Should not crash, it is already an added token.
-    model.turn_into_addedtoken("[OSTENTATIOUS]")
+    model._turn_into_addedtoken("[OSTENTATIOUS]")
     # Should crash because it is not a regular token.
     with pytest.raises(ValueError):
-        model.turn_into_addedtoken("bababbaa")
+        model._turn_into_addedtoken("bababbaa")
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
@@ -102,19 +102,19 @@ def test_add_pre_tokenizer(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
 
     pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
-    model.add_pre_tokenizer(pre_tokenizer)
+    model = model.add_pre_tokenizer(pre_tokenizer)
 
     # Tests removing None and adding a pre-tokenizer
     assert model.pre_tokenizer is not None
     assert isinstance(model.pre_tokenizer, ByteLevelPreTokenizer)
 
-    model.add_pre_tokenizer(pre_tokenizer)
+    model = model.add_pre_tokenizer(pre_tokenizer)
 
     # Tests adding a second pre-tokenizer and turning it into a sequence
     assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
     assert len(model.pre_tokenizer.pretokenizers) == 2
 
-    model.add_pre_tokenizer(pre_tokenizer)
+    model = model.add_pre_tokenizer(pre_tokenizer)
 
     # Tests adding a third pre-tokenizer and keeping it as a sequence
     assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
@@ -126,19 +126,19 @@ def test_add_normalizer(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
 
     normalizer = ByteLevelNormalizer()
-    model.add_normalizer(normalizer)
+    model = model.add_normalizer(normalizer)
 
     # Tests removing None and adding a normalizer
     assert model.normalizer is not None
     assert isinstance(model.normalizer, ByteLevelNormalizer)
 
-    model.add_normalizer(normalizer)
+    model = model.add_normalizer(normalizer)
 
     # Tests adding a second normalizer and turning it into a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
     assert len(model.normalizer.normalizers) == 2
 
-    model.add_normalizer(normalizer)
+    model = model.add_normalizer(normalizer)
 
     # Tests adding a third normalizer and keeping it as a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
@@ -150,14 +150,14 @@ def test_add_normalizer_prefix(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
 
     normalizer: Normalizer = ByteLevelNormalizer()
-    model.add_normalizer(normalizer, prefix=True)
+    model = model.add_normalizer(normalizer, prefix=True)
 
     # Tests removing None and adding a normalizer
     assert model.normalizer is not None
     assert isinstance(model.normalizer, ByteLevelNormalizer)
 
     normalizer = LowercaseNormalizer()
-    model.add_normalizer(normalizer, prefix=True)
+    model = model.add_normalizer(normalizer, prefix=True)
 
     # Tests adding a second normalizer and keeping it as a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
@@ -166,7 +166,7 @@ def test_add_normalizer_prefix(small_tokenizer: Tokenizer) -> None:
     assert isinstance(model.normalizer.normalizers[1], ByteLevelNormalizer)
 
     normalizer = NFKCNormalizer()
-    model.add_normalizer(normalizer, prefix=False)
+    model = model.add_normalizer(normalizer, prefix=False)
 
     # Tests adding a third normalizer and keeping it as a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
@@ -181,19 +181,19 @@ def test_add_processor(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
 
     post_processor = ByteLevelPostProcessor(add_prefix_space=True, trim_offsets=True, use_regex=True)
-    model.add_post_processor(post_processor)
+    model = model.add_post_processor(post_processor)
 
     # Tests removing None and adding a post-processor
     assert model.post_processor is not None
     assert isinstance(model.post_processor, ByteLevelPostProcessor)
 
-    model.add_post_processor(post_processor)
+    model = model.add_post_processor(post_processor)
 
     # Tests adding a second post-processor and turning it into a sequence
     assert isinstance(model.post_processor, PostProcessorSequence)
     assert len(model.post_processor.processors) == 2
 
-    model.add_post_processor(post_processor)
+    model = model.add_post_processor(post_processor)
 
     # Tests adding a third post-processor and keeping it as a sequence
     assert isinstance(model.post_processor, PostProcessorSequence)
@@ -236,8 +236,8 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
 def test_make_greedy(small_tokenizer: Tokenizer) -> None:
     """Test whether the make greedy function works."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_pre_tokenizer(ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True))
-    model.make_model_greedy()
+    model = model.add_pre_tokenizer(ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True))
+    model = model.make_model_greedy()
     assert model.model.type == ModelType.WORDPIECE
     assert model.to_tokenizer()
     pre_tok_length = None
@@ -281,9 +281,9 @@ def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
 def test_remove_token(small_tokenizer: Tokenizer) -> None:
     """Test removing a token from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.remove_token_from_vocabulary("a")
+    model = model.remove_token_from_vocabulary("a")
     with pytest.raises(ValueError):
-        model.remove_token_from_vocabulary("a")
+        model = model.remove_token_from_vocabulary("a")
     assert "a" not in model.model.vocab.vocabulary
 
     # Implicit test. If this fails, the model is incorrect.
@@ -294,8 +294,8 @@ def test_add_token(small_tokenizer: Tokenizer) -> None:
     """Test adding a token to the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     with pytest.raises(ValueError):
-        model.add_token_to_vocabulary("a")
-    model.add_token_to_vocabulary("new_token")
+        model = model.add_token_to_vocabulary("a")
+    model = model.add_token_to_vocabulary("new_token")
     assert "new_token" in model.model.vocab.vocabulary
 
     # Implicit test. If this fails, the model is incorrect.
@@ -306,8 +306,8 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
     """Test replace token interface."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     with pytest.raises(ValueError):
-        model.replace_token_in_vocabulary("a", "b")
-    model.replace_token_in_vocabulary("b", "x")
+        model = model.replace_token_in_vocabulary("a", "b")
+    model = model.replace_token_in_vocabulary("b", "x")
     assert "b" not in model.model.vocab.vocabulary
     assert "x" in model.model.vocab.vocabulary
 
@@ -327,8 +327,8 @@ def test_replace_token_template(small_tokenizer: Tokenizer) -> None:
     pair_seq = TokenSequence((tok, seq, tok, seq2, tok))
     model.post_processor = TemplatePostProcessor(special_tokens=s, single=sequence, pair=pair_seq)
     with pytest.raises(ValueError):
-        model.replace_token_in_vocabulary("a", "b")
-    model.replace_token_in_vocabulary("b", "x")
+        model = model.replace_token_in_vocabulary("a", "b")
+    model = model.replace_token_in_vocabulary("b", "x")
     assert "b" not in model.model.vocab.vocabulary
     assert "x" in model.model.vocab.vocabulary
 
@@ -341,7 +341,7 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
     vocabulary = model.model.vocab.sorted_vocabulary
-    model.decase_vocabulary()
+    model = model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
     assert model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
 
@@ -353,10 +353,10 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
-    model.add_addedtoken("ADD", is_special=False, normalized=True)
-    model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
+    model = model.add_addedtoken("ADD", is_special=False, normalized=True)
+    model = model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
     vocabulary = model.model.vocab.sorted_vocabulary
-    model.decase_vocabulary()
+    model = model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
     assert model.model.vocab.sorted_vocabulary == [x.lower() if x not in {"ADD"} else x for x in vocabulary]
 
@@ -368,9 +368,9 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
-    model.add_addedtoken("ADD", is_special=False, normalized=True)
-    model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
-    model.remove_uppercase()
+    model = model.add_addedtoken("ADD", is_special=False, normalized=True)
+    model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
+    model = model.remove_uppercase()
     assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f", "ADD", "add_keep"]
 
     # Implicit test. If this fails, the model is incorrect.
@@ -434,10 +434,10 @@ def test_split(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     assert not model.splits
     pretokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=False, trim_offsets=True)
-    model.add_pre_tokenizer(pretokenizer)
+    model = model.add_pre_tokenizer(pretokenizer)
     assert not model.splits
     pretokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
-    model.add_pre_tokenizer(pretokenizer)
+    model = model.add_pre_tokenizer(pretokenizer)
     assert model.splits
 
     # Implicit test. If this fails, the model is incorrect.
@@ -471,7 +471,7 @@ def test_word_prefix(small_tokenizer: Tokenizer) -> None:
 def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test replacing a token in the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.replace_token_in_vocabulary("f", "g")
+    model = model.replace_token_in_vocabulary("f", "g")
     assert model.model.vocab["g"] is not None
     assert model.added_tokens.get_token("g") is not None
 
@@ -483,7 +483,7 @@ def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test removing a token from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     assert model.added_tokens.get_token("f") is not None
-    model.remove_token_from_vocabulary("f")
+    model = model.remove_token_from_vocabulary("f")
     assert model.added_tokens.get_token("f") is None
 
     # Implicit test. If this fails, the model is incorrect.
@@ -635,10 +635,10 @@ def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> N
 def test_model_delta(small_tokenizer: Tokenizer) -> None:
     """Test the model delta functionality."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_token_to_vocabulary("new_token")
-    model.remove_token_from_vocabulary("a")
-    model.replace_token_in_vocabulary("b", "x")
-    model.add_addedtoken("[ADDED]")
+    model = model.add_token_to_vocabulary("new_token")
+    model = model.remove_token_from_vocabulary("a")
+    model = model.replace_token_in_vocabulary("b", "x")
+    model = model.add_addedtoken("[ADDED]")
     model.unk_token = "new_unk"
     model.pad_token = "[PAD]"
     delta = model.model_delta
@@ -773,7 +773,7 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
     """Test removing multiple tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     tokens_to_remove = ["a", "b", "c"]
-    model.batch_remove_tokens_from_vocabulary(tokens_to_remove)
+    model = model.batch_remove_tokens_from_vocabulary(tokens_to_remove)
     for token in tokens_to_remove:
         assert token not in model.model.vocab.vocabulary
 
@@ -795,7 +795,7 @@ def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
 def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
     """Test remapping an added token to a different token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_addedtoken("[NEW_TOKEN]")
+    model = model.add_addedtoken("[NEW_TOKEN]")
     new_token = model.added_tokens.get_token("[NEW_TOKEN]")
     assert new_token is not None
     new_token_id = new_token.id

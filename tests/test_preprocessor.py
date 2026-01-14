@@ -39,8 +39,8 @@ def test_preprocessor() -> None:
 def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:
     """Test the Preprocessor class from a TokenizerModel."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.add_normalizer(LowercaseNormalizer())
-    model.add_pre_tokenizer(WhitespacePreTokenizer())
+    model = model.add_normalizer(LowercaseNormalizer())
+    model = model.add_pre_tokenizer(WhitespacePreTokenizer())
     preprocessor = Preprocessor.from_tokenizer_model(model)
     assert preprocessor.normalizer is not None
     assert preprocessor.pretokenizer is not None

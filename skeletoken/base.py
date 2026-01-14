@@ -52,9 +52,13 @@ class TokenizerModel(BaseModel):
     _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
 
+    def _deep_copy(self) -> TokenizerModel:
+        """Return a deep copy of this TokenizerModel."""
+        return self.model_copy(deep=True)
+
     def model_post_init(self, __context: dict) -> None:  # noqa: C901
         """Post-initialization processing."""
-        self._original_tokenizer = self.model_copy(deep=True)
+        self._original_tokenizer = self._deep_copy()
         # Add any missing added tokens to the vocabulary.
         # Sort to fill up the vocabulary in order.
         for token in sorted(self.added_tokens.root, key=lambda x: x.id):
@@ -79,7 +83,7 @@ class TokenizerModel(BaseModel):
             added_token = self.added_tokens.get_token(unk_token)
             if not added_token:
                 logger.warning(f"Turning unk_token '{unk_token}' into an AddedToken.")
-                self.turn_into_addedtoken(
+                self._turn_into_addedtoken(
                     unk_token, is_special=True, normalized=False, single_word=True, lstrip=False, rstrip=False
                 )
         pad_token = self.pad_token
@@ -104,7 +108,7 @@ class TokenizerModel(BaseModel):
             added_token = self.added_tokens.get_token(pad_token)
             if not added_token:
                 logger.warning(f"Turning pad_token '{pad_token}' into an AddedToken.")
-                self.turn_into_addedtoken(
+                self._turn_into_addedtoken(
                     pad_token, is_special=True, normalized=True, single_word=True, lstrip=True, rstrip=True
                 )
             self.pad_token = pad_token
@@ -117,14 +121,17 @@ class TokenizerModel(BaseModel):
         single_word: bool = True,
         lstrip: bool = True,
         rstrip: bool = True,
-    ) -> None:
+    ) -> TokenizerModel:
         """Adds an added token to the tokenizer model."""
-        self._add_token_to_vocabulary(token, is_added_token=True)
-        self.turn_into_addedtoken(
+        model = self._deep_copy()
+        model._add_token_to_vocabulary(token, is_added_token=True)
+        model._turn_into_addedtoken(
             token, is_special=is_special, normalized=normalized, single_word=single_word, lstrip=lstrip, rstrip=rstrip
         )
 
-    def turn_into_addedtoken(
+        return model
+
+    def _turn_into_addedtoken(
         self,
         token: str,
         is_special: bool = False,
@@ -149,18 +156,24 @@ class TokenizerModel(BaseModel):
             id=self.model.vocab[token],
         )
 
-    def add_token_to_vocabulary(self, token: str) -> None:
+    def add_token_to_vocabulary(self, token: str) -> TokenizerModel:
         """Adds a token to the tokenizer's vocabulary."""
-        self._add_token_to_vocabulary(token, is_added_token=False)
+        model = self._deep_copy()
+        model._add_token_to_vocabulary(token, is_added_token=False)
+
+        return model
 
     def _add_token_to_vocabulary(self, token: str, is_added_token: bool = False) -> None:
         """Adds an added token to the vocabulary."""
         self.model.add_token(token, is_added_token=is_added_token)
 
-    def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> None:
+    def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> TokenizerModel:
         """Replaces a token with another one."""
-        is_added_token = self.added_tokens.get_token(old_token) is not None
-        self._replace_token_in_vocabulary(old_token, new_token, is_added_token=is_added_token)
+        model = self._deep_copy()
+        is_added_token = model.added_tokens.get_token(old_token) is not None
+        model._replace_token_in_vocabulary(old_token, new_token, is_added_token=is_added_token)
+
+        return model
 
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
@@ -187,12 +200,15 @@ class TokenizerModel(BaseModel):
                     added_token.content, added_token.content, added_token.id, self.post_processor
                 )
 
-    def remove_token_from_vocabulary(self, token: str) -> None:
+    def remove_token_from_vocabulary(self, token: str) -> TokenizerModel:
         """Removes a token from the vocabulary."""
-        self.model.remove_token(token)
-        self.added_tokens.maybe_remove_token(token)
+        model = self._deep_copy()
+        model.model.remove_token(token)
+        model.added_tokens.maybe_remove_token(token)
 
-    def batch_remove_tokens_from_vocabulary(self, tokens: list[str]) -> None:
+        return model
+
+    def batch_remove_tokens_from_vocabulary(self, tokens: list[str]) -> TokenizerModel:
         """
         Removes multiple tokens from the vocabulary.
 
@@ -205,10 +221,18 @@ class TokenizerModel(BaseModel):
         tokens: list[str]
             The list of tokens to remove from the vocabulary.
 
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the tokens removed.
+
         """
+        model = self._deep_copy()
         for token in tokens:
-            self.added_tokens.maybe_remove_token(token)
-        self.model.remove_tokens(tokens)
+            model.added_tokens.maybe_remove_token(token)
+        model.model.remove_tokens(tokens)
+
+        return model
 
     def remove_uppercase(self) -> TokenizerModel:
         """
@@ -220,7 +244,8 @@ class TokenizerModel(BaseModel):
             The tokenizer model with uppercase tokens removed.
 
         """
-        return self._decase(lower=False)
+        model = self._deep_copy()
+        return model._decase(lower=False)
 
     def decase_vocabulary(self) -> TokenizerModel:
         """
@@ -232,7 +257,8 @@ class TokenizerModel(BaseModel):
             The tokenizer model with a decased vocabulary.
 
         """
-        return self._decase(lower=True)
+        model = self._deep_copy()
+        return model._decase(lower=True)
 
     def _decase(self, lower: bool) -> TokenizerModel:
         """Private method to decase the vocabulary."""
@@ -259,25 +285,27 @@ class TokenizerModel(BaseModel):
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
-        if self.pre_tokenizer is None:
-            self.pre_tokenizer = pre_tokenizer
-        elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
-            self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
+        model = self._deep_copy()
+        if model.pre_tokenizer is None:
+            model.pre_tokenizer = pre_tokenizer
+        elif isinstance(model.pre_tokenizer, PreTokenizerSequence):
+            model.pre_tokenizer.pretokenizers.append(pre_tokenizer)
         else:
-            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
+            model.pre_tokenizer = PreTokenizerSequence(pretokenizers=[model.pre_tokenizer, pre_tokenizer])
 
-        return self
+        return model
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
-        if self.post_processor is None:
-            self.post_processor = post_processor
-        elif isinstance(self.post_processor, PostProcessorSequence):
-            self.post_processor.processors.append(post_processor)
+        model = self._deep_copy()
+        if model.post_processor is None:
+            model.post_processor = post_processor
+        elif isinstance(model.post_processor, PostProcessorSequence):
+            model.post_processor.processors.append(post_processor)
         else:
-            self.post_processor = PostProcessorSequence(processors=[self.post_processor, post_processor])
+            model.post_processor = PostProcessorSequence(processors=[model.post_processor, post_processor])
 
-        return self
+        return model
 
     def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> TokenizerModel:
         """
@@ -298,17 +326,18 @@ class TokenizerModel(BaseModel):
             The tokenizer model with the added normalizer.
 
         """
-        if self.normalizer is None:
-            self.normalizer = normalizer
-        elif isinstance(self.normalizer, NormalizerSequence):
-            self.normalizer.normalizers.append(normalizer)
+        model = self._deep_copy()
+        if model.normalizer is None:
+            model.normalizer = normalizer
+        elif isinstance(model.normalizer, NormalizerSequence):
+            model.normalizer.normalizers.append(normalizer)
         else:
             if prefix:
-                self.normalizer = NormalizerSequence(normalizers=[normalizer, self.normalizer])
+                model.normalizer = NormalizerSequence(normalizers=[normalizer, model.normalizer])
             else:
-                self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
+                model.normalizer = NormalizerSequence(normalizers=[model.normalizer, normalizer])
 
-        return self
+        return model
 
     @classmethod
     def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> TokenizerModel:
@@ -358,11 +387,12 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self, max_input_chars_per_word: int = 100) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        self.model = self.model.to_greedy()
-        assert isinstance(self.model, WordPiece)
-        self.model.max_input_chars_per_word = max_input_chars_per_word
-        self.add_pre_tokenizer(FixedLengthPreTokenizer(length=max_input_chars_per_word))
-        return self
+        model = self._deep_copy()
+        model.model = model.model.to_greedy()
+        assert isinstance(model.model, WordPiece)
+        model.model.max_input_chars_per_word = max_input_chars_per_word
+        model = model.add_pre_tokenizer(FixedLengthPreTokenizer(length=max_input_chars_per_word))
+        return model
 
     @property
     def lowercases_input(self) -> bool:
