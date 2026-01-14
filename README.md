@@ -2,7 +2,7 @@
 <h2 align="center">
   <img width="35%" alt="A skeleton smoking a cigarette." src="https://raw.githubusercontent.com/stephantul/skeletoken/main/assets/vgogh_skeleton.jpeg"><br/>
 </h2>
-<h1 align="center"> Skeletoken </h2>
+<h1 align="center"> Skeletoken </h1>
 
 <div align="center">
   <h2>
@@ -28,11 +28,13 @@ This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels
 
 # Rationale
 
+In one sentence: Validate, edit, and transform Hugging Face tokenizers safely.
+
 The Hugging Face `tokenizers` representation does not reliably allow you to edit tokenizers as a structured object. This means that complex changes to tokenizers require you to edit the `tokenizer.json` file manually. This is annoying, because the format of this file is complicated.
 
 Furthermore, `tokenizers` does not give reasonable errors when parsing a tokenizer fails. It does give line/character numbers, but those point to the _last character_ of the section where the parsing fails. For example, inserting an illegal vocabulary item just tells you that there is an issue in the vocabulary somewhere by pointing out the last character of the vocabulary as the place where the error occurs.
 
-This package contains datamodels (pydantic Basemodels) that contain the same constraints as the `tokenizers` package. In other words, if you can create a model in this package, the `tokenizers` package can parse it. This allows you to progressively edit tokenizer json files, all the while getting productive error messages.
+This package contains datamodels (pydantic datamodels) that contain the same constraints as the `tokenizers` package. In other words, if you can create a model in this package, the `tokenizers` package can parse it. This allows you to progressively edit tokenizer json files, all the while getting productive error messages.
 
 # Installation
 
@@ -42,13 +44,24 @@ Install it via pip
 pip install skeletoken
 ```
 
+# What can it do?
+
+`skeletoken` allows you to:
+
+* validate tokenizer.json with human-readable errors
+* edit tokenizers as typed objects (Pydantic)
+* apply common transformations (decasing, greedy merges, etc.)
+* auto-fix common inconsistencies
+* round-trip to `tokenizers` and `transformers`
+* apply tokenization changes to `transformers`, `sentence-transformers` and `pylate` models.
+
 # Example
 
 Here's some examples of what skeletoken can do:
 
 ## Autofixing a tokenizer
 
-`skeletoken` autofixes any tokenizer you load. See [automatic checks](./docs/2_automatic_checks.md) to see what gets fixed automatically. For example, the [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) tokenizer has a lot of special tokens that are not part of the regular tokenizer vocabulary. This leads to a mismatch between the size of a tokenizer and the number of tokens that tokenizer can produce.
+`skeletoken` autofixes any tokenizer you load. See [automatic checks](./docs/2_automatic_checks.md) to see what gets fixed automatically. For example, the [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) tokenizer has a lot of special tokens that are not part of the regular tokenizer vocabulary. This leads to a mismatch between the size of a tokenizer and the number of tokens that tokenizer can produce. `skeletoken` adds these to the vocabulary automatically.
 
 ```python
 from transformers import AutoTokenizer
@@ -63,6 +76,7 @@ print(len(tokenizer))  # 151669
 tokenizer_model = TokenizerModel.from_pretrained("Qwen/Qwen3-0.6B")
 # Convert the tokenizer to transformers
 tokenizer = tokenizer_model.to_transformers()
+# All missing special tokens have been added to the vocabulary
 print(tokenizer.vocab_size)  # 151669
 print(len(tokenizer))  # 151669
 
@@ -144,7 +158,7 @@ print([tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 # [['Ġhell', 'ooo'], ['Ġblu', 'etooth']]
 
 model = TokenizerModel.from_pretrained(model_name)
-model.make_model_greedy()
+model = model.make_model_greedy()
 greedy_tokenizer = model.to_tokenizer()
 print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 # [['Ġhello', 'oo'], ['Ġblue', 'too', 'th']]
@@ -155,12 +169,14 @@ print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 
 Here's a rough roadmap:
 
-* ✅ Add automated lowercasing (see [blog](https://stephantul.github.io/tokenization/casing/2025/08/01/uncasing/))
+* ✅ Add automated lowercasing (see [blog](https://stephantul.github.io/blog/uncasing/))
 * ✅ Add vocabulary changes + checks (e.g., check the merge table if a token is added)
 * ✅ Add helper functions for adding modules
 * ✅ Add secondary constraints (e.g., if an `AddedToken` refers to a vocabulary item does not exist, we should crash.)
 * ✅ Add a front end for the Hugging Face trainer
 * ✅ Add automatic model editing
+* Consistent tokenizer hashing: instantly know if two tokenizers implement the same thing.
+* Add a front end for `sentencepiece` training.
 
 # License
 
