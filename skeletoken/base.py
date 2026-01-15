@@ -278,7 +278,7 @@ class TokenizerModel(BaseModel):
         self._id_remapping = mapping
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
-            self.add_normalizer(LowercaseNormalizer(), prefix=True)
+            self._add_normalizer_inplace(LowercaseNormalizer(), prefix=True)
         self._remap_added_token_ids()
 
         return self
@@ -286,26 +286,33 @@ class TokenizerModel(BaseModel):
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
         model = self._deep_copy()
-        if model.pre_tokenizer is None:
-            model.pre_tokenizer = pre_tokenizer
-        elif isinstance(model.pre_tokenizer, PreTokenizerSequence):
-            model.pre_tokenizer.pretokenizers.append(pre_tokenizer)
-        else:
-            model.pre_tokenizer = PreTokenizerSequence(pretokenizers=[model.pre_tokenizer, pre_tokenizer])
-
+        model._add_pretokenizer_inplace(pre_tokenizer)
         return model
+
+    def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
+        """Adds a pre-tokenizer to the tokenizer model in place."""
+        if self.pre_tokenizer is None:
+            self.pre_tokenizer = pre_tokenizer
+        elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
+            self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
+        else:
+            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
         model = self._deep_copy()
-        if model.post_processor is None:
-            model.post_processor = post_processor
-        elif isinstance(model.post_processor, PostProcessorSequence):
-            model.post_processor.processors.append(post_processor)
-        else:
-            model.post_processor = PostProcessorSequence(processors=[model.post_processor, post_processor])
+        model._add_post_processor_inplace(post_processor)
 
         return model
+
+    def _add_post_processor_inplace(self, post_processor: PostProcessorDiscriminator) -> None:
+        """Adds a post-processor to the tokenizer model in place."""
+        if self.post_processor is None:
+            self.post_processor = post_processor
+        elif isinstance(self.post_processor, PostProcessorSequence):
+            self.post_processor.processors.append(post_processor)
+        else:
+            self.post_processor = PostProcessorSequence(processors=[self.post_processor, post_processor])
 
     def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> TokenizerModel:
         """
@@ -327,17 +334,19 @@ class TokenizerModel(BaseModel):
 
         """
         model = self._deep_copy()
-        if model.normalizer is None:
-            model.normalizer = normalizer
-        elif isinstance(model.normalizer, NormalizerSequence):
-            model.normalizer.normalizers.append(normalizer)
+        model._add_normalizer_inplace(normalizer, prefix)
+        return model
+
+    def _add_normalizer_inplace(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
+        if self.normalizer is None:
+            self.normalizer = normalizer
+        elif isinstance(self.normalizer, NormalizerSequence):
+            self.normalizer.normalizers.append(normalizer)
         else:
             if prefix:
-                model.normalizer = NormalizerSequence(normalizers=[normalizer, model.normalizer])
+                self.normalizer = NormalizerSequence(normalizers=[normalizer, self.normalizer])
             else:
-                model.normalizer = NormalizerSequence(normalizers=[model.normalizer, normalizer])
-
-        return model
+                self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
 
     @classmethod
     def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> TokenizerModel:

@@ -344,6 +344,10 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     model = model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
     assert model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
+    if isinstance(model.normalizer, NormalizerSequence):
+        assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
+    else:
+        assert isinstance(model.normalizer, LowercaseNormalizer)
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
