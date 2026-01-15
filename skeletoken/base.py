@@ -574,7 +574,7 @@ class TokenizerModel(BaseModel):
                 )
             if model.pad_token is None:
                 logger.warning(
-                    "HuggingFace tokenizer defines a pad_token, but the Skeletoken model does not."
+                    "HuggingFace tokenizer defines a pad_token, but the Skeletoken model does not. "
                     f"Setting it to '{pad_token}'."
                 )
             model.pad_token = pad_token
