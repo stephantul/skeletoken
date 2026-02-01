@@ -506,11 +506,25 @@ class TokenizerModel(BaseModel):
         return get_eos_token_from_post_processor(self.post_processor)
 
     @property
+    def eos_ids(self) -> list[int] | None:
+        """Get the end-of-sequence tokens."""
+        if eos_tokens := self.eos:
+            return self.tokens_to_ids(eos_tokens)
+        return None
+
+    @property
     def bos(self) -> list[str] | None:
         """Get the beginning-of-sequence tokens."""
         if self.post_processor is None:
             return None
         return get_bos_token_from_post_processor(self.post_processor)
+
+    @property
+    def bos_ids(self) -> list[int] | None:
+        """Get the end-of-sequence tokens."""
+        if bos_tokens := self.bos:
+            return self.tokens_to_ids(bos_tokens)
+        return None
 
     @property
     def splits(self) -> bool:

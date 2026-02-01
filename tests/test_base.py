@@ -961,3 +961,21 @@ def test_replace_tokens_in_vocabulary(small_tokenizer_json: dict[str, Any]) -> N
     model = TokenizerModel.model_validate(small_tokenizer_json)
     with pytest.raises(ValueError):
         model.replace_tokens_in_vocabulary(["a", "b"], ["a"])
+
+
+def test_bos_ids(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test replacement length issues."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.eos is None
+    assert model.bos is None
+    assert model.eos_ids is None
+    assert model.bos_ids is None
+
+    post = BertPostProcessor(sep=("a", 0), cls=("b", 1))
+    model = model.add_post_processor(post)
+
+    assert model.eos == ["a"]
+    assert model.bos == ["b"]
+    assert model.eos_ids == [5]
+    assert model.bos_ids == [6]
