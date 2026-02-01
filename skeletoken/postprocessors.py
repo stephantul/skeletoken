@@ -100,7 +100,7 @@ class Token(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def parse_format(cls, v) -> dict:
+    def parse_format(cls, v: Any) -> dict[Any, Any]:
         """Parse either {'SpecialToken': {...}} or {'Sequence': {...}}."""
         if isinstance(v, dict):
             # Two types:
@@ -130,7 +130,7 @@ class SpecialTokenInfo(BaseModel):
     ids: list[int]
     tokens: list[str]
 
-    def model_post_init(self, __context: dict) -> None:
+    def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Validates that ids and tokens have the same length."""
         if len(self.ids) != len(self.tokens):
             logger.warning("ids and tokens must have the same length. Ids: %s, tokens: %s", self.ids, self.tokens)
@@ -146,17 +146,20 @@ class TemplatePostProcessor(BaseModel):
     pair: TokenSequence
     special_tokens: dict[str, SpecialTokenInfo]
 
-    def model_post_init(self, __context: dict) -> None:
+    def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Validates that all special tokens in single and pair are defined in special_tokens."""
         for token_name, t in self.special_tokens.items():
             if token_name != t.id:
-                raise ValueError(f"Special token name {token_name} does not match its id {t.id}.")
+                logger.warning(
+                    f"Special token name '{token_name}' does not match its id '{t.id}'. "
+                    "This leads to mismatches when inspecting the string and ids."
+                )
         num_types = _count_and_check_types(self.single, self.special_tokens)
         if num_types != 1:
-            raise ValueError("Single sequence template can only have one sequence type.")
+            logger.warning(f"Single sequence template must have exactly one sequence type, found {num_types}")
         num_types = _count_and_check_types(self.pair, self.special_tokens)
         if num_types != 2:
-            raise ValueError("Pair sequence template can only have two sequence types.")
+            logger.warning(f"Pair sequence template must have exactly two sequence types, found {num_types}")
 
 
 def _count_and_check_types(tokens: TokenSequence, special_tokens: dict[str, SpecialTokenInfo]) -> int:
@@ -168,9 +171,9 @@ def _count_and_check_types(tokens: TokenSequence, special_tokens: dict[str, Spec
             sequence_tokens += 1
             unique_types.add(token.id)
         if token.type == TokenType.SPECIAL and token.id not in special_tokens:
-            raise ValueError(f"Special token {token.id} is not defined in special_tokens.")
+            logger.warning(f"Special token {token.id} is not defined in special_tokens.")
     if sequence_tokens != len(unique_types):
-        raise ValueError("All sequence tokens must have a unique id.")
+        logger.warning("All sequence tokens must have a unique id.")
     return sequence_tokens
 
 
@@ -188,7 +191,7 @@ def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return None
     if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
         return [post_processor.cls[0]]
-    if isinstance(post_processor, TemplatePostProcessor):
+    if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
         if single_encoding[0].type != TokenType.SPECIAL:
             return None
@@ -204,7 +207,7 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return None
     if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
         return [post_processor.sep[0]]
-    if isinstance(post_processor, TemplatePostProcessor):
+    if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
         if single_encoding[-1].type != TokenType.SPECIAL:
             return None

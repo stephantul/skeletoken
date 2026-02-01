@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import re
 from enum import Enum
 from typing import Annotated, Any, Literal, overload
 
 from pydantic import BaseModel, Field, field_validator
 
-from skeletoken.common import PrependScheme, RegexPattern, StringPattern, coerce_string_regex_pattern
+from skeletoken.common import PrependScheme, RegexPattern, RegexType, StringPattern, coerce_string_regex_pattern
 
 
 class DecoderType(str, Enum):
@@ -165,7 +164,7 @@ class ReplaceDecoder(BaseModel):
 
     @field_validator("pattern", mode="before")
     @classmethod
-    def _coerce_content(cls, v: Any) -> StringPattern | RegexPattern | dict[Any, Any]:
+    def _coerce_content(cls, v: Any) -> StringPattern | RegexPattern:
         return coerce_string_regex_pattern(v)
 
     @overload
@@ -182,7 +181,7 @@ class ReplaceDecoder(BaseModel):
     def __init__(
         self,
         *,
-        pattern: re.Pattern[str],
+        pattern: RegexType,
         content: str,
         type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE,
         **data: Any,
@@ -192,7 +191,7 @@ class ReplaceDecoder(BaseModel):
     def __init__(
         self,
         *,
-        pattern: StringPattern | RegexPattern | dict[Any, Any],
+        pattern: StringPattern | RegexPattern | dict[str, str],
         content: str,
         type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE,
         **data: Any,

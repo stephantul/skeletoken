@@ -205,7 +205,7 @@ def test_parse_token() -> None:
         Token.model_validate(11)  # type: ignore[arg-type]
 
 
-def test_unequal_special_token(caplog) -> None:
+def test_unequal_special_token(caplog: Any) -> None:
     """Test that unequal special tokens are not equal."""
     with caplog.at_level(logging.WARNING):
         SpecialTokenInfo(id="A", ids=[0], tokens=["a", "b"])
@@ -214,9 +214,9 @@ def test_unequal_special_token(caplog) -> None:
     assert caplog.records[0].levelname == "WARNING"
 
 
-def test_template_incorrect_tokens() -> None:
+def test_template_missing_special_token(caplog: Any) -> None:
     """Test that incorrect tokens in template raise errors."""
-    with pytest.raises(ValueError):
+    with caplog.at_level(logging.WARNING):
         TemplatePostProcessor(
             single=(
                 Token(id="missing_special", type_id=0, type=TokenType.SPECIAL),
@@ -233,21 +233,61 @@ def test_template_incorrect_tokens() -> None:
                 "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
             },
         )
-    with pytest.raises(ValueError):
+
+    assert (
+        "WARNING  skeletoken.postprocessors:postprocessors.py:174 Special token "
+        "missing_special is not defined in special_tokens" in caplog.text
+    )
+    assert caplog.records[0].levelname == "WARNING"
+
+
+def test_template_incorrectly_named_special_token(caplog: Any) -> None:
+    """Test that incorrect tokens in template raise errors."""
+    with caplog.at_level(logging.WARNING):
         TemplatePostProcessor(
-            single=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
-            pair=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            single=(
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
+            pair=(
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
             special_tokens={
-                "special_begin": SpecialTokenInfo(id="sapcco", ids=[0], tokens=["[BEGIN]"]),
+                "special_begin": SpecialTokenInfo(id="special_missing", ids=[0], tokens=["[BEGIN]"]),
                 "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
             },
         )
 
+    assert (
+        "Special token name 'special_begin' does not match its id 'special_missing'. "
+        "This leads to mismatches when inspecting the string and ids" in caplog.text
+    )
+    assert caplog.records[0].levelname == "WARNING"
+
+
+def test_template_too_many_tokens(caplog: Any) -> None:
+    """Test whether there are too many tokens in a template."""
+    with caplog.at_level(logging.WARNING):
+        TemplatePostProcessor(
+            single=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            pair=(Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="special_begin", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            },
+        )
+
+    assert "Single sequence template must have exactly one sequence type" in caplog.text
+    assert caplog.records[0].levelname == "WARNING"
+
 
 @pytest.mark.parametrize(
-    "single,pair",
+    "single,pair,failure",
     [
-        [(), ()],
+        [(), (), "Single sequence template must have exactly one sequence type,"],
         [
             (
                 Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
@@ -259,6 +299,7 @@ def test_template_incorrect_tokens() -> None:
                 Token(id="sequence", type_id=0, type=TokenType.SEQUENCE),
                 Token(id="special_end", type_id=0, type=TokenType.SPECIAL),
             ),
+            "Pair sequence template must have exactly two sequence types,",
         ],
         [
             (
@@ -273,6 +314,7 @@ def test_template_incorrect_tokens() -> None:
                 Token(id="sequence1", type_id=0, type=TokenType.SEQUENCE),
                 Token(id="special_end", type_id=0, type=TokenType.SPECIAL),
             ),
+            "All sequence tokens must have a unique id.",
         ],
         [
             (
@@ -289,12 +331,13 @@ def test_template_incorrect_tokens() -> None:
                 Token(id="sequence3", type_id=1, type=TokenType.SEQUENCE),
                 Token(id="special_end", type_id=1, type=TokenType.SEQUENCE),
             ),
+            "Pair sequence template must have exactly two sequence types,",
         ],
     ],
 )
-def test_template_creation_failure(single: TokenSequence, pair: TokenSequence) -> None:
+def test_template_creation_failure(caplog: Any, single: TokenSequence, pair: TokenSequence, failure: str) -> None:
     """Tests incorrect template creation."""
-    with pytest.raises(ValueError):
+    with caplog.at_level(logging.WARNING):
         TemplatePostProcessor(
             single=single,
             pair=pair,
@@ -303,3 +346,6 @@ def test_template_creation_failure(single: TokenSequence, pair: TokenSequence) -
                 "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
             },
         )
+
+    assert failure in caplog.text
+    assert caplog.records[0].levelname == "WARNING"
