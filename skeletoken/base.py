@@ -283,6 +283,7 @@ class TokenizerModel(BaseModel):
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
+                token.content = self.sorted_vocabulary[remapped]
         self.pad_token = self.pad_token  # Trigger pad_token remapping
         if self.post_processor is not None:
             for added_token in self.added_tokens.root:
