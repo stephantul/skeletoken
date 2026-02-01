@@ -136,11 +136,29 @@ class TokenizerModel(BaseModel):
         rstrip: bool = True,
     ) -> TokenizerModel:
         """Adds an added token to the tokenizer model."""
+        return self.add_addedtokens([token], is_special, normalized, single_word, lstrip, rstrip)
+
+    def add_addedtokens(
+        self,
+        tokens: list[str],
+        is_special: bool = False,
+        normalized: bool = False,
+        single_word: bool = True,
+        lstrip: bool = True,
+        rstrip: bool = True,
+    ) -> TokenizerModel:
+        """Adds multiple added tokens to the tokenizer model."""
         model = self._deep_copy()
-        model._add_token_to_vocabulary(token, is_added_token=True)
-        model._turn_into_addedtoken(
-            token, is_special=is_special, normalized=normalized, single_word=single_word, lstrip=lstrip, rstrip=rstrip
-        )
+        for token in tokens:
+            model._add_token_to_vocabulary(token, is_added_token=True)
+            model._turn_into_addedtoken(
+                token,
+                is_special=is_special,
+                normalized=normalized,
+                single_word=single_word,
+                lstrip=lstrip,
+                rstrip=rstrip,
+            )
 
         return model
 
