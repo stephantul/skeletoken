@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-import re
 from enum import Enum
 from typing import Annotated, Any, Literal, overload
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
-from skeletoken.common import Behavior, PrependScheme, RegexPattern, StringPattern, coerce_string_regex_pattern
+from skeletoken.common import (
+    Behavior,
+    PrependScheme,
+    RegexPattern,
+    RegexType,
+    StringPattern,
+    coerce_string_regex_pattern,
+)
 
 
 class PreTokenizerType(str, Enum):
@@ -241,7 +247,7 @@ class SplitPreTokenizer(BasePretokenizer):
 
     @field_validator("pattern", mode="before")
     @classmethod
-    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict[Any, Any]:
+    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern:
         return coerce_string_regex_pattern(v)
 
     @overload
@@ -259,7 +265,7 @@ class SplitPreTokenizer(BasePretokenizer):
     def __init__(
         self,
         *,
-        pattern: re.Pattern[str],
+        pattern: RegexType,
         behavior: Behavior,
         invert: bool,
         type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT,
@@ -270,7 +276,7 @@ class SplitPreTokenizer(BasePretokenizer):
     def __init__(
         self,
         *,
-        pattern: StringPattern | RegexPattern | dict[Any, Any],
+        pattern: StringPattern | RegexPattern | dict[str, str],
         behavior: Behavior,
         invert: bool,
         type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT,

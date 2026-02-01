@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import regex
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 PathLike = str | Path
 RegexType = TypeVar("RegexType", re.Pattern[str], regex.Pattern[str])
@@ -13,13 +13,17 @@ RegexType = TypeVar("RegexType", re.Pattern[str], regex.Pattern[str])
 class StringPattern(BaseModel):
     """A string pattern for use in a replace."""
 
-    String: str
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    string: str = Field(alias="String")
 
 
 class RegexPattern(BaseModel):
     """A regex pattern for use in a replace."""
 
-    Regex: str
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    regex: str = Field(alias="Regex")
 
 
 Pattern = StringPattern | RegexPattern
