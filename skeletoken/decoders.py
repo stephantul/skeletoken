@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, overload
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -164,8 +165,43 @@ class ReplaceDecoder(BaseModel):
 
     @field_validator("pattern", mode="before")
     @classmethod
-    def _coerce_content(cls, v: Any) -> StringPattern | RegexPattern | dict:
+    def _coerce_content(cls, v: Any) -> StringPattern | RegexPattern | dict[Any, Any]:
         return coerce_string_regex_pattern(v)
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: str,
+        content: str,
+        type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE,
+        **data: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: re.Pattern[str],
+        content: str,
+        type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE,
+        **data: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: StringPattern | RegexPattern | dict[Any, Any],
+        content: str,
+        type: Literal[DecoderType.REPLACE] = DecoderType.REPLACE,
+        **data: Any,
+    ) -> None: ...
+
+    # Concrete implementation required by typing rules
+    def __init__(self, **data: Any) -> None:
+        """Initialize the replace decoder."""
+        super().__init__(**data)
 
 
 class StripDecoder(BaseModel):

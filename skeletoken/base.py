@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from tokenizers import Tokenizer
@@ -56,7 +56,7 @@ class TokenizerModel(BaseModel):
         """Return a deep copy of this TokenizerModel."""
         return self.model_copy(deep=True)
 
-    def model_post_init(self, __context: dict) -> None:  # noqa: C901
+    def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
         """Post-initialization processing."""
         self._original_tokenizer = self._deep_copy()
         # Add any missing added tokens to the vocabulary.
@@ -553,7 +553,7 @@ class TokenizerModel(BaseModel):
         unk_token = special_tokens.get("unk_token", None)
         pad_token = special_tokens.get("pad_token", None)
 
-        model = cls.from_tokenizer(hf_tokenizer._tokenizer)
+        model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer)
         if unk_token is not None and isinstance(unk_token, str):
             if model.unk_token is not None and model.unk_token != unk_token:
                 logger.warning(

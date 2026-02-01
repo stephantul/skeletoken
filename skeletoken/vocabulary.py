@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import PrivateAttr, RootModel
 
 
@@ -86,7 +88,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
         """Returns the vocabulary mapping sorted by token."""
         return [x[0] for x in sorted(self._vocabulary.items(), key=lambda x: x[1])]
 
-    def model_post_init(self, __context: dict) -> None:
+    def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Initializes the vocabulary."""
         tokens, scores = zip(*self.root, strict=True) if self.root else ([], [])
         self._vocabulary = {token: idx for idx, token in enumerate(tokens)}
