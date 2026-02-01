@@ -1,9 +1,13 @@
 import re
 from enum import Enum
-from typing import Any
+from pathlib import Path
+from typing import Any, TypeVar
 
 import regex
 from pydantic import BaseModel, TypeAdapter, ValidationError
+
+PathLike = str | Path
+RegexType = TypeVar("RegexType", re.Pattern[str], regex.Pattern[str])
 
 
 class StringPattern(BaseModel):
@@ -23,18 +27,18 @@ PATTERN_ADAPTOR: TypeAdapter[Pattern] = TypeAdapter(Pattern)
 
 
 def coerce_string_regex_pattern(
-    v: str | regex.Pattern[str] | re.Pattern[str] | dict[str, Any] | StringPattern | RegexPattern,
-) -> dict[str, Any] | StringPattern | RegexPattern:
+    v: str | RegexType | dict[str, Any] | StringPattern | RegexPattern,
+) -> StringPattern | RegexPattern:
     """Helper function that turns a string or regex pattern into the appropriate dict."""
     # Users can pass: str, compiled regex, or the tagged dict forms
     if isinstance(v, (StringPattern, RegexPattern)):
         return v
     if isinstance(v, str):
-        return {"String": v}
+        return StringPattern(String=v)
     if isinstance(v, (regex.Pattern, re.Pattern)):
-        return {"Regex": v.pattern}
+        return RegexPattern(Regex=v.pattern)
     try:
-        # Dict.
+        # If this is a dict (implicit)
         return PATTERN_ADAPTOR.validate_python(v)
     except ValidationError as e:
         raise TypeError(

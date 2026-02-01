@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from tokenizers import Tokenizer
@@ -24,7 +25,7 @@ def _dummy_data() -> Iterator[str]:
 
 
 @pytest.mark.parametrize("model_type", [ModelType.BPE, ModelType.UNIGRAM, ModelType.WORDPIECE])
-def test_train_calls_tokenizer_train_from_iterator(model_type: ModelType, monkeypatch) -> None:
+def test_train_calls_tokenizer_train_from_iterator(model_type: ModelType, monkeypatch: Any) -> None:
     """
     Ensure train_tokenizer calls Tokenizer.train_from_iterator with a trainer for the given model type.
 
@@ -54,9 +55,9 @@ def test_train_calls_tokenizer_train_from_iterator(model_type: ModelType, monkey
 
     tokenizer_model = TokenizerModel(model=model)
     tokenizer = tokenizer_model.to_tokenizer()
-    called: dict = {}
+    called: dict[str, Any] = {}
 
-    def fake_train_from_iterator(data: Iterator[str], trainer) -> None:
+    def fake_train_from_iterator(data: Iterator[str], trainer: Any) -> None:
         called["data"] = list(data)
         called["trainer_type"] = type(trainer).__name__
 
@@ -83,7 +84,7 @@ def test_train_unknown_model_raises() -> None:
             self.model = M()
 
             class AT:
-                def get_special_tokens(self) -> list:
+                def get_special_tokens(self) -> list[Any]:
                     return []
 
             self.added_tokens = AT()

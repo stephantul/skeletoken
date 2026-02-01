@@ -9,6 +9,7 @@ from tokenizers import Tokenizer
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
+from skeletoken.common import PathLike
 from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
@@ -40,19 +41,19 @@ class TokenizerModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     version: Literal["1.0"] = "1.0"
-    truncation: None | Truncation = None
-    padding: None | Padding = None
+    truncation: Truncation | None = None
+    padding: Padding | None = None
     added_tokens: AddedTokens = Field(default_factory=lambda: AddedTokens.model_validate([]))
-    normalizer: None | NormalizerDiscriminator = None
-    pre_tokenizer: None | PreTokenizerDiscriminator = None
-    post_processor: None | PostProcessorDiscriminator = None
-    decoder: None | DecoderDiscriminator = None
+    normalizer: NormalizerDiscriminator | None = None
+    pre_tokenizer: PreTokenizerDiscriminator | None = None
+    post_processor: PostProcessorDiscriminator | None = None
+    decoder: DecoderDiscriminator | None = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
     # Remapping from old token IDs to new token IDs after vocabulary changes.
     _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
-    _preprocessor: None | Preprocessor = None
+    _preprocessor: Preprocessor | None = None
 
     def _deep_copy(self) -> TokenizerModel:
         """Return a deep copy of this TokenizerModel."""
@@ -425,7 +426,7 @@ class TokenizerModel(BaseModel):
         return cls.from_string(tokenizer.to_str())
 
     @classmethod
-    def from_pretrained(cls: type[TokenizerModel], path_or_repo: str | Path) -> TokenizerModel:
+    def from_pretrained(cls: type[TokenizerModel], path_or_repo: PathLike) -> TokenizerModel:
         """Create a TokenizerModel from a pretrained tokenizer."""
         path = Path(path_or_repo)
         if path.exists() and path.is_dir():
@@ -445,7 +446,7 @@ class TokenizerModel(BaseModel):
         return cls._load_remote(path_or_repo)  # pragma: nocover
 
     @classmethod
-    def _load_remote(cls: type[TokenizerModel], path_or_repo: str | Path) -> TokenizerModel:  # pragma: nocover
+    def _load_remote(cls: type[TokenizerModel], path_or_repo: PathLike) -> TokenizerModel:  # pragma: nocover
         """Load a remote tokenizer from a HuggingFace repo."""
         try:
             return cls.from_transformers(str(path_or_repo))
@@ -654,7 +655,7 @@ class TokenizerModel(BaseModel):
         return model
 
     @classmethod
-    def from_transformers(cls, path: str | Path) -> TokenizerModel:  # pragma: nocover
+    def from_transformers(cls, path: PathLike) -> TokenizerModel:  # pragma: nocover
         """Load a HuggingFace tokenizer from a local path or a model repo."""
         hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
         return cls.from_transformers_tokenizer(hf_tokenizer)

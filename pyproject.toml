@@ -8,8 +8,12 @@ requires-python = ">=3.10"
 dependencies = [
     "tokenizers",
     "pydantic",
+    # For tokenizers loading
     "transformers",
+    # For tokenizers loading
     "protobuf",
+    # Transitive dependency promoted to a real one
+    "regex",
 ]
 
 [build-system]
