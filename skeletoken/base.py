@@ -279,12 +279,10 @@ class TokenizerModel(BaseModel):
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
         for token in self.added_tokens.root:
-            content = token.content
-            if content in self.model.vocab.vocabulary:
-                new_id = self.model.vocab[content]
-                if token.id != new_id:
-                    logger.info(f"Remapping ID of added token '{content}' from {token.id} to {new_id}.")
-                    token.id = new_id
+            remapped = self._id_remapping.get(token.id, token.id)
+            if token.id != remapped:
+                logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
+                token.id = remapped
         self.pad_token = self.pad_token  # Trigger pad_token remapping
         if self.post_processor is not None:
             for added_token in self.added_tokens.root:
