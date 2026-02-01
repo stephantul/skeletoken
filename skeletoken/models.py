@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -19,10 +19,13 @@ class ModelType(str, Enum):
     WORDLEVEL = "WordLevel"
 
 
-class VocabMixinMethod:
+VocabType = TypeVar("VocabType", Vocabulary, UnigramVocabulary)
+
+
+class VocabMixinMethod(Generic[VocabType]):
     """Mixin to override token addition, removal etc."""
 
-    vocab: Vocabulary | UnigramVocabulary
+    vocab: VocabType
 
     def add_token(self, token: str, is_added_token: bool = False) -> None:
         """Add a token to the vocabulary."""
@@ -45,7 +48,7 @@ class VocabMixinMethod:
         self.vocab.replace_vocabulary(vocabulary)
 
 
-class WordPiece(BaseModel, VocabMixinMethod):
+class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordPiece vocabulary."""
 
     type: Literal[ModelType.WORDPIECE] = ModelType.WORDPIECE
@@ -59,7 +62,7 @@ class WordPiece(BaseModel, VocabMixinMethod):
         return self
 
 
-class BPE(BaseModel, VocabMixinMethod):
+class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a BPE vocabulary."""
 
     type: Literal[ModelType.BPE] = ModelType.BPE
@@ -150,7 +153,7 @@ class BPE(BaseModel, VocabMixinMethod):
         self.merges.model_post_init({})
 
 
-class Unigram(BaseModel, VocabMixinMethod):
+class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
     """Data model representing a Unigram vocabulary."""
 
     type: Literal[ModelType.UNIGRAM] = ModelType.UNIGRAM
@@ -188,7 +191,7 @@ class Unigram(BaseModel, VocabMixinMethod):
             self.unk_id = self.vocab.vocabulary[token]
 
 
-class WordLevel(BaseModel, VocabMixinMethod):
+class WordLevel(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a WordLevel vocabulary."""
 
     type: Literal[ModelType.WORDLEVEL] = ModelType.WORDLEVEL

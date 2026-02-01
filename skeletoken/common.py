@@ -1,8 +1,9 @@
 import re
 from enum import Enum
+from typing import Any
 
 import regex
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 
 class StringPattern(BaseModel):
@@ -17,9 +18,13 @@ class RegexPattern(BaseModel):
     Regex: str
 
 
+Pattern = StringPattern | RegexPattern
+PATTERN_ADAPTOR: TypeAdapter[Pattern] = TypeAdapter(Pattern)
+
+
 def coerce_string_regex_pattern(
-    v: str | regex.Pattern | re.Pattern | dict | StringPattern | RegexPattern,
-) -> dict | StringPattern | RegexPattern:
+    v: str | regex.Pattern[str] | re.Pattern[str] | dict[str, Any] | StringPattern | RegexPattern,
+) -> dict[str, Any] | StringPattern | RegexPattern:
     """Helper function that turns a string or regex pattern into the appropriate dict."""
     # Users can pass: str, compiled regex, or the tagged dict forms
     if isinstance(v, (StringPattern, RegexPattern)):
@@ -28,9 +33,13 @@ def coerce_string_regex_pattern(
         return {"String": v}
     if isinstance(v, (regex.Pattern, re.Pattern)):
         return {"Regex": v.pattern}
-    if isinstance(v, dict) and (("String" in v) or ("Regex" in v)):
-        return v
-    raise TypeError("pattern must be a string, a compiled regex, or a dict like {'String': ...} / {'Regex': ...}")
+    try:
+        # Dict.
+        return PATTERN_ADAPTOR.validate_python(v)
+    except ValidationError as e:
+        raise TypeError(
+            "pattern must be a string, a compiled regex, or a dict like {'String': ...} / {'Regex': ...}"
+        ) from e
 
 
 class PrependScheme(str, Enum):

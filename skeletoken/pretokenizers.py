@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, overload
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
@@ -231,21 +232,6 @@ class SplitPreTokenizer(BasePretokenizer):
     {"Regex": my_regex}
 
     Or can be added directly as a string or a re.regex or regex.regex Pattern object.
-
-    Attributes
-    ----------
-    type : Literal[PreTokenizerType.SPLIT]
-        The type of the pretokenizer. This is always "Split".
-    pattern : StringPattern | RegexPattern
-        The pattern to split on.
-        If you use a regex, it should be a valid regex pattern.
-    behavior : Behavior
-        The behavior to use when splitting. See the docstring of Behavior
-        for the different possibilities.
-    invert : bool
-        Whether to invert the pattern. The invert is ignored when a non-Regex, i.e.,
-        a string pattern, is used.
-
     """
 
     type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT
@@ -255,8 +241,46 @@ class SplitPreTokenizer(BasePretokenizer):
 
     @field_validator("pattern", mode="before")
     @classmethod
-    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict:
+    def _coerce_pattern(cls, v: Any) -> StringPattern | RegexPattern | dict[Any, Any]:
         return coerce_string_regex_pattern(v)
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: str,
+        behavior: Behavior,
+        invert: bool,
+        type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT,
+        **data: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: re.Pattern[str],
+        behavior: Behavior,
+        invert: bool,
+        type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT,
+        **data: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        pattern: StringPattern | RegexPattern | dict[Any, Any],
+        behavior: Behavior,
+        invert: bool,
+        type: Literal[PreTokenizerType.SPLIT] = PreTokenizerType.SPLIT,
+        **data: Any,
+    ) -> None: ...
+
+    # Concrete implementation required by typing rules
+    def __init__(self, **data: Any) -> None:
+        """Initialize the split pretokenizer."""
+        super().__init__(**data)
 
 
 class WhitespacePreTokenizer(BasePretokenizer):
