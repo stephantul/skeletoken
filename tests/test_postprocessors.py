@@ -214,7 +214,7 @@ def test_unequal_special_token(caplog: Any) -> None:
     assert caplog.records[0].levelname == "WARNING"
 
 
-def test_template_incorrect_token_name(caplog: Any) -> None:
+def test_template_missing_special_token(caplog: Any) -> None:
     """Test that incorrect tokens in template raise errors."""
     with caplog.at_level(logging.WARNING):
         TemplatePostProcessor(
@@ -237,6 +237,33 @@ def test_template_incorrect_token_name(caplog: Any) -> None:
     assert (
         "WARNING  skeletoken.postprocessors:postprocessors.py:174 Special token "
         "missing_special is not defined in special_tokens" in caplog.text
+    )
+    assert caplog.records[0].levelname == "WARNING"
+
+
+def test_template_incorrectly_named_special_token(caplog: Any) -> None:
+    """Test that incorrect tokens in template raise errors."""
+    with caplog.at_level(logging.WARNING):
+        TemplatePostProcessor(
+            single=(
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
+            pair=(
+                Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
+                Token(id="sequence", type_id=2, type=TokenType.SEQUENCE),
+                Token(id="special_end", type_id=1, type=TokenType.SPECIAL),
+            ),
+            special_tokens={
+                "special_begin": SpecialTokenInfo(id="special_missing", ids=[0], tokens=["[BEGIN]"]),
+                "special_end": SpecialTokenInfo(id="special_end", ids=[1], tokens=["[END]"]),
+            },
+        )
+
+    assert (
+        "Special token name 'special_begin' does not match its id 'special_missing'. "
+        "This leads to mismatches when inspecting the string and ids" in caplog.text
     )
     assert caplog.records[0].levelname == "WARNING"
 
