@@ -31,6 +31,7 @@ from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
     from skeletoken.model_delta import ModelDelta  # pragma: nocover
+    from skeletoken.preprocessor import Preprocessor  # pragma: nocover
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ class TokenizerModel(BaseModel):
     # Remapping from old token IDs to new token IDs after vocabulary changes.
     _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
+    _preprocessor: None | Preprocessor = None
 
     def _deep_copy(self) -> TokenizerModel:
         """Return a deep copy of this TokenizerModel."""
@@ -113,6 +115,16 @@ class TokenizerModel(BaseModel):
                 )
             self.pad_token = pad_token
 
+    @property
+    def preprocessor(self) -> Preprocessor:
+        """Return a cached preprocessor."""
+        # To avoid circular import
+        from skeletoken.preprocessor import Preprocessor
+
+        if self._preprocessor is None:
+            self._preprocessor = Preprocessor.from_tokenizer_model(self)
+        return self._preprocessor
+
     def add_addedtoken(
         self,
         token: str,
@@ -156,24 +168,85 @@ class TokenizerModel(BaseModel):
             id=self.model.vocab[token],
         )
 
-    def add_token_to_vocabulary(self, token: str) -> TokenizerModel:
-        """Adds a token to the tokenizer's vocabulary."""
+    def add_tokens_to_vocabulary(self, tokens: list[str], preprocess_tokens: bool = True) -> TokenizerModel:
+        """
+        Adds multiple tokens to the vocabulary.
+
+        This can be much faster than calling `add_token_to_vocabulary` multiple times,
+        because the copy only happens once.
+        """
         model = self._deep_copy()
-        model._add_token_to_vocabulary(token, is_added_token=False)
+        if preprocess_tokens:
+            tokens = [self._preprocess_token(token) for token in tokens]
+
+        for token in tokens:
+            model._add_token_to_vocabulary(token, is_added_token=False)
 
         return model
+
+    def add_token_to_vocabulary(self, token: str, preprocess_token: bool = True) -> TokenizerModel:
+        """Adds a token to the tokenizer's vocabulary."""
+        return self.add_tokens_to_vocabulary([token], preprocess_tokens=preprocess_token)
+
+    def _preprocess_token(self, token: str) -> str:
+        """Preprocesses a token."""
+        token_list = self.preprocessor.preprocess(token)
+        if len(token_list) > 1:
+            tokens_formatted = [f" '{token}'" for token in token_list]
+            token_list_string = f"{','.join(tokens_formatted)}".strip()
+            raise ValueError(
+                f"You tried to add the token '{token}' to the vocabulary, but during preprocessing, this got split into"
+                f" the following tokens: ({token_list_string}). This token is not suitable for addition. Consider "
+                "adding it as an added token."
+            )
+        if len(token_list) == 0:
+            raise ValueError(f"The token {token} got removed during preprocessing.")
+        new_token, *_ = token_list
+
+        logger.info(f"Preprocessed '{token}' into '{new_token}'.")
+
+        return new_token
 
     def _add_token_to_vocabulary(self, token: str, is_added_token: bool = False) -> None:
         """Adds an added token to the vocabulary."""
         self.model.add_token(token, is_added_token=is_added_token)
 
-    def replace_token_in_vocabulary(self, old_token: str, new_token: str) -> TokenizerModel:
-        """Replaces a token with another one."""
+    def replace_tokens_in_vocabulary(
+        self, old_tokens: list[str], new_tokens: list[str], preprocess_tokens: bool = True
+    ) -> TokenizerModel:
+        """
+        Replaces a list of tokens with another list of tokens.
+
+        The lists need to be matched: for each index in `old_tokens`, we expect a new token in `new_tokens`.
+        The `preprocess_tokens` flag only applies to the new tokens, as the old tokens have been preprocessed already.
+
+        This can be much faster than repeated calls to `replace_token_in_vocabulary`.
+        """
         model = self._deep_copy()
-        is_added_token = model.added_tokens.get_token(old_token) is not None
-        model._replace_token_in_vocabulary(old_token, new_token, is_added_token=is_added_token)
+        if len(old_tokens) != len(new_tokens):
+            raise ValueError(
+                "The lists of tokens need to be of the same length. "
+                f"'old_tokens' is {len(old_tokens)} while 'new_tokens' is {len(new_tokens)}"
+            )
+
+        if preprocess_tokens:
+            new_tokens = [self._preprocess_token(token) for token in new_tokens]
+
+        # Strict = True is not really necessary.
+        for old_token, new_token in zip(old_tokens, new_tokens, strict=True):
+            model._replace_token_in_vocabulary(old_token, new_token)
 
         return model
+
+    def replace_token_in_vocabulary(
+        self, old_token: str, new_token: str, preprocess_token: bool = True
+    ) -> TokenizerModel:
+        """
+        Replaces a token with another one.
+
+        The `preprocess_token` flag only applies to the new tokens, as the old tokens have been preprocessed already.
+        """
+        return self.replace_tokens_in_vocabulary([old_token], [new_token], preprocess_tokens=preprocess_token)
 
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replaces a token with another one. It keeps the old index in the vocabulary."""
@@ -202,13 +275,9 @@ class TokenizerModel(BaseModel):
 
     def remove_token_from_vocabulary(self, token: str) -> TokenizerModel:
         """Removes a token from the vocabulary."""
-        model = self._deep_copy()
-        model.model.remove_token(token)
-        model.added_tokens.maybe_remove_token(token)
+        return self.remove_tokens_from_vocabulary([token])
 
-        return model
-
-    def batch_remove_tokens_from_vocabulary(self, tokens: list[str]) -> TokenizerModel:
+    def remove_tokens_from_vocabulary(self, tokens: list[str]) -> TokenizerModel:
         """
         Removes multiple tokens from the vocabulary.
 
@@ -291,6 +360,7 @@ class TokenizerModel(BaseModel):
 
     def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
         """Adds a pre-tokenizer to the tokenizer model in place."""
+        self._preprocessor = None
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
@@ -338,6 +408,7 @@ class TokenizerModel(BaseModel):
         return model
 
     def _add_normalizer_inplace(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
+        self._preprocessor = None
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):

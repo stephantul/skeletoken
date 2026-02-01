@@ -39,6 +39,7 @@ from skeletoken.pretokenizers import (
     PreTokenizerSequence,
     SplitPreTokenizer,
     StringPattern,
+    WhitespacePreTokenizer,
 )
 
 
@@ -777,7 +778,7 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
     """Test removing multiple tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     tokens_to_remove = ["a", "b", "c"]
-    model = model.batch_remove_tokens_from_vocabulary(tokens_to_remove)
+    model = model.remove_tokens_from_vocabulary(tokens_to_remove)
     for token in tokens_to_remove:
         assert token not in model.model.vocab.vocabulary
 
@@ -902,3 +903,61 @@ def test_add_pad_token_post_init_overlap(small_tokenizer_json: dict[str, Any]) -
     added_token = model.added_tokens.get_token("[ZAAAA]")
     assert added_token is not None
     assert model.pad_token_id == added_token.id
+
+
+def test_preprocessor_property(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test the preprocessor property."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model._preprocessor is None
+    preprocessor = model.preprocessor
+    assert model._preprocessor is not None
+    assert model._preprocessor is preprocessor
+
+    assert preprocessor.normalizer is None
+    assert preprocessor.pretokenizer is None
+
+    model = model.add_pre_tokenizer(WhitespacePreTokenizer())
+    assert model._preprocessor is None
+    new_preprocessor = model.preprocessor
+    assert model._preprocessor is not None
+    assert model._preprocessor is new_preprocessor
+
+    assert new_preprocessor.normalizer is None
+    assert new_preprocessor.pretokenizer is not None
+
+    model = model.add_normalizer(LowercaseNormalizer())
+    assert model._preprocessor is None
+    newer_preprocessor = model.preprocessor
+    assert model._preprocessor is not None
+    assert model._preprocessor is newer_preprocessor
+
+    assert newer_preprocessor.normalizer is not None
+    assert newer_preprocessor.pretokenizer is not None
+
+
+def test_preprocess_token(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test whether the token preprocessor works."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model._preprocessor is None
+    assert model._preprocess_token("hello") == "hello"
+    assert model._preprocessor is not None
+
+
+def test_preprocess_token_with_pretokenizer(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test whether the token preprocessor works."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    model = model.add_pre_tokenizer(WhitespacePreTokenizer())
+    assert model._preprocessor is None
+
+    with pytest.raises(ValueError):
+        model._preprocess_token("hello    beepboop")
+    with pytest.raises(ValueError):
+        model._preprocess_token("")
+    assert model._preprocessor is not None
+
+
+def test_replace_tokens_in_vocabulary(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test replacement length issues."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    with pytest.raises(ValueError):
+        model.replace_tokens_in_vocabulary(["a", "b"], ["a"])
