@@ -33,6 +33,7 @@ from skeletoken.postprocessors import (
 )
 from skeletoken.pretokenizers import (
     Behavior,
+    BertPreTokenizer,
     ByteLevelPreTokenizer,
     FixedLengthPreTokenizer,
     MetaspacePreTokenizer,
@@ -979,3 +980,26 @@ def test_bos_ids(small_tokenizer_json: dict[str, Any]) -> None:
     assert model.bos == ["b"]
     assert model.eos_ids == [5]
     assert model.bos_ids == [6]
+
+
+def test_adds_pretokenizer(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test whether the add pretokenizer is correct."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.adds_prefix_space is None
+
+    with pytest.raises(ValueError):
+        model.adds_prefix_space = True
+    bert = BertPreTokenizer()
+    model = model.add_pre_tokenizer(bert)
+    with pytest.raises(ValueError):
+        model.adds_prefix_space = True
+
+    assert model.adds_prefix_space is None
+    byt = ByteLevelPreTokenizer(add_prefix_space=False, use_regex=True, trim_offsets=True)
+    model = model.add_pre_tokenizer(byt)
+    assert not model.adds_prefix_space
+    model.adds_prefix_space = True
+    assert model.adds_prefix_space
+    # Done in place.
+    assert byt.add_prefix_space

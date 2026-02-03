@@ -23,10 +23,13 @@ from skeletoken.postprocessors import (
     maybe_replace_token_in_post_processor,
 )
 from skeletoken.pretokenizers import (
+    ByteLevelPreTokenizer,
     FixedLengthPreTokenizer,
     PreTokenizerDiscriminator,
     PreTokenizerSequence,
+    get_add_prefix_space,
     get_metaspace,
+    get_pretokenizer_of_type,
 )
 from skeletoken.truncation import Truncation
 
@@ -760,3 +763,27 @@ class TokenizerModel(BaseModel):
             return None
         assert self.padding is not None
         return self.padding.pad_id
+
+    @property
+    def adds_prefix_space(self) -> bool | None:
+        """
+        Whether the tokenizer inserts a prefix space.
+
+        This property returns a `bool` if and only if it has a BytePreTokenizer. In any other case,
+        None will be returned.
+        """
+        if self.pre_tokenizer is None:
+            return None
+        return get_add_prefix_space(self.pre_tokenizer)
+
+    @adds_prefix_space.setter
+    def adds_prefix_space(self, value: bool) -> None:
+        """Sets the prefix space."""
+        if self.pre_tokenizer is None:
+            raise ValueError("You are trying to set the prefix space, but don't have a pretokenizer.")
+        relevant_tokenizer = get_pretokenizer_of_type(self.pre_tokenizer, ByteLevelPreTokenizer)
+        if relevant_tokenizer is None:
+            raise ValueError(
+                "You are trying to set the prefix space, but your pretokenizer is not a ByteLevelPreTokenizer."
+            )
+        relevant_tokenizer.add_prefix_space = value
