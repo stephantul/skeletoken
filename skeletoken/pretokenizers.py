@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any, Literal, overload
+from typing import Annotated, Any, Literal, TypeVar, overload
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
@@ -366,4 +366,24 @@ def get_metaspace(pre_tokenizer: PreTokenizerDiscriminator) -> str | None:
                 return result
     elif isinstance(pre_tokenizer, MetaspacePreTokenizer):
         return pre_tokenizer.replacement
+    return None
+
+
+def get_add_prefix_space(pre_tokenizer: PreTokenizerDiscriminator) -> bool | None:
+    """Get the insert_prefix_space property from a pre-tokenizer."""
+    byte_pre_tokenizer = get_pretokenizer_of_type(pre_tokenizer, ByteLevelPreTokenizer)
+    return byte_pre_tokenizer.add_prefix_space if byte_pre_tokenizer else None
+
+
+T = TypeVar("T")
+
+
+def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, type: type[T]) -> T | None:
+    """Gets a pretokenizer of a specific type."""
+    if isinstance(pre_tokenizer, type):
+        return pre_tokenizer
+    elif isinstance(pre_tokenizer, PreTokenizerSequence):
+        for pt in pre_tokenizer.pretokenizers:
+            if result := get_pretokenizer_of_type(pt, type):
+                return result
     return None

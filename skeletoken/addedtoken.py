@@ -16,8 +16,7 @@ class AddedToken(BaseModel):
     content : str
         The string content of the token.
     single_word : bool
-        Indicates if the token is a single word.
-        If it is not a single word, it may be a subword or a character.
+        Indicates if the token is a single word. If it is not a single word, it may be a subword or a character.
         e.g., if single_word is False, the token could be a subword like "ing".
     lstrip : bool
         If set, the token will be stripped from the left side.
@@ -30,8 +29,8 @@ class AddedToken(BaseModel):
     special : bool
         If set, the token is a special token.
         Special tokens are skipped during decoding, and are represented as single tokens in the vocabulary.
-        Special tokens are typically used to represent specific concepts or actions,
-        such as [CLS] for classification or [SEP] for separation.
+        Special tokens are typically used to represent specific concepts or actions, such as [CLS] for classification
+        or [SEP] for separation.
     id : int
         The unique identifier for the token.
 
