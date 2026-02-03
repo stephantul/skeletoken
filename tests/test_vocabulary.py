@@ -44,6 +44,16 @@ def test_remove_token(vocab: Vocabulary | UnigramVocabulary) -> None:
 
 
 @pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
+def test_remove_tokens(vocab: Vocabulary | UnigramVocabulary) -> None:
+    """Test the vocabulary implementation."""
+    vocab.add_token("new_token")
+    assert vocab.vocabulary["new_token"] == len(vocab.vocabulary) - 1
+    assert vocab.sorted_vocabulary == ["hello", "world", "new_token"]
+    vocab.remove_tokens(vocab.sorted_vocabulary)
+    assert vocab.sorted_vocabulary == []
+
+
+@pytest.mark.parametrize("vocab", [_simple_vocabulary_fixture(), _simple_unigram_fixture()])
 def test_replace_token(vocab: Vocabulary | UnigramVocabulary) -> None:
     """Test the vocabulary implementation."""
     vocab.add_token("new_token")
