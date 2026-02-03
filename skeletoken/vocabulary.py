@@ -62,9 +62,10 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
             if token not in self.root:
                 raise ValueError(f"Token '{token}' does not exist in vocabulary.")
             self.root.pop(token)
-        # Rebuild the vocabulary to ensure indices are contiguous
-        sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]), strict=True)
-        self.root = {token: idx for idx, token in enumerate(sorted_tokens)}
+        # Rebuild the vocabulary to ensure indices are contiguous, but only if it is non-empty
+        if self.root:
+            sorted_tokens, _ = zip(*sorted(self.root.items(), key=lambda x: x[1]), strict=True)
+            self.root = {token: idx for idx, token in enumerate(sorted_tokens)}
 
     def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
         """Completely replaces the vocabulary by a vocabulary of the same length."""
