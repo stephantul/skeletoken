@@ -13,6 +13,7 @@
     <a href="https://github.com/stephantul/skeletoken/blob/main/LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-green" alt="License - MIT">
     </a>
+    <a href="https://doi.org/10.5281/zenodo.18501953"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.18501953.svg" alt="DOI"></a>
 </div>
 
 <div align="center">
@@ -185,3 +186,19 @@ MIT
 # Author
 
 Stéphan Tulkens
+
+# Citation
+
+If you use `skeletoken` in your work, please cite:
+
+```bibtex
+@software{stephan_tulkens_2026_18501953,
+  author       = {Stephan Tulkens},
+  title        = {skeletoken},
+  month        = feb,
+  year         = 2026,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.18501953},
+  url          = {https://doi.org/10.5281/zenodo.18501953},
+}
+```
