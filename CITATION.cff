@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using this metadata."
+
+title: "skeletoken"
+version: "0.x (concept DOI for all versions)"
+date-released: "2026-02-06"
+type: software
+
+authors:
+  - family-names: "Tulkens"
+    given-names: "Stephan"
+
+doi: "10.5281/zenodo.18501953"
+url: "https://doi.org/10.5281/zenodo.18501953"
+
+repository-code: "https://github.com/stephantul/skeletoken"
+license: "MIT"
