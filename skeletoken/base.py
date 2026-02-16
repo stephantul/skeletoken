@@ -58,13 +58,14 @@ class TokenizerModel(BaseModel):
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
 
-    def _deep_copy(self) -> TokenizerModel:
+    def deep_copy(self) -> TokenizerModel:
         """Return a deep copy of this TokenizerModel."""
+        self._preprocessor = None
         return self.model_copy(deep=True)
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
         """Post-initialization processing."""
-        self._original_tokenizer = self._deep_copy()
+        self._original_tokenizer = self.deep_copy()
         # Add any missing added tokens to the vocabulary.
         # Sort to fill up the vocabulary in order.
         for token in sorted(self.added_tokens.root, key=lambda x: x.id):
@@ -151,7 +152,7 @@ class TokenizerModel(BaseModel):
         rstrip: bool = True,
     ) -> TokenizerModel:
         """Add multiple added tokens to the tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         for token in tokens:
             model._add_token_to_vocabulary(token, is_added_token=True)
             model._turn_into_addedtoken(
@@ -196,7 +197,7 @@ class TokenizerModel(BaseModel):
         This can be much faster than calling `add_token_to_vocabulary` multiple times,
         because the copy only happens once.
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         if preprocess_tokens:
             tokens = [self._preprocess_token(token) for token in tokens]
 
@@ -242,7 +243,7 @@ class TokenizerModel(BaseModel):
 
         This can be much faster than repeated calls to `replace_token_in_vocabulary`.
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         if len(old_tokens) != len(new_tokens):
             raise ValueError(
                 "The lists of tokens need to be of the same length. "
@@ -313,7 +314,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with the tokens removed.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         for token in tokens:
             model.added_tokens.maybe_remove_token(token)
         model.model.remove_tokens(tokens)
@@ -329,7 +330,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with uppercase tokens removed.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         return model._decase(lower=False)
 
     def decase_vocabulary(self) -> TokenizerModel:
@@ -341,7 +342,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with a decased vocabulary.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         return model._decase(lower=True)
 
     def _decase(self, lower: bool) -> TokenizerModel:
@@ -369,7 +370,7 @@ class TokenizerModel(BaseModel):
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_pretokenizer_inplace(pre_tokenizer)
         return model
 
@@ -385,7 +386,7 @@ class TokenizerModel(BaseModel):
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_post_processor_inplace(post_processor)
 
         return model
@@ -417,7 +418,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with the added normalizer.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_normalizer_inplace(normalizer, prefix)
         return model
 
@@ -481,7 +482,7 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self, max_input_chars_per_word: int = 100) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model.model = model.model.to_greedy()
         assert isinstance(model.model, WordPiece)
         model.model.max_input_chars_per_word = max_input_chars_per_word

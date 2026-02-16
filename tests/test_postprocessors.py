@@ -23,7 +23,7 @@ from skeletoken.postprocessors import (
 
 
 def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostProcessor:  # noqa: C901
-    """Helper function to get the default instantiation of a normalizer."""
+    """Get the default instantiation of a normalizer."""
     if post_processor_type == PostProcessorType.BYTE_LEVEL:
         return ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False)
     elif post_processor_type == PostProcessorType.BERT_PROCESSING:
@@ -77,7 +77,7 @@ def test_post_processor(small_tokenizer_json: dict[str, Any], post_processor_typ
 
 
 def _get_no_eos_template() -> TemplatePostProcessor:
-    """Gets a template processor without eos."""
+    """Get a template processor without eos."""
     return TemplatePostProcessor(
         single=(
             Token(id="special_begin", type_id=0, type=TokenType.SPECIAL),
@@ -96,7 +96,7 @@ def _get_no_eos_template() -> TemplatePostProcessor:
 
 
 def _get_no_bos_template() -> TemplatePostProcessor:
-    """Gets a template processor without bos."""
+    """Get a template processor without bos."""
     return TemplatePostProcessor(
         single=(
             Token(id="sequence", type_id=0, type=TokenType.SEQUENCE),
@@ -168,10 +168,10 @@ def test_maybe_replace_token_in_post_processor(post_processor: PostProcessor, ol
     if isinstance(result, PostProcessorSequence):
         # No change, because it has a single post-processor.
         assert result == post_processor
-    if isinstance(result, (RobertaPostProcessor, BertPostProcessor)) and old_token == "[CLS]":
+    if isinstance(result, RobertaPostProcessor | BertPostProcessor) and old_token == "[CLS]":
         assert result.cls == (new_token, 11)
         assert result.sep == ("[SEP]", 1)
-    if isinstance(result, (RobertaPostProcessor, BertPostProcessor)) and old_token == "[SEP]":
+    if isinstance(result, RobertaPostProcessor | BertPostProcessor) and old_token == "[SEP]":
         assert result.cls == ("[CLS]", 0)
         assert result.sep == (new_token, 11)
     if isinstance(result, TemplatePostProcessor):

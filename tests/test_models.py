@@ -73,8 +73,7 @@ def _get_default_model(model_type: ModelType) -> Model:
 
 @pytest.mark.parametrize("model_type", [ModelType.BPE, ModelType.WORDPIECE, ModelType.UNIGRAM, ModelType.WORDLEVEL])
 def test_model(small_tokenizer_json: dict[str, Any], model_type: ModelType) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """

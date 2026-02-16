@@ -10,8 +10,7 @@ T = TypeVar("T", bound=ColBERT)
 
 
 def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
-    """
-    Reshape the embeddings of a given ColBERT model to match the vocabulary size of a tokenizer model.
+    """Reshape the embeddings of a given ColBERT model to match the vocabulary size of a tokenizer model.
 
     Parameters
     ----------
