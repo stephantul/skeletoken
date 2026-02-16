@@ -26,8 +26,7 @@ class PaddingDirection(str, Enum):
 
 
 class Padding(BaseModel):
-    """
-    The padding configuration.
+    """The padding configuration.
 
     Attributes
     ----------

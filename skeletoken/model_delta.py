@@ -4,8 +4,7 @@ from skeletoken.base import TokenizerModel
 
 
 class ModelDelta(BaseModel):
-    """
-    Represents the differences between two tokenizer models.
+    """Represents the differences between two tokenizer models.
 
     This is used to remap indices in the embedding table when loading.
 

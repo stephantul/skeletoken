@@ -58,13 +58,14 @@ class TokenizerModel(BaseModel):
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
 
-    def _deep_copy(self) -> TokenizerModel:
+    def deep_copy(self) -> TokenizerModel:
         """Return a deep copy of this TokenizerModel."""
+        self._preprocessor = None
         return self.model_copy(deep=True)
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
         """Post-initialization processing."""
-        self._original_tokenizer = self._deep_copy()
+        self._original_tokenizer = self.deep_copy()
         # Add any missing added tokens to the vocabulary.
         # Sort to fill up the vocabulary in order.
         for token in sorted(self.added_tokens.root, key=lambda x: x.id):
@@ -138,7 +139,7 @@ class TokenizerModel(BaseModel):
         lstrip: bool = True,
         rstrip: bool = True,
     ) -> TokenizerModel:
-        """Adds an added token to the tokenizer model."""
+        """Add an added token to the tokenizer model."""
         return self.add_addedtokens([token], is_special, normalized, single_word, lstrip, rstrip)
 
     def add_addedtokens(
@@ -150,8 +151,8 @@ class TokenizerModel(BaseModel):
         lstrip: bool = True,
         rstrip: bool = True,
     ) -> TokenizerModel:
-        """Adds multiple added tokens to the tokenizer model."""
-        model = self._deep_copy()
+        """Add multiple added tokens to the tokenizer model."""
+        model = self.deep_copy()
         for token in tokens:
             model._add_token_to_vocabulary(token, is_added_token=True)
             model._turn_into_addedtoken(
@@ -174,7 +175,7 @@ class TokenizerModel(BaseModel):
         lstrip: bool = True,
         rstrip: bool = True,
     ) -> None:
-        """Turns an existing token into an an added token and add it to added_tokens."""
+        """Turn an existing token into an an added token and add it to added_tokens."""
         if token not in self.model.vocab.vocabulary:
             raise ValueError(
                 f"Token '{token}' not found in the vocabulary. Please add it first using "
@@ -191,13 +192,12 @@ class TokenizerModel(BaseModel):
         )
 
     def add_tokens_to_vocabulary(self, tokens: list[str], preprocess_tokens: bool = True) -> TokenizerModel:
-        """
-        Adds multiple tokens to the vocabulary.
+        """Add multiple tokens to the vocabulary.
 
         This can be much faster than calling `add_token_to_vocabulary` multiple times,
         because the copy only happens once.
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         if preprocess_tokens:
             tokens = [self._preprocess_token(token) for token in tokens]
 
@@ -207,7 +207,7 @@ class TokenizerModel(BaseModel):
         return model
 
     def add_token_to_vocabulary(self, token: str, preprocess_token: bool = True) -> TokenizerModel:
-        """Adds a token to the tokenizer's vocabulary."""
+        """Add a token to the tokenizer's vocabulary."""
         return self.add_tokens_to_vocabulary([token], preprocess_tokens=preprocess_token)
 
     def _preprocess_token(self, token: str) -> str:
@@ -230,21 +230,20 @@ class TokenizerModel(BaseModel):
         return new_token
 
     def _add_token_to_vocabulary(self, token: str, is_added_token: bool = False) -> None:
-        """Adds an added token to the vocabulary."""
+        """Add an added token to the vocabulary."""
         self.model.add_token(token, is_added_token=is_added_token)
 
     def replace_tokens_in_vocabulary(
         self, old_tokens: list[str], new_tokens: list[str], preprocess_tokens: bool = True
     ) -> TokenizerModel:
-        """
-        Replaces a list of tokens with another list of tokens.
+        """Replace a list of tokens with another list of tokens.
 
         The lists need to be matched: for each index in `old_tokens`, we expect a new token in `new_tokens`.
         The `preprocess_tokens` flag only applies to the new tokens, as the old tokens have been preprocessed already.
 
         This can be much faster than repeated calls to `replace_token_in_vocabulary`.
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         if len(old_tokens) != len(new_tokens):
             raise ValueError(
                 "The lists of tokens need to be of the same length. "
@@ -263,15 +262,14 @@ class TokenizerModel(BaseModel):
     def replace_token_in_vocabulary(
         self, old_token: str, new_token: str, preprocess_token: bool = True
     ) -> TokenizerModel:
-        """
-        Replaces a token with another one.
+        """Replace a token with another one.
 
         The `preprocess_token` flag only applies to the new tokens, as the old tokens have been preprocessed already.
         """
         return self.replace_tokens_in_vocabulary([old_token], [new_token], preprocess_tokens=preprocess_token)
 
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
-        """Replaces a token with another one. It keeps the old index in the vocabulary."""
+        """Replace a token with another one. It keeps the old index in the vocabulary."""
         self.model.replace_token(old_token, new_token, is_added_token=is_added_token)
         self.added_tokens.maybe_replace_token(old_token, new_token)
         if self.post_processor is not None:
@@ -295,12 +293,11 @@ class TokenizerModel(BaseModel):
                 )
 
     def remove_token_from_vocabulary(self, token: str) -> TokenizerModel:
-        """Removes a token from the vocabulary."""
+        """Remove a token from the vocabulary."""
         return self.remove_tokens_from_vocabulary([token])
 
     def remove_tokens_from_vocabulary(self, tokens: list[str]) -> TokenizerModel:
-        """
-        Removes multiple tokens from the vocabulary.
+        """Remove multiple tokens from the vocabulary.
 
         This is a convenience method that removes tokens from the vocabulary.
         Because removal requires compactifying the original vocabulary, this is more
@@ -317,7 +314,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with the tokens removed.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         for token in tokens:
             model.added_tokens.maybe_remove_token(token)
         model.model.remove_tokens(tokens)
@@ -325,8 +322,7 @@ class TokenizerModel(BaseModel):
         return model
 
     def remove_uppercase(self) -> TokenizerModel:
-        """
-        Remove all uppercase tokens from the vocabulary.
+        """Remove all uppercase tokens from the vocabulary.
 
         Returns
         -------
@@ -334,12 +330,11 @@ class TokenizerModel(BaseModel):
             The tokenizer model with uppercase tokens removed.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         return model._decase(lower=False)
 
     def decase_vocabulary(self) -> TokenizerModel:
-        """
-        Decases the vocabulary.
+        """Decases the vocabulary.
 
         Returns
         -------
@@ -347,7 +342,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with a decased vocabulary.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         return model._decase(lower=True)
 
     def _decase(self, lower: bool) -> TokenizerModel:
@@ -375,12 +370,12 @@ class TokenizerModel(BaseModel):
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_pretokenizer_inplace(pre_tokenizer)
         return model
 
     def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
-        """Adds a pre-tokenizer to the tokenizer model in place."""
+        """Add a pre-tokenizer to the tokenizer model in place."""
         self._preprocessor = None
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
@@ -391,13 +386,13 @@ class TokenizerModel(BaseModel):
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_post_processor_inplace(post_processor)
 
         return model
 
     def _add_post_processor_inplace(self, post_processor: PostProcessorDiscriminator) -> None:
-        """Adds a post-processor to the tokenizer model in place."""
+        """Add a post-processor to the tokenizer model in place."""
         if self.post_processor is None:
             self.post_processor = post_processor
         elif isinstance(self.post_processor, PostProcessorSequence):
@@ -406,8 +401,7 @@ class TokenizerModel(BaseModel):
             self.post_processor = PostProcessorSequence(processors=[self.post_processor, post_processor])
 
     def add_normalizer(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> TokenizerModel:
-        """
-        Add a normalizer to the tokenizer model.
+        """Add a normalizer to the tokenizer model.
 
         Parameters
         ----------
@@ -424,7 +418,7 @@ class TokenizerModel(BaseModel):
             The tokenizer model with the added normalizer.
 
         """
-        model = self._deep_copy()
+        model = self.deep_copy()
         model._add_normalizer_inplace(normalizer, prefix)
         return model
 
@@ -488,7 +482,7 @@ class TokenizerModel(BaseModel):
 
     def make_model_greedy(self, max_input_chars_per_word: int = 100) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
-        model = self._deep_copy()
+        model = self.deep_copy()
         model.model = model.model.to_greedy()
         assert isinstance(model.model, WordPiece)
         model.model.max_input_chars_per_word = max_input_chars_per_word
@@ -502,8 +496,7 @@ class TokenizerModel(BaseModel):
 
     @property
     def transforms_into_bytes(self) -> bool:
-        """
-        Check if the tokenizer transforms the input into bytes.
+        """Check if the tokenizer transforms the input into bytes.
 
         There's two ways this can happen:
             1. If the pretokenizer is a ByteLevelPreTokenizer.
@@ -766,8 +759,7 @@ class TokenizerModel(BaseModel):
 
     @property
     def adds_prefix_space(self) -> bool | None:
-        """
-        Whether the tokenizer inserts a prefix space.
+        """Return True if the tokenizer insertsa prefix space.
 
         This property returns a `bool` if and only if it has a BytePreTokenizer. In any other case,
         None will be returned.
@@ -778,7 +770,7 @@ class TokenizerModel(BaseModel):
 
     @adds_prefix_space.setter
     def adds_prefix_space(self, value: bool) -> None:
-        """Sets the prefix space."""
+        """Set the prefix space."""
         if self.pre_tokenizer is None:
             raise ValueError("You are trying to set the prefix space, but don't have a pretokenizer.")
         relevant_tokenizer = get_pretokenizer_of_type(self.pre_tokenizer, ByteLevelPreTokenizer)

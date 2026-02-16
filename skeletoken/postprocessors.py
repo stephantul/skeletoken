@@ -25,8 +25,7 @@ class PostProcessorSequence(BaseModel):
 
 
 class BertPostProcessor(BaseModel):
-    """
-    The BERT postprocessor.
+    """The BERT postprocessor.
 
     This adds the SEP and CLS tokens to the sequence.
     Note that this processor is actually never used, even BERT uses
@@ -58,8 +57,7 @@ class ByteLevelPostProcessor(BaseModel):
 
 
 class RobertaPostProcessor(BaseModel):
-    """
-    The RoBERTa postprocessor.
+    """The RoBERTa postprocessor.
 
     This adds the SEP and CLS tokens to the sequence.
     Note that this processor is actually never used, even RoBERTa uses
@@ -118,7 +116,7 @@ class Token(BaseModel):
 
     @model_serializer
     def serializer(self, info: SerializationInfo) -> dict[str, Any]:
-        """Serialization to either {'SpecialToken': {...}} or {'Sequence': {...}}."""
+        """Serialize to either {'SpecialToken': {...}} or {'Sequence': {...}}."""
         data = {"id": self.id, "type_id": self.type_id}
         return {self.type: data}
 
@@ -131,7 +129,7 @@ class SpecialTokenInfo(BaseModel):
     tokens: list[str]
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
-        """Validates that ids and tokens have the same length."""
+        """Validate that ids and tokens have the same length."""
         if len(self.ids) != len(self.tokens):
             logger.warning("ids and tokens must have the same length. Ids: %s, tokens: %s", self.ids, self.tokens)
 
@@ -147,7 +145,7 @@ class TemplatePostProcessor(BaseModel):
     special_tokens: dict[str, SpecialTokenInfo]
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
-        """Validates that all special tokens in single and pair are defined in special_tokens."""
+        """Validate that all special tokens in single and pair are defined in special_tokens."""
         for token_name, t in self.special_tokens.items():
             if token_name != t.id:
                 logger.warning(
@@ -189,7 +187,7 @@ def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return None
     if isinstance(post_processor, ByteLevelPostProcessor):
         return None
-    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+    if isinstance(post_processor, RobertaPostProcessor | BertPostProcessor):
         return [post_processor.cls[0]]
     if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
@@ -205,7 +203,7 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return None
     if isinstance(post_processor, ByteLevelPostProcessor):
         return None
-    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+    if isinstance(post_processor, RobertaPostProcessor | BertPostProcessor):
         return [post_processor.sep[0]]
     if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
@@ -218,8 +216,7 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
 def maybe_replace_token_in_post_processor(
     old_token: str, new_token: str, index: int, post_processor: PostProcessorDiscriminator
 ) -> PostProcessor:
-    """
-    Replace a token in a post-processor, if it exists.
+    """Replace a token in a post-processor, if it exists.
 
     Parameters
     ----------
@@ -248,7 +245,7 @@ def maybe_replace_token_in_post_processor(
     if isinstance(post_processor, ByteLevelPostProcessor):
         # Has no tokens.
         return post_processor
-    if isinstance(post_processor, (RobertaPostProcessor, BertPostProcessor)):
+    if isinstance(post_processor, RobertaPostProcessor | BertPostProcessor):
         # cls and sep can be the same token.
         if old_token == post_processor.cls[0]:
             post_processor.cls = (new_token, index)

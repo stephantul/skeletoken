@@ -33,13 +33,13 @@ PATTERN_ADAPTOR: TypeAdapter[Pattern] = TypeAdapter(Pattern)
 def coerce_string_regex_pattern(
     v: str | RegexType | dict[str, Any] | StringPattern | RegexPattern,
 ) -> StringPattern | RegexPattern:
-    """Helper function that turns a string or regex pattern into the appropriate dict."""
+    """Turn a string or regex pattern into the appropriate dict."""
     # Users can pass: str, compiled regex, or the tagged dict forms
-    if isinstance(v, (StringPattern, RegexPattern)):
+    if isinstance(v, StringPattern | RegexPattern):
         return v
     if isinstance(v, str):
         return StringPattern(String=v)
-    if isinstance(v, (regex.Pattern, re.Pattern)):
+    if isinstance(v, regex.Pattern | re.Pattern):
         return RegexPattern(Regex=v.pattern)
     try:
         # If this is a dict (implicit)
@@ -51,8 +51,7 @@ def coerce_string_regex_pattern(
 
 
 class PrependScheme(str, Enum):
-    """
-    The prepend scheme used in metaspace tokenizers.
+    """The prepend scheme used in metaspace tokenizers.
 
     This enum governs the behavior of the metaspace prepend.
 
@@ -69,8 +68,7 @@ class PrependScheme(str, Enum):
 
 
 class Behavior(str, Enum):
-    """
-    Behavior for split.
+    """Behavior for split.
 
     For pattern "a", the behavior is as follows:
 
