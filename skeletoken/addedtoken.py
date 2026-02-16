@@ -2,8 +2,7 @@ from pydantic import BaseModel, RootModel
 
 
 class AddedToken(BaseModel):
-    """
-    Represents an added token in a tokenizer.
+    """Represents an added token in a tokenizer.
 
     An added token can be a special token or a regular token that is not necessarily part of the original vocabulary.
     Note that AddedToken can be used to represent multiword units. For example, a token like

@@ -15,8 +15,7 @@ class TruncationStrategy(str, Enum):
 
 
 class Truncation(BaseModel):
-    """
-    Defines a truncation strategy to use.
+    """Defines a truncation strategy to use.
 
     Attributes
     ----------

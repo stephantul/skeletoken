@@ -60,8 +60,7 @@ def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostPr
 
 @pytest.mark.parametrize("post_processor_type", [PostProcessorType.BYTE_LEVEL, PostProcessorType.BERT_PROCESSING])
 def test_post_processor(small_tokenizer_json: dict[str, Any], post_processor_type: PostProcessorType) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """
@@ -234,10 +233,7 @@ def test_template_missing_special_token(caplog: Any) -> None:
             },
         )
 
-    assert (
-        "WARNING  skeletoken.postprocessors:postprocessors.py:174 Special token "
-        "missing_special is not defined in special_tokens" in caplog.text
-    )
+    assert "Special token missing_special is not defined in special_tokens" in caplog.text
     assert caplog.records[0].levelname == "WARNING"
 
 

@@ -58,7 +58,7 @@ ignore = [
     # Allow self and cls to be untyped, and allow Any type
     "ANN001", "ANN002", "ANN401",
     # Pydocstyle ignores
-    "D100", "D101", "D104", "D203", "D212", "D401",
+    "D100", "D101", "D104", "D203", "D213", "D401",
     # Allow use of f-strings in logging
     "G004"
 ]

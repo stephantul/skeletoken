@@ -2,7 +2,7 @@
 
 
 def bytes_to_unicode() -> dict[int, str]:
-    """Converts byte values to Unicode characters for byte-level tokenization."""
+    """Convert byte values to Unicode characters for byte-level tokenization."""
     input_ids = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
     output_ids = input_ids[:]
     n = 0

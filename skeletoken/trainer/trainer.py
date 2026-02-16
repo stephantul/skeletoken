@@ -9,7 +9,7 @@ from skeletoken.models import BPE, ModelType, Unigram, WordPiece
 
 
 def _convert_to_added_tokens(tokens: list[AddedToken]) -> list[TokenizersAddedToken]:
-    """Converts a list of strings to a list of AddedToken objects."""
+    """Convert a list of strings to a list of AddedToken objects."""
     return [
         TokenizersAddedToken(
             content=token.content, single_word=token.single_word, lstrip=token.lstrip, rstrip=token.rstrip
@@ -19,8 +19,7 @@ def _convert_to_added_tokens(tokens: list[AddedToken]) -> list[TokenizersAddedTo
 
 
 def train_tokenizer(model: TokenizerModel, data: Iterator[str], vocab_size: int) -> TokenizerModel:
-    """
-    Trains the tokenizer model on the provided data.
+    """Trains the tokenizer model on the provided data.
 
     Parameters
     ----------

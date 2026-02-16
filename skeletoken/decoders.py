@@ -29,8 +29,7 @@ class DecoderSequence(BaseModel):
 
 
 class BPEDecoder(BaseModel):
-    """
-    A legacy BPE decoder.
+    """A legacy BPE decoder.
 
     The `suffix` is used to determine the end of a BPE token.
     For example, if the suffix is "a", then "baba" will be decoded as "bb".
@@ -49,8 +48,7 @@ class BPEDecoder(BaseModel):
 
 
 class ByteFallbackDecoder(BaseModel):
-    """
-    A ByteFallback decoder is used to handle byte-level tokens.
+    """A ByteFallback decoder is used to handle byte-level tokens.
 
     It acts as a fallback for weird bytes, and replaces them with �, much like
     'utf-8' decoding does.
@@ -61,8 +59,7 @@ class ByteFallbackDecoder(BaseModel):
 
 
 class ByteLevelDecoder(BaseModel):
-    """
-    A ByteLevel decoder is used for byte-level tokenization.
+    """A ByteLevel decoder is used for byte-level tokenization.
 
     This decoder implements the inverse of the ByteLevel pretokenizer.
 
@@ -88,8 +85,7 @@ class ByteLevelDecoder(BaseModel):
 
 
 class CTCDecoder(BaseModel):
-    """
-    A CTC decoder is used for connectionist temporal classification.
+    """A CTC decoder is used for connectionist temporal classification.
 
     It removes any contiguous duplicates, e.g., "hh_ee_ll_ll_oo" -> "hello",
     and removes the padding token, e.g., "h h _ e e l l l _ o o" -> "hello".
@@ -115,8 +111,7 @@ class CTCDecoder(BaseModel):
 
 
 class FuseDecoder(BaseModel):
-    """
-    A Fuse decoder just merges tokens.
+    """A Fuse decoder just merges tokens.
 
     e.g., "un" + "known" -> "unknown"
 
@@ -126,8 +121,7 @@ class FuseDecoder(BaseModel):
 
 
 class MetaspaceDecoder(BaseModel):
-    """
-    A Metaspace decoder is used for metaspace tokenization.
+    """A Metaspace decoder is used for metaspace tokenization.
 
     This decoder inverts the metaspace tokenization process.
 
@@ -151,8 +145,7 @@ class MetaspaceDecoder(BaseModel):
 
 
 class ReplaceDecoder(BaseModel):
-    """
-    A Replace decoder replaces a pattern in the input text with a given content.
+    """A Replace decoder replaces a pattern in the input text with a given content.
 
     It can be seen as the inverse of the Replace pretokenizer, but doesn't need to be the exact inverse.
 
@@ -204,8 +197,7 @@ class ReplaceDecoder(BaseModel):
 
 
 class StripDecoder(BaseModel):
-    """
-    A Strip decoder strips characters from the input text.
+    """A Strip decoder strips characters from the input text.
 
     This decoder removes a specific content from the start and/or end of the input text.
     The start and stop indices are used to determine where to strip the content.
@@ -234,8 +226,7 @@ class StripDecoder(BaseModel):
 
 
 class WordPieceDecoder(BaseModel):
-    """
-    A WordPiece decoder is used for WordPiece tokenization.
+    """A WordPiece decoder is used for WordPiece tokenization.
 
     This decoder implements the inverse of the WordPiece pretokenizer.
 

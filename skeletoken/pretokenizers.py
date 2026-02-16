@@ -57,8 +57,7 @@ class BasePretokenizer(BaseModel):
 
 
 class BertPreTokenizer(BasePretokenizer):
-    """
-    The BERT pretokenizer.
+    """The BERT pretokenizer.
 
     This pretokenizer splits on spaces and punctuation.
     Each occurrence of a punctuation character counts separately,
@@ -77,8 +76,7 @@ class BertPreTokenizer(BasePretokenizer):
 
 
 class ByteLevelPreTokenizer(BasePretokenizer):
-    """
-    The pretokenizer used for BPE.
+    """The pretokenizer used for BPE.
 
     This pretokenizer converts your input text into a sequence of byte-level tokens.
     These byte level tokens are not exactly the standard byte ranges, but a remapped
@@ -116,8 +114,7 @@ class ByteLevelPreTokenizer(BasePretokenizer):
 
 
 class CharDelimiterSplitPreTokenizer(BasePretokenizer):
-    """
-    Pretokenizes on a specific delimiter.
+    """Pretokenizes on a specific delimiter.
 
     The delimiter should be a single character, and can't be a regular expression.
 
@@ -135,8 +132,7 @@ class CharDelimiterSplitPreTokenizer(BasePretokenizer):
 
 
 class DigitsPreTokenizer(BasePretokenizer):
-    """
-    Split on digits.
+    """Split on digits.
 
     This tokenizer splits digits, and possibly sequences of digits, into tokens.
 
@@ -156,8 +152,7 @@ class DigitsPreTokenizer(BasePretokenizer):
 
 
 class FixedLengthPreTokenizer(BasePretokenizer):
-    """
-    Pretokenizes into fixed length sequences.
+    """Pretokenizes into fixed length sequences.
 
     Attributes
     ----------
@@ -173,8 +168,7 @@ class FixedLengthPreTokenizer(BasePretokenizer):
 
 
 class MetaspacePreTokenizer(BasePretokenizer):
-    """
-    The metaspace pretokenizer.
+    """The metaspace pretokenizer.
 
     This tokenizer replaces the space character by a single character. This is usually
     `▁` (U+2581).
@@ -208,8 +202,7 @@ class MetaspacePreTokenizer(BasePretokenizer):
 
 
 class PunctuationPreTokenizer(BasePretokenizer):
-    """
-    Splits on punctuation, e.g., most punctuation characters.
+    """Splits on punctuation, e.g., most punctuation characters.
 
     Note that the behavior for this is weird for unicode punctuation.
 
@@ -227,8 +220,7 @@ class PunctuationPreTokenizer(BasePretokenizer):
 
 
 class SplitPreTokenizer(BasePretokenizer):
-    """
-    Split a sequence on a specified pattern.
+    """Split a sequence on a specified pattern.
 
     The specified pattern can either be a regex or a string. The string and regex
     can be specified as follows:
@@ -290,8 +282,7 @@ class SplitPreTokenizer(BasePretokenizer):
 
 
 class WhitespacePreTokenizer(BasePretokenizer):
-    r"""
-    Splits using the following regex: "\w+|[^\w\s]+".
+    r"""Splits using the following regex: "\w+|[^\w\s]+".
 
     This can be seen as a standard word-based splitter, very similar to the
     one used in older tokenizers.
@@ -302,8 +293,7 @@ class WhitespacePreTokenizer(BasePretokenizer):
 
 
 class WhitespaceSplitPreTokenizer(BasePretokenizer):
-    """
-    Literally only splits on whitespace.
+    """Literally only splits on whitespace.
 
     This isn't really desirable, and can be considered a variant of CharDelimiterSplit.
 
@@ -318,8 +308,7 @@ class WhitespaceSplitPreTokenizer(BasePretokenizer):
 
 
 class UnicodeScriptsPreTokenizer(BasePretokenizer):
-    """
-    Splits when encountering a new Unicode script.
+    """Splits when encountering a new Unicode script.
 
     This is interesting when training multilingual tokenizers, because this guarantees
     that the tokenizer will split on script and language boundaries.
@@ -379,7 +368,7 @@ T = TypeVar("T")
 
 
 def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, type: type[T]) -> T | None:
-    """Gets a pretokenizer of a specific type."""
+    """Get a pretokenizer of a specific type."""
     if isinstance(pre_tokenizer, type):
         return pre_tokenizer
     elif isinstance(pre_tokenizer, PreTokenizerSequence):

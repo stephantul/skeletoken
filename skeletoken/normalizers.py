@@ -61,8 +61,7 @@ class NormalizerSequence(BaseModel):
 
 
 class NFCNormalizer(BaseNormalizer):
-    """
-    Applies NFC normalization to the input text.
+    """Applies NFC normalization to the input text.
 
     See here for more details:
     https://unicode.org/reports/tr15/#Normalization_Forms
@@ -73,8 +72,7 @@ class NFCNormalizer(BaseNormalizer):
 
 
 class NFDNormalizer(BaseNormalizer):
-    """
-    Applies NFD normalization to the input text.
+    """Applies NFD normalization to the input text.
 
     See here for more details:
     https://unicode.org/reports/tr15/#Normalization_Forms
@@ -85,8 +83,7 @@ class NFDNormalizer(BaseNormalizer):
 
 
 class NFKCNormalizer(BaseNormalizer):
-    """
-    Applies NFKC normalization to the input text.
+    """Applies NFKC normalization to the input text.
 
     See here for more details:
     https://unicode.org/reports/tr15/#Normalization_Forms
@@ -97,8 +94,7 @@ class NFKCNormalizer(BaseNormalizer):
 
 
 class NFKDNormalizer(BaseNormalizer):
-    """
-    Applies NFKD normalization to the input text.
+    """Applies NFKD normalization to the input text.
 
     See here for more details:
     https://unicode.org/reports/tr15/#Normalization_Forms
@@ -109,8 +105,7 @@ class NFKDNormalizer(BaseNormalizer):
 
 
 class BertNormalizer(BaseNormalizer):
-    """
-    The normalization used by the original BERT.
+    """The normalization used by the original BERT.
 
     Attributes
     ----------
@@ -140,8 +135,7 @@ class BertNormalizer(BaseNormalizer):
 
 
 class ByteLevelNormalizer(BaseNormalizer):
-    """
-    Applies byte-level normalization to the input text.
+    """Applies byte-level normalization to the input text.
 
     This normalizer applies the same transformations as the ByteLevel pretokenizer.
     Using this normalizer and adding a regex split pretokenizer is equivalent to using the ByteLevel pretokenizer.
@@ -160,8 +154,7 @@ class LowercaseNormalizer(BaseNormalizer):
 
 
 class NmtNormalizer(BaseNormalizer):
-    """
-    A normalizer that removes specific codepoints.
+    """A normalizer that removes specific codepoints.
 
     The codepoints:
         0x0001..=0x0008 -> Control characters SOH to BS
@@ -193,8 +186,7 @@ class NmtNormalizer(BaseNormalizer):
 
 
 class PrependNormalizer(BaseNormalizer):
-    """
-    Prepends a string to the input text.
+    """Prepends a string to the input text.
 
     Attributes
     ----------
@@ -210,8 +202,7 @@ class PrependNormalizer(BaseNormalizer):
 
 
 class StripNormalizer(BaseNormalizer):
-    """
-    Strips whitespace from the left and/or right side of the input text.
+    """Strips whitespace from the left and/or right side of the input text.
 
     Attributes
     ----------
@@ -284,8 +275,7 @@ class ReplaceNormalizer(BaseNormalizer):
 
 
 class PrecompiledNormalizer(BaseNormalizer):
-    """
-    A precompiled normalizer that uses a precompiled characters map.
+    """A precompiled normalizer that uses a precompiled characters map.
 
     NOTE: It is unclear how this is constructed, and is mainly here for compatibility with sentencepiece
 

@@ -9,8 +9,7 @@ T = TypeVar("T", bound=PreTrainedModel)
 
 
 def _remap_embeddings(embeddings: torch.Tensor, shift_mapping: dict[int, int]) -> torch.Tensor:
-    """
-    Remap the embeddings according to the provided shift mapping.
+    """Remap the embeddings according to the provided shift mapping.
 
     Parameters
     ----------
@@ -38,8 +37,7 @@ def _remap_embeddings(embeddings: torch.Tensor, shift_mapping: dict[int, int]) -
 
 
 def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
-    """
-    Reshape the embeddings of a given model to match the vocabulary size of a tokenizer model.
+    """Reshape the embeddings of a given model to match the vocabulary size of a tokenizer model.
 
     Parameters
     ----------
