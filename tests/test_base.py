@@ -18,6 +18,7 @@ from skeletoken.normalizers import (
     NFKCNormalizer,
     Normalizer,
     NormalizerSequence,
+    ReplaceNormalizer,
 )
 from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
@@ -636,6 +637,18 @@ def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> N
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
+
+
+def test_deep_copy(small_tokenizer: Tokenizer) -> None:
+    """Test that deep copying doesn't crash."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_normalizer(ReplaceNormalizer(pattern="hello", content="yello"))
+    prep = model.preprocessor
+    assert prep.normalizer is not None
+    # This should not crash. It used to crash before
+    copied_model = model.deep_copy()
+    assert model._preprocessor is None
+    assert copied_model._preprocessor is None
 
 
 def test_model_delta(small_tokenizer: Tokenizer) -> None:
