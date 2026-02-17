@@ -1,3 +1,4 @@
+import json
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -1016,3 +1017,12 @@ def test_adds_pretokenizer(small_tokenizer_json: dict[str, Any]) -> None:
     assert model.adds_prefix_space
     # Done in place.
     assert byt.add_prefix_space
+
+
+def test_load_with_added(small_tokenizer_json: dict[str, Any]) -> None:
+    """Tests whether added tokens are added to the vocabulary when loading."""
+    json_data = json.dumps(small_tokenizer_json)
+    model = TokenizerModel.from_string(json_data)
+    assert "f" in model.sorted_vocabulary
+    model = TokenizerModel.from_string(json_data, add_tokens=False)
+    assert "f" not in model.sorted_vocabulary
