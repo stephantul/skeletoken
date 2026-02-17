@@ -446,7 +446,7 @@ class TokenizerModel(BaseModel):
     @classmethod
     def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer, add_tokens: bool = True) -> TokenizerModel:
         """Create a TokenizerModel from a Tokenizer instance."""
-        return cls.from_string(tokenizer.to_str())
+        return cls.from_string(tokenizer.to_str(), add_tokens=add_tokens)
 
     @classmethod
     def from_pretrained(cls: type[TokenizerModel], path_or_repo: PathLike, add_tokens: bool = True) -> TokenizerModel:
