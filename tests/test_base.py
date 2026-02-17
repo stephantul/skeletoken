@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -234,7 +235,13 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert isinstance(model.added_tokens, AddedTokens)
         assert model.normalizer is None
         assert model.pre_tokenizer is None
-        assert model.post_processor is None
+        try:
+            assert model.post_processor is None
+        except AssertionError:
+            print("\n=== File contents ===")  # noqa: T201
+            print(Path(f"{temp_dir}/tokenizer.json").read_text())  # noqa: T201
+            print("=====================\n")  # noqa: T201
+            raise
         assert model.decoder is None
 
 
