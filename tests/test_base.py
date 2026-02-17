@@ -214,7 +214,8 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
 
     with TemporaryDirectory() as temp_dir:
         small_tokenizer.save(f"{temp_dir}/tokenizer.json")
-        model = TokenizerModel.from_pretrained(temp_dir)
+
+        model = TokenizerModel.from_pretrained(f"{temp_dir}/tokenizer.json")
 
         assert model.version == "1.0"
         assert model.model is not None
@@ -225,7 +226,7 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert model.post_processor is None
         assert model.decoder is None
 
-        model = TokenizerModel.from_pretrained(f"{temp_dir}/tokenizer.json")
+        model = TokenizerModel.from_pretrained(temp_dir)
 
         assert model.version == "1.0"
         assert model.model is not None

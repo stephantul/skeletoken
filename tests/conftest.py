@@ -10,12 +10,12 @@ from skeletoken.merges import Merges
 
 
 def _get_path(name: str) -> Path:
-    """Gets the path to a test resource."""
+    """Get the path to a test resource."""
     return Path("tests") / "data" / name
 
 
 def _get_tokenizers_path(name: str) -> str:
-    """Gets the path to a test tokenizer resource."""
+    """Get the path to a test tokenizer resource."""
     return str(_get_path(name) / "tokenizer.json")
 
 
@@ -23,7 +23,7 @@ def _get_tokenizers_path(name: str) -> str:
 def small_tokenizer_json(request: FixtureRequest) -> dict[str, Any]:
     """Load an extremely small tokenizer for testing purposes."""
     name = getattr(request, "param", None) or "wordpiece"
-    return json.load(open(_get_tokenizers_path(name), "r", encoding="utf-8"))
+    return json.load(open(_get_tokenizers_path(name), encoding="utf-8"))
 
 
 @fixture(scope="function")
