@@ -66,11 +66,6 @@ class TokenizerModel(BaseModel):
     def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
         """Post-initialization processing."""
         # Helper for context. To be consolidated somewhere
-        if not __context:
-            add_tokens = True
-        else:
-            add_tokens = bool(__context.get("add_tokens"))
-
         self._original_tokenizer = self.deep_copy()
         # Add any missing added tokens to the vocabulary.
         # Sort to fill up the vocabulary in order.
@@ -78,7 +73,7 @@ class TokenizerModel(BaseModel):
             # Get the content of the token
             content = token.content
             in_vocab = content in self.model.vocab.vocabulary
-            if not in_vocab and add_tokens:
+            if not in_vocab:
                 logger.warning(f"Adding missing added token '{content}' to the vocabulary.")
                 self._add_token_to_vocabulary(content, is_added_token=True)
                 in_vocab = True
@@ -93,7 +88,7 @@ class TokenizerModel(BaseModel):
                 token.id = new_id
         unk_token = self.unk_token
         if unk_token:
-            if unk_token not in self.model.vocab and add_tokens:
+            if unk_token not in self.model.vocab:
                 logger.warning(f"Adding unk_token '{unk_token}' to the vocabulary.")
                 self._add_token_to_vocabulary(unk_token, is_added_token=True)
             added_token = self.added_tokens.get_token(unk_token)
@@ -104,7 +99,7 @@ class TokenizerModel(BaseModel):
                 )
         pad_token = self.pad_token
         if pad_token:
-            if pad_token not in self.model.vocab and add_tokens:
+            if pad_token not in self.model.vocab:
                 current_pad_token_id = self.pad_token_id
                 assert current_pad_token_id is not None
                 if current_pad_token_id > self.vocabulary_size:
@@ -444,17 +439,17 @@ class TokenizerModel(BaseModel):
                 self.normalizer = NormalizerSequence(normalizers=[self.normalizer, normalizer])
 
     @classmethod
-    def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer, add_tokens: bool = True) -> TokenizerModel:
+    def from_tokenizer(cls: type[TokenizerModel], tokenizer: Tokenizer) -> TokenizerModel:
         """Create a TokenizerModel from a Tokenizer instance."""
-        return cls.from_string(tokenizer.to_str(), add_tokens=add_tokens)
+        return cls.from_string(tokenizer.to_str())
 
     @classmethod
-    def from_pretrained(cls: type[TokenizerModel], path_or_repo: PathLike, add_tokens: bool = True) -> TokenizerModel:
+    def from_pretrained(cls: type[TokenizerModel], path_or_repo: PathLike) -> TokenizerModel:
         """Create a TokenizerModel from a pretrained tokenizer."""
         path = Path(path_or_repo)
         if path.exists() and path.is_dir():
             try:
-                return cls.from_transformers(str(path), add_tokens)
+                return cls.from_transformers(str(path))
             except Exception:
                 pass
             if not (path / "tokenizer.json").exists():
@@ -462,19 +457,17 @@ class TokenizerModel(BaseModel):
                     f"No tokenizer.json found in the directory: {path}. Please provide a valid path."
                 )
             # If a tokenizer.json file exists, load it directly
-            return cls.from_tokenizer(Tokenizer.from_file(str(path / "tokenizer.json")), add_tokens)
+            return cls.from_tokenizer(Tokenizer.from_file(str(path / "tokenizer.json")))
         elif path.exists() and path.is_file():
-            return cls.from_tokenizer(Tokenizer.from_file(str(path)), add_tokens)
+            return cls.from_tokenizer(Tokenizer.from_file(str(path)))
 
-        return cls._load_remote(path_or_repo, add_tokens)  # pragma: nocover
+        return cls._load_remote(path_or_repo)  # pragma: nocover
 
     @classmethod
-    def _load_remote(
-        cls: type[TokenizerModel], path_or_repo: PathLike, add_tokens: bool
-    ) -> TokenizerModel:  # pragma: nocover
+    def _load_remote(cls: type[TokenizerModel], path_or_repo: PathLike) -> TokenizerModel:  # pragma: nocover
         """Load a remote tokenizer from a HuggingFace repo."""
         try:
-            return cls.from_transformers(str(path_or_repo), add_tokens)
+            return cls.from_transformers(str(path_or_repo))
         except Exception as e:
             logger.info(f"Tried to load tokenizer as a Hugging Face tokenizer, but failed: {e}")
             pass
@@ -483,9 +476,9 @@ class TokenizerModel(BaseModel):
         return cls.from_tokenizer(tokenizer)
 
     @classmethod
-    def from_string(cls: type[TokenizerModel], json_str: str, add_tokens: bool = True) -> TokenizerModel:
+    def from_string(cls: type[TokenizerModel], json_str: str) -> TokenizerModel:
         """Create a TokenizerModel from a JSON string."""
-        return cls.model_validate_json(json_str, context={"add_tokens": add_tokens})
+        return cls.model_validate_json(json_str)
 
     def to_tokenizer(self) -> Tokenizer:
         """Convert the TokenizerModel back to a Tokenizer instance."""
@@ -657,15 +650,13 @@ class TokenizerModel(BaseModel):
         )
 
     @classmethod
-    def from_transformers_tokenizer(
-        cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast, add_tokens: bool = True
-    ) -> TokenizerModel:
+    def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:
         """Load a HuggingFace tokenizer from a local path or a model repo."""
         special_tokens = hf_tokenizer.special_tokens_map
         unk_token = special_tokens.get("unk_token", None)
         pad_token = special_tokens.get("pad_token", None)
 
-        model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer, add_tokens)
+        model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer)
         if unk_token is not None and isinstance(unk_token, str):
             if model.unk_token is not None and model.unk_token != unk_token:
                 logger.warning(
@@ -695,10 +686,10 @@ class TokenizerModel(BaseModel):
         return model
 
     @classmethod
-    def from_transformers(cls, path: PathLike, add_tokens: bool = True) -> TokenizerModel:  # pragma: nocover
+    def from_transformers(cls, path: PathLike) -> TokenizerModel:  # pragma: nocover
         """Load a HuggingFace tokenizer from a local path or a model repo."""
         hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
-        return cls.from_transformers_tokenizer(hf_tokenizer, add_tokens)
+        return cls.from_transformers_tokenizer(hf_tokenizer)
 
     def to_transformers(self, tokenizer_class: type[PreTrainedTokenizerFast] | None = None) -> PreTrainedTokenizerFast:
         """Convert the TokenizerModel to a HuggingFace tokenizer."""

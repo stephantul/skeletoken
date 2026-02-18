@@ -1032,5 +1032,3 @@ def test_load_with_added(small_tokenizer_json: dict[str, Any]) -> None:
     json_data = json.dumps(small_tokenizer_json)
     model = TokenizerModel.from_string(json_data)
     assert "f" in model.sorted_vocabulary
-    model = TokenizerModel.from_string(json_data, add_tokens=False)
-    assert "f" not in model.sorted_vocabulary
