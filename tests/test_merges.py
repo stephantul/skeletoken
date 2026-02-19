@@ -70,3 +70,33 @@ def test_remove_merges(small_merges: Merges) -> None:
     # We also remove ("ab", "c") because it contains "ab" as a subpart
     small_merges._remove_merges_for_token("ab")
     assert small_merges.root == [("c", "d"), ("a", "bc")]
+
+
+def test_remove_merges_batch_single_token_equivalent(small_merges: Merges) -> None:
+    """Batch removal with a single token behaves like the single-token removal."""
+    # Same expectation as test_remove_merges, but via the batch API.
+    small_merges._remove_merges_for_tokens(["ab"])
+    assert small_merges.root == [("c", "d"), ("a", "bc")]
+
+
+def test_remove_merges_batch_multiple_tokens(small_merges: Merges) -> None:
+    """Batch removal removes merges for multiple tokens in one pass + rebuild."""
+    small_merges._remove_merges_for_tokens(["ab", "cd"])
+    assert small_merges.root == [("a", "bc")]
+
+
+def test_remove_merges_batch_updates_index(small_merges: Merges) -> None:
+    """After batch removal, merge index is rebuilt to match new root."""
+    small_merges._remove_merges_for_tokens(["ab", "cd"])
+    assert small_merges._merge_index == {("a", "bc"): 0}
+
+
+def test_remove_merges_batch_noop_when_token_not_present(small_merges: Merges) -> None:
+    """Removing tokens that aren't involved leaves merges unchanged."""
+    before_root = list(small_merges.root)
+    before_index = dict(small_merges._merge_index)
+
+    small_merges._remove_merges_for_tokens(["zzz", "yyy"])
+
+    assert small_merges.root == before_root
+    assert small_merges._merge_index == before_index

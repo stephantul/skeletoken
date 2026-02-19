@@ -793,21 +793,20 @@ class TokenizerModel(BaseModel):
 
     def prune_added_tokens(self) -> TokenizerModel:
         """Prune all added tokens that don't play a role in the model."""
-        model = self.deep_copy()
         # Collect all added tokens that are useful.
         tokens_to_keep = set()
-        if eos := model.eos:
+        if eos := self.eos:
             tokens_to_keep.update(eos)
-        if bos := model.bos:
+        if bos := self.bos:
             tokens_to_keep.update(bos)
-        if unk_token := model.unk_token:
+        if unk_token := self.unk_token:
             tokens_to_keep.add(unk_token)
-        if pad_token := model.pad_token:
+        if pad_token := self.pad_token:
             tokens_to_keep.add(pad_token)
 
         added_tokens_to_remove = [
-            token.content for token in model.added_tokens.root if token.content not in tokens_to_keep
+            token.content for token in self.added_tokens.root if token.content not in tokens_to_keep
         ]
-        model = model.remove_tokens_from_vocabulary(added_tokens_to_remove)
+        model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
 
         return model
