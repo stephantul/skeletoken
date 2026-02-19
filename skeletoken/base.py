@@ -783,3 +783,24 @@ class TokenizerModel(BaseModel):
                 "You are trying to set the prefix space, but your pretokenizer is not a ByteLevelPreTokenizer."
             )
         relevant_tokenizer.add_prefix_space = value
+
+    def prune_added_tokens(self) -> TokenizerModel:
+        """Prune all added tokens that don't play a role in the model."""
+        model = self.deep_copy()
+        # Collect all added tokens that are useful.
+        tokens_to_keep = set()
+        if eos := model.eos:
+            tokens_to_keep.update(eos)
+        if bos := model.bos:
+            tokens_to_keep.update(bos)
+        if unk_token := model.unk_token:
+            tokens_to_keep.add(unk_token)
+        if pad_token := model.pad_token:
+            tokens_to_keep.add(pad_token)
+
+        added_tokens_to_remove = [
+            token.content for token in model.added_tokens.root if token.content not in tokens_to_keep
+        ]
+        model = model.remove_tokens_from_vocabulary(added_tokens_to_remove)
+
+        return model

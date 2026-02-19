@@ -1032,3 +1032,13 @@ def test_load_with_added(small_tokenizer_json: dict[str, Any]) -> None:
     json_data = json.dumps(small_tokenizer_json)
     model = TokenizerModel.from_string(json_data)
     assert "f" in model.sorted_vocabulary
+
+
+def test_prune_added_tokens(small_tokenizer_json: dict[str, Any]) -> None:
+    """Tests whether added tokens get pruned."""
+    json_data = json.dumps(small_tokenizer_json)
+    model = TokenizerModel.from_string(json_data)
+    assert [x.content for x in model.added_tokens.root] == ["f", "[UNK]"]
+    # Only tokens that aren't special tokens should get pruned.
+    model = model.prune_added_tokens()
+    assert [x.content for x in model.added_tokens.root] == ["[UNK]"]
