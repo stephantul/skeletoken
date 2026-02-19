@@ -1042,3 +1042,16 @@ def test_prune_added_tokens(small_tokenizer_json: dict[str, Any]) -> None:
     # Only tokens that aren't special tokens should get pruned.
     model = model.prune_added_tokens()
     assert [x.content for x in model.added_tokens.root] == ["[UNK]"]
+
+    model.pad_token = "jello"
+    assert [x.content for x in model.added_tokens.root] == ["[UNK]", "jello"]
+    model = model.prune_added_tokens()
+    assert [x.content for x in model.added_tokens.root] == ["[UNK]", "jello"]
+
+    model = model.add_post_processor(
+        RobertaPostProcessor(sep=("[B]", 0), cls=("[A]", 1), trim_offsets=True, add_prefix_space=True)
+    )
+    assert [x.content for x in model.added_tokens.root] == ["[UNK]", "jello", "[B]", "[A]"]
+    model = model.prune_added_tokens()
+
+    assert [x.content for x in model.added_tokens.root] == ["[UNK]", "jello", "[B]", "[A]"]

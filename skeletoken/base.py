@@ -392,8 +392,15 @@ class TokenizerModel(BaseModel):
         """Add a post-processor to the tokenizer model."""
         model = self.deep_copy()
         model._add_post_processor_inplace(post_processor)
+        model = model._add_tokens_from_post_processor()
 
         return model
+
+    def _add_tokens_from_post_processor(self) -> TokenizerModel:
+        """Adds tokens that are in the post processor as added tokens."""
+        all_special_tokens_from_post_processor = [*(self.eos or []), *(self.bos or [])]
+        pruned = [token for token in all_special_tokens_from_post_processor if token not in self.vocabulary]
+        return self.add_addedtokens(pruned)
 
     def _add_post_processor_inplace(self, post_processor: PostProcessorDiscriminator) -> None:
         """Add a post-processor to the tokenizer model in place."""
