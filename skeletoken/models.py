@@ -119,8 +119,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     def remove_tokens(self, tokens: list[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
         self.vocab.remove_tokens(tokens)
-        for token in tokens:
-            self.merges._remove_merges_for_token(token)
+        self.merges._remove_merges_for_tokens(tokens)
 
     def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
         """Completely replaces the vocabulary with a vocabulary of the same length."""

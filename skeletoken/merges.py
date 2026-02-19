@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 from typing import Any
 
 from pydantic import PrivateAttr, RootModel
@@ -67,21 +68,35 @@ class Merges(RootModel[list[_Merge]]):
 
         return chars
 
+    def _remove_merges_for_tokens(self, tokens: Iterable[str]) -> None:
+        token_set = set(tokens)
+
+        if self._all_merge_tokens.isdisjoint(token_set):
+            return
+
+        old_root = self.root
+
+        # Single filter pass
+        new_root = []
+        for left, right in old_root:
+            # fast checks: direct compares + concatenation (cheaper than join on tuple)
+            if left in token_set or right in token_set or (left + right) in token_set:
+                continue
+            new_root.append((left, right))
+
+        self.root = new_root
+
+        # Single rebuild (same as your post-init logic)
+        self._merge_index = {merge: i for i, merge in enumerate(new_root)}
+        all_tokens: set[str] = set()
+        for left, right in new_root:
+            all_tokens.add(left)
+            all_tokens.add(right)
+        self._all_merge_tokens = all_tokens
+
     def _remove_merges_for_token(self, token: str) -> None:
         """Remove merges from the list of merges."""
-        # If the token is part of the merge index, other tokens depend on it.
-        # This makes the model crash.
-        if token in self._all_merge_tokens:
-            new_root = []
-            for merge in self.root:
-                joined_merge = "".join(merge)
-                if token not in merge and token != joined_merge:
-                    new_root.append(merge)
-
-            self.root = new_root
-            # Rebuild the index.
-            self._merge_index = {merge: i for i, merge in enumerate(self.root)}
-            self._all_merge_tokens.remove(token)
+        return self._remove_merges_for_tokens([token])
 
 
 def _bigrams(chars: list[str]) -> list[_Merge]:
