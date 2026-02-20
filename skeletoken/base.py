@@ -53,7 +53,6 @@ class TokenizerModel(BaseModel):
     decoder: DecoderDiscriminator | None = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
-    # Remapping from old token IDs to new token IDs after vocabulary changes.
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
 
@@ -793,7 +792,7 @@ class TokenizerModel(BaseModel):
     def prune_added_tokens(self) -> TokenizerModel:
         """Prune all added tokens that don't play a role in the model."""
         # Collect all added tokens that are useful.
-        tokens_to_keep = set()
+        tokens_to_keep: set[str] = set()
         if eos := self.eos:
             tokens_to_keep.update(eos)
         if bos := self.bos:
@@ -807,5 +806,5 @@ class TokenizerModel(BaseModel):
             token.content for token in self.added_tokens.root if token.content not in tokens_to_keep
         ]
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
-
+        self._remap_added_token_ids()
         return model
