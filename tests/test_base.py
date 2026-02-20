@@ -1055,3 +1055,34 @@ def test_prune_added_tokens(small_tokenizer_json: dict[str, Any]) -> None:
     model = model.prune_added_tokens()
 
     assert [x.content for x in model.added_tokens.root] == ["[UNK]", "jello", "[B]", "[A]"]
+
+
+def test_prune_added_tokens_post_processor(
+    small_tokenizer_json: dict[str, Any], template_post_processor: TemplatePostProcessor
+) -> None:
+    """Test that pruning keeps the post processor intact."""
+    json_data = json.dumps(small_tokenizer_json)
+    model = TokenizerModel.from_string(json_data)
+
+    assert [(x.content, x.id) for x in model.added_tokens.root] == [("f", 10), ("[UNK]", 2)]
+
+    for token in template_post_processor.special_tokens.values():
+        for t in token.tokens:
+            if t in model.vocabulary:
+                model._turn_into_addedtoken(t)
+            else:
+                model.add_addedtoken(t)
+
+    model = model.add_post_processor(template_post_processor)
+
+    assert [(x.content, x.id) for x in model.added_tokens.root] == [
+        ("f", 10),
+        ("[UNK]", 2),
+        ("[CLS]", 3),
+        ("[MASK]", 4),
+        ("[PAD]", 0),
+        ("[SEP]", 1),
+    ]
+
+    model = model.prune_added_tokens()
+    assert [(x.content, x.id) for x in model.added_tokens.root] == [("[UNK]", 2), ("[CLS]", 3), ("[SEP]", 1)]

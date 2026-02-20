@@ -166,6 +166,7 @@ class TokenizerModel(BaseModel):
                 rstrip=rstrip,
             )
 
+        self._remap_added_token_ids()
         return model
 
     def _turn_into_addedtoken(
@@ -391,7 +392,7 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
         model._add_post_processor_inplace(post_processor)
         model = model._add_tokens_from_post_processor()
-
+        model._remap_added_token_ids()
         return model
 
     def _add_tokens_from_post_processor(self) -> TokenizerModel:
