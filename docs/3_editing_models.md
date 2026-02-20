@@ -86,7 +86,7 @@ print(tokenizer.encode("amsterdam").tokens)
 print(tokenizer.encode("Amsterdam").tokens)
 # ['<s>', '▁Amsterdam', '</s>']
 model_decased = model.decase_vocabulary()
-print(model_decased.to_tokenizer().encode("amsterdam").tokens)
+tokenizer = model_decased.to_tokenizer()
 print(tokenizer.encode("amsterdam").tokens)
 # ['<s>', '▁amsterdam', '</s>']
 print(tokenizer.encode("Amsterdam").tokens)

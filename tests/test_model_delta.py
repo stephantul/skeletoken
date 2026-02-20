@@ -14,9 +14,16 @@ def test_compute_model_delta_with_id_remapping(small_tokenizer_json: dict[str, A
 
     # Make a deep copy and simulate a remapping: swap ids 5 and 6 (tokens 'a' and 'b')
     mod = TokenizerModel.model_validate(small_tokenizer_json)
-    # Simulate that during some transformation token at new index 5 was originally at 6 and vice versa
-    # _id_remapping maps old->new; compute_model_delta inverts it, so set values accordingly
-    mod._id_remapping = {6: 5, 5: 6}
+    sorted_vocab = mod.sorted_vocabulary
+    # Swapping.
+    mod.vocabulary[sorted_vocab[5]] = 6
+    mod.vocabulary[sorted_vocab[6]] = 5
+
+    new_sorted_vocab = mod.sorted_vocabulary
+    assert sorted_vocab[5] == new_sorted_vocab[6]
+    assert sorted_vocab[6] == new_sorted_vocab[5]
+    assert sorted_vocab[:5] == new_sorted_vocab[:5]
+    assert sorted_vocab[7:] == new_sorted_vocab[7:]
 
     delta = compute_model_delta(orig, mod)
 

@@ -53,8 +53,6 @@ class TokenizerModel(BaseModel):
     decoder: DecoderDiscriminator | None = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
-    # Remapping from old token IDs to new token IDs after vocabulary changes.
-    _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
 
@@ -168,6 +166,7 @@ class TokenizerModel(BaseModel):
                 rstrip=rstrip,
             )
 
+        self._remap_added_token_ids()
         return model
 
     def _turn_into_addedtoken(
@@ -283,8 +282,9 @@ class TokenizerModel(BaseModel):
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
+        remapping = self.model_delta.token_mapping
         for token in self.added_tokens.root:
-            remapped = self._id_remapping.get(token.id, token.id)
+            remapped = remapping.get(token.id, token.id)
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
@@ -364,7 +364,6 @@ class TokenizerModel(BaseModel):
             if token is None:
                 continue
             mapping[i] = len(mapping)
-        self._id_remapping = mapping
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
             self._add_normalizer_inplace(LowercaseNormalizer(), prefix=True)
@@ -393,7 +392,7 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
         model._add_post_processor_inplace(post_processor)
         model = model._add_tokens_from_post_processor()
-
+        model._remap_added_token_ids()
         return model
 
     def _add_tokens_from_post_processor(self) -> TokenizerModel:
@@ -794,7 +793,7 @@ class TokenizerModel(BaseModel):
     def prune_added_tokens(self) -> TokenizerModel:
         """Prune all added tokens that don't play a role in the model."""
         # Collect all added tokens that are useful.
-        tokens_to_keep = set()
+        tokens_to_keep: set[str] = set()
         if eos := self.eos:
             tokens_to_keep.update(eos)
         if bos := self.bos:
@@ -808,5 +807,5 @@ class TokenizerModel(BaseModel):
             token.content for token in self.added_tokens.root if token.content not in tokens_to_keep
         ]
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
-
+        self._remap_added_token_ids()
         return model

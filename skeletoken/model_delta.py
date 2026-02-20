@@ -13,8 +13,7 @@ class ModelDelta(BaseModel):
     token_mapping : dict[int, int]
         A mapping from old token IDs to new token IDs.
     new_tokens : dict[str, int]
-        A mapping from new token strings to their IDs. This is useful for inferring
-        contents of the new tokens.
+        A mapping from new token strings to their IDs. This is useful for inferring contents of the new tokens.
     new_vocabulary_size : int
         The size of the new vocabulary in the modified model.
 
@@ -35,12 +34,8 @@ def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> M
     new_tokens = {}
     new_vocab = modified.sorted_vocabulary
     old_vocab = original.vocabulary
-    inv_id_remapping = {v: k for k, v in modified._id_remapping.items()}
     for i, token in enumerate(new_vocab):
-        if index := inv_id_remapping.get(i):
-            # This is an old token
-            token_mapping[i] = index
-        elif token in old_vocab:
+        if token in old_vocab:
             # This is an old token that got a new index
             old_index = old_vocab[token]
             token_mapping[i] = old_index

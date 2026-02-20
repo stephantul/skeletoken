@@ -61,6 +61,8 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     embedding.weight.data = weight
     model.resize_token_embeddings(vocab_size)
 
+    embedding = model.get_input_embeddings()
+
     for key in model.config:
         if key == "vocab_size":
             setattr(model.config, key, vocab_size)
