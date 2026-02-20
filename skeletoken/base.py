@@ -54,7 +54,6 @@ class TokenizerModel(BaseModel):
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
     # Remapping from old token IDs to new token IDs after vocabulary changes.
-    _id_remapping: dict[int, int] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
 
@@ -283,8 +282,9 @@ class TokenizerModel(BaseModel):
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
+        remapping = self.model_delta.token_mapping
         for token in self.added_tokens.root:
-            remapped = self._id_remapping.get(token.id, token.id)
+            remapped = remapping.get(token.id, token.id)
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
@@ -364,7 +364,6 @@ class TokenizerModel(BaseModel):
             if token is None:
                 continue
             mapping[i] = len(mapping)
-        self._id_remapping = mapping
         self.model.replace_vocabulary(vocabulary)
         if not self.lowercases_input:
             self._add_normalizer_inplace(LowercaseNormalizer(), prefix=True)
