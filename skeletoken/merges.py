@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterable
+from itertools import chain
 from typing import Any
 
 from pydantic import PrivateAttr, RootModel
@@ -71,28 +72,18 @@ class Merges(RootModel[list[_Merge]]):
     def _remove_merges_for_tokens(self, tokens: Iterable[str]) -> None:
         token_set = set(tokens)
 
-        if self._all_merge_tokens.isdisjoint(token_set):
-            return
-
-        old_root = self.root
-
-        # Single filter pass
         new_root = []
-        for left, right in old_root:
-            # fast checks: direct compares + concatenation (cheaper than join on tuple)
+        for left, right in self.root:
+            # We need to remove a merge if a token disappears.
+            # If a token has been removed, any merges that have it
+            # will be removed.
             if left in token_set or right in token_set or (left + right) in token_set:
                 continue
             new_root.append((left, right))
 
         self.root = new_root
-
-        # Single rebuild (same as your post-init logic)
-        self._merge_index = {merge: i for i, merge in enumerate(new_root)}
-        all_tokens: set[str] = set()
-        for left, right in new_root:
-            all_tokens.add(left)
-            all_tokens.add(right)
-        self._all_merge_tokens = all_tokens
+        self._merge_index = {merge: i for i, merge in enumerate(self.root)}
+        self._all_merge_tokens = set(chain.from_iterable(self.root))
 
     def _remove_merges_for_token(self, token: str) -> None:
         """Remove merges from the list of merges."""
