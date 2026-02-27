@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import PrivateAttr, RootModel
@@ -56,7 +57,7 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
         """Remove tokens from the vocabulary."""
         self.remove_tokens([token])
 
-    def remove_tokens(self, tokens: list[str]) -> None:
+    def remove_tokens(self, tokens: Sequence[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
         for token in tokens:
             if token not in self.root:
@@ -116,7 +117,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
         """Remove a token from the vocabulary."""
         self.remove_tokens([token])
 
-    def remove_tokens(self, tokens: list[str]) -> None:
+    def remove_tokens(self, tokens: Sequence[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
         indices_to_remove = set()
         for token in tokens:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -146,7 +147,7 @@ class TokenizerModel(BaseModel):
 
     def add_addedtokens(
         self,
-        tokens: list[str],
+        tokens: Sequence[str],
         is_special: bool = False,
         normalized: bool = False,
         single_word: bool = True,
@@ -194,7 +195,7 @@ class TokenizerModel(BaseModel):
             id=self.model.vocab[token],
         )
 
-    def add_tokens_to_vocabulary(self, tokens: list[str], preprocess_tokens: bool = True) -> TokenizerModel:
+    def add_tokens_to_vocabulary(self, tokens: Sequence[str], preprocess_tokens: bool = True) -> TokenizerModel:
         """Add multiple tokens to the vocabulary.
 
         This can be much faster than calling `add_token_to_vocabulary` multiple times,
@@ -237,7 +238,7 @@ class TokenizerModel(BaseModel):
         self.model.add_token(token, is_added_token=is_added_token)
 
     def replace_tokens_in_vocabulary(
-        self, old_tokens: list[str], new_tokens: list[str], preprocess_tokens: bool = True
+        self, old_tokens: Sequence[str], new_tokens: Sequence[str], preprocess_tokens: bool = True
     ) -> TokenizerModel:
         """Replace a list of tokens with another list of tokens.
 
@@ -300,7 +301,7 @@ class TokenizerModel(BaseModel):
         """Remove a token from the vocabulary."""
         return self.remove_tokens_from_vocabulary([token])
 
-    def remove_tokens_from_vocabulary(self, tokens: list[str]) -> TokenizerModel:
+    def remove_tokens_from_vocabulary(self, tokens: Sequence[str]) -> TokenizerModel:
         """Remove multiple tokens from the vocabulary.
 
         This is a convenience method that removes tokens from the vocabulary.
@@ -309,8 +310,8 @@ class TokenizerModel(BaseModel):
 
         Parameters
         ----------
-        tokens: list[str]
-            The list of tokens to remove from the vocabulary.
+        tokens: Sequence[str]
+            The sequence of tokens to remove from the vocabulary.
 
         Returns
         -------
@@ -319,6 +320,23 @@ class TokenizerModel(BaseModel):
 
         """
         model = self.deep_copy()
+
+        unk_token = model.unk_token
+        pad_token = model.pad_token
+
+        if unk_token is not None and unk_token in tokens:
+            try:
+                model.unk_token = None
+            except ValueError:
+                logger.warning(
+                    f"Could not remove unknown token '{unk_token}' from vocabulary. "
+                    f"You are using a {model.model.type.value} model, which does not support this."
+                )
+                tokens = [x for x in tokens if x != unk_token]
+        pad_token = model.pad_token
+        if pad_token is not None and pad_token in tokens:
+            model.pad_token = None
+
         for token in tokens:
             model.added_tokens.maybe_remove_token(token)
         model.model.remove_tokens(tokens)
@@ -727,7 +745,7 @@ class TokenizerModel(BaseModel):
 
         return compute_model_delta(self._original_tokenizer, self)
 
-    def tokens_to_ids(self, tokens: list[str]) -> list[int]:
+    def tokens_to_ids(self, tokens: Sequence[str]) -> list[int]:
         """Convert a list of tokens to their corresponding IDs."""
         return [self.model.vocab[token] for token in tokens]
 

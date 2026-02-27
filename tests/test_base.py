@@ -210,8 +210,8 @@ def test_add_processor(small_tokenizer: Tokenizer) -> None:
 
 def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
     """Test creating a TokenizerModel from a pretrained tokenizer."""
-    with pytest.raises(FileNotFoundError):
-        model = TokenizerModel.from_pretrained(".")
+    with pytest.raises(FileNotFoundError), TemporaryDirectory() as tempdir:
+        model = TokenizerModel.from_pretrained(tempdir)
 
     with TemporaryDirectory() as temp_dir:
         small_tokenizer.save(f"{temp_dir}/tokenizer.json")
@@ -1086,3 +1086,25 @@ def test_prune_added_tokens_post_processor(
 
     model = model.prune_added_tokens()
     assert [(x.content, x.id) for x in model.added_tokens.root] == [("[UNK]", 2), ("[CLS]", 3), ("[SEP]", 1)]
+
+
+def test_remove_token_unk_token(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test whether removing a token removes the unk token."""
+    json_data = json.dumps(small_tokenizer_json)
+    model = TokenizerModel.from_string(json_data)
+
+    assert model.unk_token == "[UNK]"
+    model = model.remove_token_from_vocabulary(model.unk_token)
+    assert model.unk_token == "[UNK]"
+    assert model.unk_token in model.vocabulary
+
+    pad = "[OPAD]"
+
+    assert pad not in model.vocabulary
+    assert model.pad_token is None
+    model.pad_token = pad
+    assert pad in model.vocabulary
+    assert model.pad_token == pad
+    model = model.remove_token_from_vocabulary(pad)
+    assert model.pad_token is None
+    assert pad not in model.vocabulary
