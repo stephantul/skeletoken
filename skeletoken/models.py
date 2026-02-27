@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from enum import Enum
 from typing import Annotated, Generic, Literal, TypeVar
 
@@ -39,7 +40,7 @@ class VocabMixinMethod(Generic[VocabType]):
         """Remove a token from the vocabulary."""
         self.vocab.remove_token(token)
 
-    def remove_tokens(self, tokens: list[str]) -> None:
+    def remove_tokens(self, tokens: Sequence[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
         self.vocab.remove_tokens(tokens)
 
@@ -116,7 +117,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         self.vocab.remove_token(token)
         self.merges._remove_merges_for_token(token)
 
-    def remove_tokens(self, tokens: list[str]) -> None:
+    def remove_tokens(self, tokens: Sequence[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
         self.vocab.remove_tokens(tokens)
         self.merges._remove_merges_for_tokens(tokens)
