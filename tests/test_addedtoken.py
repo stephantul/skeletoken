@@ -6,8 +6,7 @@ from skeletoken.models import WordPiece
 
 
 def test_addedtoken(small_tokenizer_json: dict[str, Any]) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """

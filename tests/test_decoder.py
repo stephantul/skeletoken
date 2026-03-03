@@ -58,8 +58,7 @@ def _get_default_decoder(decoder_type: DecoderType) -> Decoder:
     ],
 )
 def test_decoder(small_tokenizer_json: dict[str, Any], decoder_type: DecoderType) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """

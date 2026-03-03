@@ -12,8 +12,7 @@ from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 
 
 def _dummy_data() -> Iterator[str]:
-    """
-    Small iterator of strings used as fake training data.
+    """Small iterator of strings used as fake training data.
 
     Returns
     -------
@@ -26,8 +25,7 @@ def _dummy_data() -> Iterator[str]:
 
 @pytest.mark.parametrize("model_type", [ModelType.BPE, ModelType.UNIGRAM, ModelType.WORDPIECE])
 def test_train_calls_tokenizer_train_from_iterator(model_type: ModelType, monkeypatch: Any) -> None:
-    """
-    Ensure train_tokenizer calls Tokenizer.train_from_iterator with a trainer for the given model type.
+    """Ensure train_tokenizer calls Tokenizer.train_from_iterator with a trainer for the given model type.
 
     We mock Tokenizer.train_from_iterator to be a no-op and assert it was called with a trainer instance.
     """
