@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from tokenizers.normalizers import Normalizer as TokenizersNormalizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
@@ -21,6 +22,7 @@ from skeletoken.normalizers import (
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
+    to_tokenizers_normalizer,
 )
 
 
@@ -73,8 +75,7 @@ def _get_default_normalizer(normalizer_type: NormalizerType) -> Normalizer:  # n
     ],
 )
 def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: NormalizerType) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """
@@ -128,3 +129,35 @@ def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
 def test_byte_normalizes(normalizer: Normalizer, should_normalize: bool) -> None:
     """Test whether the lowercases detection works."""
     assert normalizer.byte_normalizes == should_normalize
+
+
+@pytest.mark.parametrize(
+    "normalizer_type,name",
+    [
+        (NormalizerType.BYTELEVEL, "ByteLevel"),
+        (NormalizerType.BERTNORMALIZER, "BertNormalizer"),
+        (NormalizerType.LOWERCASE, "Lowercase"),
+        (NormalizerType.NFC, "NFC"),
+        (NormalizerType.NFD, "NFD"),
+        (NormalizerType.NFKC, "NFKC"),
+        (NormalizerType.NFKD, "NFKD"),
+        (NormalizerType.NMT, "Nmt"),
+        (NormalizerType.PREPEND, "Prepend"),
+        (NormalizerType.STRIP, "Strip"),
+        (NormalizerType.REPLACE, "Replace"),
+    ],
+)
+def test_to_tokenizers_normalizer(normalizer_type: NormalizerType, name: str) -> None:
+    """Test the conversion to a tokenizers normalizer."""
+    normalizer = _get_default_normalizer(normalizer_type)
+    tokenizers_normalizer = to_tokenizers_normalizer(normalizer)
+    assert isinstance(tokenizers_normalizer, TokenizersNormalizer)
+    assert tokenizers_normalizer.__class__.__name__ == name
+
+
+def test_to_tokenizers_normalizer_invalid() -> None:
+    """Test that an invalid normalizer cannot be converted to a tokenizers normalizer."""
+    with pytest.raises(
+        ValueError, match="Cannot convert normalizer of type <class 'list'> to a tokenizers normalizer."
+    ):
+        to_tokenizers_normalizer([])  # type: ignore
