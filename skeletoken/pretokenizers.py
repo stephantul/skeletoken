@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Annotated, Any, Literal, TypeVar, overload
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from tokenizers.pre_tokenizers import PreTokenizer as TokenizersPreTokenizer
 
 from skeletoken.common import (
     Behavior,
@@ -13,6 +14,7 @@ from skeletoken.common import (
     StringPattern,
     coerce_string_regex_pattern,
 )
+from skeletoken.empty import empty_tokenizer
 
 
 class PreTokenizerType(str, Enum):
@@ -376,3 +378,13 @@ def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, type: typ
             if result := get_pretokenizer_of_type(pt, type):
                 return result
     return None
+
+
+def to_tokenizers_pretokenizer(pre_tokenizer: PreTokenizerDiscriminator) -> TokenizersPreTokenizer:
+    """Convert a skeletoken pretokenizer into a tokenizers pretokenizer."""
+    if not isinstance(pre_tokenizer, BasePretokenizer | PreTokenizerSequence):
+        raise ValueError(f"Cannot convert pretokenizer of type {type(pre_tokenizer)} to a tokenizers pretokenizer.")
+    tokenizer = empty_tokenizer()
+    tokenizer.pre_tokenizer = pre_tokenizer
+
+    return tokenizer.to_tokenizer().pre_tokenizer

@@ -4,8 +4,10 @@ from enum import Enum
 from typing import Annotated, Any, Literal, overload
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from tokenizers.normalizers import Normalizer as TokenizersNormalizer
 
 from skeletoken.common import RegexPattern, RegexType, StringPattern, coerce_string_regex_pattern
+from skeletoken.empty import empty_tokenizer
 
 
 class NormalizerType(str, Enum):
@@ -309,3 +311,14 @@ Normalizer = (
     | NormalizerSequence
 )
 NormalizerDiscriminator = Annotated[Normalizer, Field(discriminator="type")]
+
+
+def to_tokenizers_normalizer(normalizer: NormalizerDiscriminator) -> TokenizersNormalizer:
+    """Convert a skeletoken normalizer into a tokenizers normalizer."""
+    # Guard because pydantic does no checking on assignment and tokenizers accepts it.
+    if not isinstance(normalizer, BaseNormalizer | NormalizerSequence):
+        raise ValueError(f"Cannot convert normalizer of type {type(normalizer)} to a tokenizers normalizer.")
+    tokenizer = empty_tokenizer()
+    tokenizer.normalizer = normalizer
+
+    return tokenizer.to_tokenizer().normalizer

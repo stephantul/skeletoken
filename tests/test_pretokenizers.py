@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from tokenizers.pre_tokenizers import PreTokenizer as TokenizersPreTokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
@@ -21,6 +22,7 @@ from skeletoken.pretokenizers import (
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
     get_metaspace,
+    to_tokenizers_pretokenizer,
 )
 
 
@@ -69,8 +71,7 @@ def _get_default_pretokenizer(pretokenizer_type: PreTokenizerType) -> PreTokeniz
     ],
 )
 def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: PreTokenizerType) -> None:
-    """
-    Test that the small tokenizer JSON can be loaded and contains the expected structure.
+    """Test that the small tokenizer JSON can be loaded and contains the expected structure.
 
     This test checks that the tokenizer JSON has the correct keys and types for its fields.
     """
@@ -138,3 +139,27 @@ def test_get_metaspace() -> None:
     other_default = _get_default_pretokenizer(PreTokenizerType.BERT_PRETOKENIZER)
     assert get_metaspace(other_default) is None
     assert get_metaspace(PreTokenizerSequence(pretokenizers=[other_default])) is None
+
+
+@pytest.mark.parametrize(
+    "pretokenizer_type,name",
+    [
+        (PreTokenizerType.BYTELEVEL, "ByteLevel"),
+        (PreTokenizerType.BERT_PRETOKENIZER, "BertPreTokenizer"),
+        (PreTokenizerType.METASPACE, "Metaspace"),
+    ],
+)
+def test_to_tokenizers_pretokenizer(pretokenizer_type: PreTokenizerType, name: str) -> None:
+    """Test the conversion to a tokenizers pretokenizer."""
+    pretokenizer = _get_default_pretokenizer(pretokenizer_type)
+    tokenizers_pretokenizer = to_tokenizers_pretokenizer(pretokenizer)
+    assert isinstance(tokenizers_pretokenizer, TokenizersPreTokenizer)
+    assert tokenizers_pretokenizer.__class__.__name__ == name
+
+
+def test_to_tokenizers_pretokenizer_invalid() -> None:
+    """Test that an invalid pretokenizer cannot be converted to a tokenizers pretokenizer."""
+    with pytest.raises(
+        ValueError, match="Cannot convert pretokenizer of type <class 'list'> to a tokenizers pretokenizer."
+    ):
+        to_tokenizers_pretokenizer([])  # type: ignore
