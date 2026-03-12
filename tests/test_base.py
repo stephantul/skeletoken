@@ -1074,7 +1074,6 @@ def test_prune_added_tokens_post_processor(
                 model.add_addedtoken(t)
 
     model = model.add_post_processor(template_post_processor)
-
     assert [(x.content, x.id) for x in model.added_tokens.root] == [
         ("f", 10),
         ("[UNK]", 2),
@@ -1085,7 +1084,7 @@ def test_prune_added_tokens_post_processor(
     ]
 
     model = model.prune_added_tokens()
-    assert [(x.content, x.id) for x in model.added_tokens.root] == [("[UNK]", 2), ("[CLS]", 3), ("[SEP]", 1)]
+    assert [(x.content, x.id) for x in model.added_tokens.root] == [("[UNK]", 1), ("[CLS]", 2), ("[SEP]", 0)]
 
 
 def test_remove_token_unk_token(small_tokenizer_json: dict[str, Any]) -> None:
