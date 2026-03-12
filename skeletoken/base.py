@@ -167,7 +167,7 @@ class TokenizerModel(BaseModel):
                 rstrip=rstrip,
             )
 
-        self._remap_added_token_ids()
+        model._remap_added_token_ids()
         return model
 
     def _turn_into_addedtoken(
@@ -283,13 +283,12 @@ class TokenizerModel(BaseModel):
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
-        remapping = self.model_delta.token_mapping
+        remapping = {old_id: new_id for new_id, old_id in self.model_delta.token_mapping.items()}
         for token in self.added_tokens.root:
             remapped = remapping.get(token.id, token.id)
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
-                token.content = self.sorted_vocabulary[remapped]
         self.pad_token = self.pad_token  # Trigger pad_token remapping
         if self.post_processor is not None:
             for added_token in self.added_tokens.root:
@@ -825,5 +824,5 @@ class TokenizerModel(BaseModel):
             token.content for token in self.added_tokens.root if token.content not in tokens_to_keep
         ]
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
-        self._remap_added_token_ids()
+        model._remap_added_token_ids()
         return model
