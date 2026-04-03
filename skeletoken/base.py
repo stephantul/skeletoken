@@ -285,7 +285,9 @@ class TokenizerModel(BaseModel):
         """Remap the IDs of added tokens to match the vocabulary."""
         remapping = {old_id: new_id for new_id, old_id in self.model_delta.token_mapping.items()}
         for token in self.added_tokens.root:
-            remapped = remapping.get(token.id, token.id)
+            remapped = self.model_delta.new_tokens.get(token.content)
+            if remapped is None:
+                remapped = remapping.get(token.id, token.id)
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
