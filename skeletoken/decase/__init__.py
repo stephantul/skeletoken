@@ -1,3 +1,3 @@
-from skeletoken.decase.decase import decase_vocabulary
+from skeletoken.decase.decase import clean_vocabulary
 
-__all__ = ["decase_vocabulary"]
+__all__ = ["clean_vocabulary"]

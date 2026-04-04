@@ -1,19 +1,30 @@
+from typing import TYPE_CHECKING
+
 from skeletoken.addedtoken import AddedToken
 from skeletoken.decase.byte_handlers import text_to_token_str, token_to_bytes
 
+if TYPE_CHECKING:
+    from skeletoken.preprocessor import Preprocessor
+
 
 def _determine_collision(
-    token: str, is_byte: bool, vocab: set[str], added_tokens: dict[str, AddedToken], seen: set[str], lower: bool
+    token: str,
+    is_byte: bool,
+    vocab: set[str],
+    added_tokens: dict[str, AddedToken],
+    seen: set[str],
+    preprocessor: "Preprocessor",
+    keep: bool,
 ) -> str | None:
-    """Determine whether a given token, when lowered, collides with another."""
+    """Determine whether a given token, when processed by a preprocessor, collides with another."""
     if added_token := added_tokens.get(token):
         # If we get here, the token is an added token.
         if added_token.normalized:
             # The added token is already normalized
             return token
         else:
-            # This token will be normalized
-            return token.lower()
+            # This token should be normalized, otherwise it won't be found
+            return "".join(preprocessor.preprocess(token))
     if is_byte:
         # Convert token from bytes to a string.
         try:
@@ -27,25 +38,26 @@ def _determine_collision(
     else:
         new_token = token
 
-    lowered_token = new_token.lower()
+    preprocessed_tokens = preprocessor.preprocess(new_token)
 
-    if not lower and lowered_token != new_token:
-        return None
+    if len(preprocessed_tokens) > 1:
+        return token if keep else None
+    preprocessed_token = preprocessed_tokens[0]
 
     if is_byte:
-        lowered_token = text_to_token_str(lowered_token)
+        preprocessed_token = text_to_token_str(preprocessed_token)
 
-    # If the token changed but the lowered version was already in vocab, we have a collision.
-    if (lowered_token != token) and (lowered_token in vocab or lowered_token in seen):
-        return None
-    return lowered_token
+    # If the token changed but the preprocessed version was already in vocab, we have a collision.
+    if (preprocessed_token != token) and (preprocessed_token in vocab or preprocessed_token in seen):
+        return token if keep else None
+    return preprocessed_token
 
 
-def decase_vocabulary(
-    vocabulary: list[str], added_tokens: list[AddedToken], is_byte: bool, lower: bool
+def clean_vocabulary(
+    vocabulary: list[str], added_tokens: list[AddedToken], is_byte: bool, preprocessor: "Preprocessor", keep: bool
 ) -> list[str | None]:
     """Lowercase the vocabulary of a tokenizer."""
-    uncased_vocab: list[str | None] = []
+    processed_vocab: list[str | None] = []
     # seen keeps track of lowered tokens that were not in vocab before.
     # e.g., "AB" and "Ab" are in vocab, but they collide after lowercasing
     seen: set[str] = set()
@@ -54,9 +66,9 @@ def decase_vocabulary(
     added_token_dict = {at.content: at for at in added_tokens}
 
     for token in vocabulary:
-        lowered = _determine_collision(token, is_byte, vocab_set, added_token_dict, seen, lower)
-        uncased_vocab.append(lowered)
-        if isinstance(lowered, str):
-            seen.add(lowered)
+        processed = _determine_collision(token, is_byte, vocab_set, added_token_dict, seen, preprocessor, keep)
+        processed_vocab.append(processed)
+        if isinstance(processed, str):
+            seen.add(processed)
 
-    return uncased_vocab
+    return processed_vocab

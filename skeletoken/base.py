@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.common import PathLike
-from skeletoken.decase.decase import decase_vocabulary
+from skeletoken.decase.decase import clean_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
@@ -344,19 +344,21 @@ class TokenizerModel(BaseModel):
 
         return model
 
-    def remove_uppercase(self) -> TokenizerModel:
-        """Remove all uppercase tokens from the vocabulary.
+    def lowercase(self) -> TokenizerModel:
+        """Lowercase the vocabulary.
 
         Returns
         -------
         TokenizerModel
-            The tokenizer model with uppercase tokens removed.
+            The tokenizer model with a decased vocabulary.
 
         """
         model = self.deep_copy()
-        return model._decase(lower=False)
+        if not model.lowercases_input:
+            model._add_normalizer_inplace(LowercaseNormalizer())
+        return model._prune(keep=True)
 
-    def decase_vocabulary(self) -> TokenizerModel:
+    def decase(self) -> TokenizerModel:
         """Decases the vocabulary.
 
         Returns
@@ -366,17 +368,44 @@ class TokenizerModel(BaseModel):
 
         """
         model = self.deep_copy()
-        return model._decase(lower=True)
+        if not model.lowercases_input:
+            model._add_normalizer_inplace(LowercaseNormalizer())
+        return model._prune(keep=False)
 
-    def _decase(self, lower: bool) -> TokenizerModel:
+    def convert(self) -> TokenizerModel:
+        """Remove all uppercase tokens from the vocabulary.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with uppercase tokens removed.
+
+        """
+        model = self.deep_copy()
+        return model._prune(keep=True)
+
+    def prune(self) -> TokenizerModel:
+        """Decases the vocabulary.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with a decased vocabulary.
+
+        """
+        model = self.deep_copy()
+        return model._prune(keep=False)
+
+    def _prune(self, keep: bool) -> TokenizerModel:
         """Private method to decase the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
         sorted_vocab = self.model.vocab.sorted_vocabulary
-        vocabulary = decase_vocabulary(
+        vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
             is_byte=self.transforms_into_bytes,
-            lower=lower,
+            preprocessor=self.preprocessor,
+            keep=keep,
         )
         mapping: dict[int, int] = {}
         for i, token in enumerate(vocabulary):
@@ -384,8 +413,6 @@ class TokenizerModel(BaseModel):
                 continue
             mapping[i] = len(mapping)
         self.model.replace_vocabulary(vocabulary)
-        if not self.lowercases_input:
-            self._add_normalizer_inplace(LowercaseNormalizer(), prefix=True)
         self._remap_added_token_ids()
 
         return self
@@ -399,12 +426,17 @@ class TokenizerModel(BaseModel):
     def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
         """Add a pre-tokenizer to the tokenizer model in place."""
         self._preprocessor = None
+        is_byte = isinstance(pre_tokenizer, ByteLevelPreTokenizer)
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
-            self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
+            if is_byte:
+                self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
+            else:
+                self.pre_tokenizer.pretokenizers.insert(0, pre_tokenizer)
         else:
-            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
+            sequence = [self.pre_tokenizer, pre_tokenizer] if is_byte else [pre_tokenizer, self.pre_tokenizer]
+            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=sequence)
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""

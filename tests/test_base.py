@@ -353,14 +353,13 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
     vocabulary = model.model.vocab.sorted_vocabulary
-    model = model.decase_vocabulary()
+    model = model.decase()
     # This tokenizer does not assign any special tokens, so this is true.
-    assert model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
     if isinstance(model.normalizer, NormalizerSequence):
         assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
     else:
         assert isinstance(model.normalizer, LowercaseNormalizer)
-
+    assert model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
 
@@ -372,7 +371,7 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
     vocabulary = model.model.vocab.sorted_vocabulary
-    model = model.decase_vocabulary()
+    model = model.decase()
     # This tokenizer does not assign any special tokens, so this is true.
     assert model.model.vocab.sorted_vocabulary == [x.lower() if x not in {"ADD"} else x for x in vocabulary]
 
@@ -386,8 +385,22 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     model.added_tokens = AddedTokens([])
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
-    model = model.remove_uppercase()
-    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f", "ADD", "add_keep"]
+    model = model.decase()
+    assert model.model.vocab.sorted_vocabulary == [
+        "[pad]",
+        "[sep]",
+        "[unk]",
+        "[cls]",
+        "[mask]",
+        "a",
+        "b",
+        "c",
+        "d",
+        " ",
+        "f",
+        "ADD",
+        "add_keep",
+    ]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -812,9 +825,8 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.remove_uppercase()
-    # This tokenizer does not assign any special tokens, so this is true.
-    assert model.sorted_vocabulary == ["[UNK]", "a", "b", "c", "d", " ", "f"]
+    model = model.convert()
+    assert model.sorted_vocabulary == ["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", " ", "f"]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
