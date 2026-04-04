@@ -11,7 +11,6 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.common import PathLike
-from skeletoken.decase.decase import clean_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
@@ -32,6 +31,7 @@ from skeletoken.pretokenizers import (
     get_metaspace,
     get_pretokenizer_of_type,
 )
+from skeletoken.prune import clean_vocabulary
 from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
@@ -372,7 +372,7 @@ class TokenizerModel(BaseModel):
             model._add_normalizer_inplace(LowercaseNormalizer())
         return model._prune(keep=False)
 
-    def convert(self) -> TokenizerModel:
+    def prune_and_convert(self) -> TokenizerModel:
         """Remove all uppercase tokens from the vocabulary.
 
         Returns

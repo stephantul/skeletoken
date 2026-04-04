@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from skeletoken.addedtoken import AddedToken
-from skeletoken.decase.byte_handlers import text_to_token_str, token_to_bytes
+from skeletoken.prune.byte_handlers import text_to_token_str, token_to_bytes
 
 if TYPE_CHECKING:
     from skeletoken.preprocessor import Preprocessor

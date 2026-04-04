@@ -1,8 +1,8 @@
 from tokenizers.normalizers import Lowercase
 
 from skeletoken.addedtoken import AddedToken
-from skeletoken.decase.decase import _determine_collision, clean_vocabulary
 from skeletoken.preprocessor import Preprocessor
+from skeletoken.prune.prune import _determine_collision, clean_vocabulary
 
 
 def test_determine_collision() -> None:

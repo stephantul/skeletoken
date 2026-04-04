@@ -1,7 +1,7 @@
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.normalizers import ByteLevel
 
-from skeletoken.decase.byte_handlers import text_to_token_str, token_to_bytes
+from skeletoken.prune.byte_handlers import text_to_token_str, token_to_bytes
 
 
 def test_token_to_bytes() -> None:
