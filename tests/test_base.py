@@ -126,6 +126,64 @@ def test_add_pre_tokenizer(small_tokenizer: Tokenizer) -> None:
     assert len(model.pre_tokenizer.pretokenizers) == 3
 
 
+def test_add_byte_pretokenizer(small_tokenizer: Tokenizer) -> None:
+    """Test adding a byte-level pre-tokenizer to the TokenizerModel."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+
+    pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=False, use_regex=True, trim_offsets=False)
+    model = model.add_pre_tokenizer(pre_tokenizer)
+
+    assert model.pre_tokenizer is not None
+    assert isinstance(model.pre_tokenizer, ByteLevelPreTokenizer)
+
+    model = model.add_pre_tokenizer(BertPreTokenizer(), prefix=True)
+
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+    assert len(model.pre_tokenizer.pretokenizers) == 2
+    assert isinstance(model.pre_tokenizer.pretokenizers[0], BertPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[1], ByteLevelPreTokenizer)
+
+    model = model.add_pre_tokenizer(WhitespacePreTokenizer())
+
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+    assert len(model.pre_tokenizer.pretokenizers) == 3
+
+    assert isinstance(model.pre_tokenizer.pretokenizers[0], BertPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[1], ByteLevelPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[2], WhitespacePreTokenizer)
+
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_pre_tokenizer(BertPreTokenizer())
+
+    assert model.pre_tokenizer is not None
+    assert isinstance(model.pre_tokenizer, BertPreTokenizer)
+
+    model = model.add_pre_tokenizer(WhitespacePreTokenizer())
+
+    assert model.pre_tokenizer is not None
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+    assert len(model.pre_tokenizer.pretokenizers) == 2
+    assert isinstance(model.pre_tokenizer.pretokenizers[0], BertPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[1], WhitespacePreTokenizer)
+
+    model = model.add_pre_tokenizer(FixedLengthPreTokenizer(length=10))
+
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+    assert len(model.pre_tokenizer.pretokenizers) == 3
+    assert isinstance(model.pre_tokenizer.pretokenizers[0], BertPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[1], WhitespacePreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[2], FixedLengthPreTokenizer)
+
+    model = model.add_pre_tokenizer(FixedLengthPreTokenizer(length=50), prefix=True)
+
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+    assert len(model.pre_tokenizer.pretokenizers) == 4
+    assert isinstance(model.pre_tokenizer.pretokenizers[0], FixedLengthPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[1], BertPreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[2], WhitespacePreTokenizer)
+    assert isinstance(model.pre_tokenizer.pretokenizers[3], FixedLengthPreTokenizer)
+
+
 def test_add_normalizer(small_tokenizer: Tokenizer) -> None:
     """Test adding a normalizer to the TokenizerModel."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -148,6 +206,13 @@ def test_add_normalizer(small_tokenizer: Tokenizer) -> None:
     # Tests adding a third normalizer and keeping it as a sequence
     assert isinstance(model.normalizer, NormalizerSequence)
     assert len(model.normalizer.normalizers) == 3
+
+    model = model.add_normalizer(LowercaseNormalizer(), prefix=True)
+
+    # Tests adding a third normalizer and keeping it as a sequence
+    assert isinstance(model.normalizer, NormalizerSequence)
+    assert len(model.normalizer.normalizers) == 4
+    assert isinstance(model.normalizer.normalizers[0], LowercaseNormalizer)
 
 
 def test_add_normalizer_prefix(small_tokenizer: Tokenizer) -> None:
@@ -352,14 +417,13 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
-    vocabulary = model.model.vocab.sorted_vocabulary
     model = model.decase()
     # This tokenizer does not assign any special tokens, so this is true.
     if isinstance(model.normalizer, NormalizerSequence):
         assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
     else:
         assert isinstance(model.normalizer, LowercaseNormalizer)
-    assert model.model.vocab.sorted_vocabulary == [x.lower() for x in vocabulary]
+    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f"]
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
 
@@ -370,10 +434,9 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     model.added_tokens = AddedTokens([])
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
-    vocabulary = model.model.vocab.sorted_vocabulary
     model = model.decase()
     # This tokenizer does not assign any special tokens, so this is true.
-    assert model.model.vocab.sorted_vocabulary == [x.lower() if x not in {"ADD"} else x for x in vocabulary]
+    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f", "ADD", "add_remove"]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -387,11 +450,6 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
     model = model.decase()
     assert model.model.vocab.sorted_vocabulary == [
-        "[pad]",
-        "[sep]",
-        "[unk]",
-        "[cls]",
-        "[mask]",
         "a",
         "b",
         "c",
@@ -825,8 +883,56 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.lowercase()
+    assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "f"]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
+    """Test the removal of uppercase tokens from the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("apa")
+    model = model.add_normalizer(ReplaceNormalizer(pattern="a", content="G"))
     model = model.prune_and_convert()
-    assert model.sorted_vocabulary == ["[PAD]", "[SEP]", "[UNK]", "[CLS]", "[MASK]", "a", "b", "c", "d", " ", "f"]
+    assert model.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "G",
+        "b",
+        "c",
+        "d",
+        " ",
+        "f",
+        "GpG",
+    ]
+
+    # Implicit test. If this fails, the model is incorrect.
+    model.to_tokenizer()
+
+
+def test_prune(small_tokenizer: Tokenizer) -> None:
+    """Test the removal of uppercase tokens from the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("apa")
+    model = model.add_normalizer(ReplaceNormalizer(pattern="a", content="G"))
+    model = model.prune()
+    assert model.sorted_vocabulary == [
+        "[PAD]",
+        "[SEP]",
+        "[UNK]",
+        "[CLS]",
+        "[MASK]",
+        "b",
+        "c",
+        "d",
+        " ",
+        "f",
+    ]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()

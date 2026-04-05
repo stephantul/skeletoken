@@ -4,13 +4,12 @@ from skeletoken.addedtoken import AddedToken
 from skeletoken.prune.byte_handlers import text_to_token_str, token_to_bytes
 
 if TYPE_CHECKING:
-    from skeletoken.preprocessor import Preprocessor
+    from skeletoken.preprocessor import Preprocessor  # pragma: nocover
 
 
 def _determine_collision(
     token: str,
     is_byte: bool,
-    vocab: set[str],
     added_tokens: dict[str, AddedToken],
     seen: set[str],
     preprocessor: "Preprocessor",
@@ -47,9 +46,11 @@ def _determine_collision(
     if is_byte:
         preprocessed_token = text_to_token_str(preprocessed_token)
 
+    token_changed = preprocessed_token != token
     # If the token changed but the preprocessed version was already in vocab, we have a collision.
-    if (preprocessed_token != token) and (preprocessed_token in vocab or preprocessed_token in seen):
-        return token if keep else None
+    if token_changed:
+        if not keep or preprocessed_token in seen:
+            return token if keep else None
     return preprocessed_token
 
 
@@ -60,13 +61,12 @@ def clean_vocabulary(
     processed_vocab: list[str | None] = []
     # seen keeps track of lowered tokens that were not in vocab before.
     # e.g., "AB" and "Ab" are in vocab, but they collide after lowercasing
-    seen: set[str] = set()
-    vocab_set = set(vocabulary)
+    seen: set[str] = set(vocabulary)
 
     added_token_dict = {at.content: at for at in added_tokens}
 
     for token in vocabulary:
-        processed = _determine_collision(token, is_byte, vocab_set, added_token_dict, seen, preprocessor, keep)
+        processed = _determine_collision(token, is_byte, added_token_dict, seen, preprocessor, keep)
         processed_vocab.append(processed)
         if isinstance(processed, str):
             seen.add(processed)

@@ -417,26 +417,27 @@ class TokenizerModel(BaseModel):
 
         return self
 
-    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
+    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool = False) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
         model = self.deep_copy()
-        model._add_pretokenizer_inplace(pre_tokenizer)
+        model._add_pretokenizer_inplace(pre_tokenizer, prefix)
         return model
 
-    def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
+    def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool) -> None:
         """Add a pre-tokenizer to the tokenizer model in place."""
         self._preprocessor = None
-        is_byte = isinstance(pre_tokenizer, ByteLevelPreTokenizer)
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
-            if is_byte:
-                self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
-            else:
+            if prefix:
                 self.pre_tokenizer.pretokenizers.insert(0, pre_tokenizer)
+            else:
+                self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
         else:
-            sequence = [self.pre_tokenizer, pre_tokenizer] if is_byte else [pre_tokenizer, self.pre_tokenizer]
-            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=sequence)
+            if prefix:
+                self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[pre_tokenizer, self.pre_tokenizer])
+            else:
+                self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
@@ -488,7 +489,10 @@ class TokenizerModel(BaseModel):
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):
-            self.normalizer.normalizers.append(normalizer)
+            if prefix:
+                self.normalizer.normalizers.insert(0, normalizer)
+            else:
+                self.normalizer.normalizers.append(normalizer)
         else:
             if prefix:
                 self.normalizer = NormalizerSequence(normalizers=[normalizer, self.normalizer])

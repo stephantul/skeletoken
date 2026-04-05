@@ -1,4 +1,6 @@
-from tokenizers.normalizers import Lowercase
+from tokenizers import Regex
+from tokenizers.normalizers import Lowercase, Replace
+from tokenizers.pre_tokenizers import Digits
 
 from skeletoken.addedtoken import AddedToken
 from skeletoken.preprocessor import Preprocessor
@@ -11,54 +13,41 @@ def test_determine_collision() -> None:
     # Unchanged (already in vocab)
     p = Preprocessor(normalizer=Lowercase())
     assert (
-        _determine_collision(
-            token="dog", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=True
-        )
+        _determine_collision(token="dog", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=True)
         == "dog"
     )
     # Unchanged (already in vocab)
     assert (
-        _determine_collision(
-            token="DOG", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=False
-        )
+        _determine_collision(token="DOG", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=False)
         == None
     )
     # Unchanged (already lowered)
     assert (
-        _determine_collision(
-            token="cat", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=False
-        )
+        _determine_collision(token="cat", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=False)
         == "cat"
     )
     # Unchanged (already in vocab)
     assert (
-        _determine_collision(
-            token="CAT", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=False
-        )
+        _determine_collision(token="CAT", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=False)
         == None
     )
     # Unchanged (already in vocab)
     assert (
-        _determine_collision(
-            token="cAT", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=False
-        )
+        _determine_collision(token="cAT", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=False)
         == None
     )
     # Additional test (new token)
     assert (
-        _determine_collision(
-            token="SPIN", is_byte=False, vocab=set(vocabulary), added_tokens={}, seen=set(), preprocessor=p, keep=False
-        )
-        == "spin"
+        _determine_collision(token="SPIN", is_byte=False, added_tokens={}, seen=vocabulary, preprocessor=p, keep=False)
+        == None
     )
     # Unchanged (already in seen)
     assert (
         _determine_collision(
             token="SPIN",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen={"spin"},
+            seen={"spin"} | vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -69,13 +58,12 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="Spin",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={
                 "Spin": AddedToken(
                     content="Spin", single_word=True, normalized=True, special=False, lstrip=True, rstrip=True, id=0
                 )
             },
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -87,9 +75,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="dog",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -99,9 +86,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="DOG",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -111,9 +97,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="cat",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -123,9 +108,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="CAT",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -135,9 +119,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="cAT",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -147,21 +130,19 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="SPIN",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
-        == "spin"
+        == None
     )
     assert (
         _determine_collision(
             token="SPIN",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen={"spin"},
+            seen={"spin"} | vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -171,13 +152,12 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="Spin",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={
                 "Spin": AddedToken(
                     content="Spin", single_word=True, normalized=True, special=False, lstrip=True, rstrip=True, id=0
                 )
             },
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -189,9 +169,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="\x80",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -203,9 +182,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="\x80",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -217,9 +195,8 @@ def test_determine_collision() -> None:
         _determine_collision(
             token="\xa1",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -236,9 +213,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="dog",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -249,9 +225,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="DOG",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -262,9 +237,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="cat",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -275,9 +249,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="CAT",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -288,9 +261,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="cAT",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -301,9 +273,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="SPIN",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -314,9 +285,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="SPIN",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen={"spin"},
+            seen=vocabulary | {"spin"},
             preprocessor=p,
             keep=True,
         )
@@ -327,13 +297,12 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="Spin",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={
                 "Spin": AddedToken(
                     content="Spin", single_word=True, normalized=True, special=False, lstrip=True, rstrip=True, id=0
                 )
             },
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -345,9 +314,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="dog",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -357,9 +325,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="DOG",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -369,9 +336,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="cat",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -381,9 +347,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="CAT",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -393,9 +358,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="cAT",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -405,9 +369,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="SPIN",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -417,9 +380,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="SPIN",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen={"spin"},
+            seen=vocabulary | {"spin"},
             preprocessor=p,
             keep=True,
         )
@@ -429,13 +391,12 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="Spin",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={
                 "Spin": AddedToken(
                     content="Spin", single_word=True, normalized=True, special=False, lstrip=True, rstrip=True, id=0
                 )
             },
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=True,
         )
@@ -447,9 +408,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="\x80",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -461,9 +421,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="\x80",
             is_byte=False,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -475,9 +434,8 @@ def test_determine_collision_lower() -> None:
         _determine_collision(
             token="\xa1",
             is_byte=True,
-            vocab=set(vocabulary),
             added_tokens={},
-            seen=set(),
+            seen=vocabulary,
             preprocessor=p,
             keep=False,
         )
@@ -490,7 +448,7 @@ def test_decase() -> None:
     p = Preprocessor(normalizer=Lowercase())
     vocabulary = ["dog", "CAT", "Cat", "cat", "DOG", "Dog", "SPIN"]
     decased = clean_vocabulary(vocabulary, added_tokens=[], is_byte=False, preprocessor=p, keep=False)
-    assert decased == ["dog", None, None, "cat", None, None, "spin"]
+    assert decased == ["dog", None, None, "cat", None, None, None]
 
     vocabulary = ["dog", "CAT", "Cat", "cat", "DOG", "Dog", "SPIN"]
     decased = clean_vocabulary(
@@ -503,3 +461,102 @@ def test_decase() -> None:
         keep=False,
     )
     assert decased == ["dog", None, None, "cat", None, None, "SPIN"]
+
+
+def test_pretokenizer_preprocessor_splitdigits() -> None:
+    """Test whether a pretokenizer that splits sets tokens to None."""
+    p = Preprocessor(pretokenizer=Digits(individual_digits=True))
+
+    # This is split into digits
+    assert (
+        _determine_collision(
+            token="010",
+            is_byte=False,
+            added_tokens={},
+            seen=set(),
+            preprocessor=p,
+            keep=False,
+        )
+        == None
+    )
+
+    # If keep is true, we don't throw anything away
+    assert (
+        _determine_collision(
+            token="010",
+            is_byte=False,
+            added_tokens={},
+            seen=set(),
+            preprocessor=p,
+            keep=True,
+        )
+        == "010"
+    )
+
+    # Nothing matters if the pretokenizer rejects a token.
+    assert (
+        _determine_collision(
+            token="010",
+            is_byte=False,
+            added_tokens={},
+            seen={"010"},
+            preprocessor=p,
+            keep=False,
+        )
+        == None
+    )
+
+
+def test_pretokenizer_digit_normalizer() -> None:
+    """Test whether a pretokenizer that splits sets tokens to None."""
+    p = Preprocessor(normalizer=Replace(pattern=Regex(r"\d"), content="0"))
+
+    # This is split into digits
+    assert (
+        _determine_collision(
+            token="123",
+            is_byte=False,
+            added_tokens={},
+            seen=set(),
+            preprocessor=p,
+            keep=False,
+        )
+        == None
+    )
+
+    # If keep is true, we don't throw anything away
+    assert (
+        _determine_collision(
+            token="123",
+            is_byte=False,
+            added_tokens={},
+            seen=set(),
+            preprocessor=p,
+            keep=True,
+        )
+        == "000"
+    )
+
+    assert (
+        _determine_collision(
+            token="010",
+            is_byte=False,
+            added_tokens={},
+            seen={"000"},
+            preprocessor=p,
+            keep=True,
+        )
+        == "010"
+    )
+
+    assert (
+        _determine_collision(
+            token="010",
+            is_byte=False,
+            added_tokens={},
+            seen=set("010"),
+            preprocessor=p,
+            keep=False,
+        )
+        == None
+    )
