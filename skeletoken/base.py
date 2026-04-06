@@ -280,6 +280,10 @@ class TokenizerModel(BaseModel):
             self.post_processor = maybe_replace_token_in_post_processor(
                 old_token, new_token, self.model.vocab[new_token], self.post_processor
             )
+        if self.pad_token == old_token:
+            self.pad_token = new_token
+        if self.unk_token == old_token:
+            self.unk_token = new_token
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
@@ -322,27 +326,31 @@ class TokenizerModel(BaseModel):
         """
         model = self.deep_copy()
 
-        unk_token = model.unk_token
-        pad_token = model.pad_token
+        return model._remove_tokens_from_vocabulary(tokens)
+
+    def _remove_tokens_from_vocabulary(self, tokens: Sequence[str]) -> TokenizerModel:
+        """In-place version of `remove_tokens_from_vocabulary`."""
+        unk_token = self.unk_token
+        pad_token = self.pad_token
 
         if unk_token is not None and unk_token in tokens:
             try:
-                model.unk_token = None
+                self.unk_token = None
             except ValueError:
                 logger.warning(
                     f"Could not remove unknown token '{unk_token}' from vocabulary. "
-                    f"You are using a {model.model.type.value} model, which does not support this."
+                    f"You are using a {self.model.type.value} model, which does not support this."
                 )
                 tokens = [x for x in tokens if x != unk_token]
-        pad_token = model.pad_token
+        pad_token = self.pad_token
         if pad_token is not None and pad_token in tokens:
-            model.pad_token = None
+            self.pad_token = None
 
         for token in tokens:
-            model.added_tokens.maybe_remove_token(token)
-        model.model.remove_tokens(tokens)
+            self.added_tokens.maybe_remove_token(token)
+        self.model.remove_tokens(tokens)
 
-        return model
+        return self
 
     def lowercase(self) -> TokenizerModel:
         """Lowercase the vocabulary.
@@ -403,16 +411,23 @@ class TokenizerModel(BaseModel):
         vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
-            is_byte=self.transforms_into_bytes,
             preprocessor=self.preprocessor,
             keep=keep,
         )
-        mapping: dict[int, int] = {}
-        for i, token in enumerate(vocabulary):
+        sorted_vocabulary = self.sorted_vocabulary
+        added_tokens = {token.content: token for token in self.added_tokens.root}
+        to_remove = []
+        from tqdm import tqdm
+
+        for i, token in enumerate(tqdm(vocabulary)):
             if token is None:
+                to_remove.append(sorted_vocabulary[i])
                 continue
-            mapping[i] = len(mapping)
-        self.model.replace_vocabulary(vocabulary)
+            original_token = sorted_vocabulary[i]
+            if original_token != token:
+                is_added_token = bool(added_tokens.get(token))
+                self._replace_token_in_vocabulary(original_token, token, is_added_token=is_added_token)
+        self._remove_tokens_from_vocabulary(to_remove)
         self._remap_added_token_ids()
 
         return self

@@ -180,7 +180,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
         """Return the unknown token, if any."""
         if self.unk_id is None:
             return None
-        return self.vocab.sorted_vocabulary[self.unk_id]
+        return self.vocab.root[self.unk_id][0]
 
     @unk_token.setter
     def unk_token(self, token: str | None) -> None:

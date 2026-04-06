@@ -423,7 +423,7 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
         assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
     else:
         assert isinstance(model.normalizer, LowercaseNormalizer)
-    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f"]
+    assert model.model.vocab.sorted_vocabulary == ["[UNK]", "a", "b", "c", "d", " ", "f"]
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
 
@@ -431,12 +431,25 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
 def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.added_tokens = AddedTokens([])
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
-    model = model.add_addedtoken("ADD_REMOVE", is_special=False, normalized=False)
-    model = model.decase()
+    model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
+    model = model.lowercase()
     # This tokenizer does not assign any special tokens, so this is true.
-    assert model.model.vocab.sorted_vocabulary == ["a", "b", "c", "d", " ", "f", "ADD", "add_remove"]
+    assert model.model.vocab.sorted_vocabulary == [
+        "[pad]",
+        "[sep]",
+        "[UNK]",
+        "[cls]",
+        "[mask]",
+        "a",
+        "b",
+        "c",
+        "d",
+        " ",
+        "f",
+        "ADD",
+        "add_keep",
+    ]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -445,11 +458,11 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
 def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model.added_tokens = AddedTokens([])
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
     model = model.decase()
     assert model.model.vocab.sorted_vocabulary == [
+        "[UNK]",
         "a",
         "b",
         "c",
