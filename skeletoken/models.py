@@ -215,11 +215,15 @@ ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
 def get_subword_prefix_token(model: Model) -> str | None:
     """Get the prefix token from the model, if any."""
     # Only WordPiece and BPE models have these.
-    if isinstance(model, WordPiece):
-        return model.continuing_subword_prefix
-    elif isinstance(model, BPE):
+    if isinstance(model, (WordPiece, BPE)):
         return model.continuing_subword_prefix
     return None
+
+
+def set_subword_prefix_token(model: Model, prefix: str) -> None:
+    """Set the subword prefix. This will raise a ValueError if the model does not support one."""
+    if isinstance(model, (WordPiece, BPE)):
+        model.continuing_subword_prefix = prefix
 
 
 MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)

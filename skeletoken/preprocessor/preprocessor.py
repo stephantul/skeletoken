@@ -11,8 +11,22 @@ from skeletoken.base import TokenizerModel
 
 @dataclass
 class Decoded:
+    # Original string form
     original: str
+    # The base string form
     decoded: str
+    # The subword prefix the token had
+    subword_prefix: str | None
+    # The word prefix the token had
+    word_prefix: str | None
+
+
+def _remove_prefix(sequence: str, prefix: str | None) -> tuple[str, bool]:
+    """Removes a prefix and indicates whether something changed."""
+    if prefix is None:
+        return sequence, False
+    new_sequence = sequence.removeprefix(prefix)
+    return new_sequence, new_sequence != sequence
 
 
 class Preprocessor:
@@ -33,13 +47,16 @@ class Preprocessor:
 
     def decode(self, sequence: str) -> Decoded:
         """Preprocess a single sequence."""
+        decoded, has_subword = _remove_prefix(sequence, self.subword_prefix)
+        decoded, has_word = _remove_prefix(decoded, self.word_prefix)
+
         if self.byte_transformer:
-            decoded = self.byte_transformer.decode([sequence])
-        else:
-            decoded = sequence
+            decoded = self.byte_transformer.decode([decoded])
         return Decoded(
             original=sequence,
             decoded=decoded,
+            subword_prefix=self.subword_prefix if has_subword else None,
+            word_prefix=self.word_prefix if has_word else None,
         )
 
     def decode_sequences(self, sequences: list[str]) -> list[Decoded]:
@@ -47,27 +64,19 @@ class Preprocessor:
         return [self.decode(seq) for seq in sequences]
 
     def preprocess(self, sequence: str) -> list[str]:
-        """Preprocess a single sequence."""
-        removed_prefix = False
-        if self.subword_prefix and sequence.startswith(self.subword_prefix):
-            sequence = sequence.removeprefix(self.subword_prefix)
-            removed_prefix = True
+        """Preprocess a single sequence.
 
-        removed_word_prefix = False
-        if self.word_prefix and sequence.startswith(self.word_prefix):
-            sequence = sequence.removeprefix(self.word_prefix)
-            removed_word_prefix = True
-
+        Note that word prefix and subword prefix tokens like '##' and `_` are
+        treated as regular characters here. So any tokens you input here should be
+        decoded using `decode`. This removes these tokens and stores whether they had
+        such a prefix.
+        """
         if self.normalizer is not None:
             sequence = self.normalizer.normalize_str(sequence)
         if self.pretokenizer is not None:
             x = [text for text, _ in self.pretokenizer.pre_tokenize_str(sequence)]
         else:
             x = [sequence]
-        if removed_prefix and x:
-            x[0] = f"{self.subword_prefix}{x[0]}"
-        if self.word_prefix and not removed_word_prefix and x:
-            x[0] = x[0].removeprefix(self.word_prefix)
         return x
 
     def preprocess_sequences(self, sequences: list[str]) -> list[list[str]]:

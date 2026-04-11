@@ -6,61 +6,79 @@ if TYPE_CHECKING:
     from skeletoken.preprocessor import Preprocessor  # pragma: nocover
 
 
-def _determine_collision(
-    decoded_token: str,
-    original_token: str,
-    added_tokens: dict[str, AddedToken],
-    seen: set[str],
+def _process(
+    decoded: str,
+    original: str,
+    added_token_dict: dict[str, AddedToken],
     preprocessor: "Preprocessor",
     keep: bool,
+    subword_prefix: str | None,
+    word_prefix: str | None,
 ) -> str | None:
-    """Determine whether a given token, when processed by a preprocessor, collides with another."""
-    # Takes care of tokens like "_" that just encode a space.
-    if not decoded_token:
-        return decoded_token
-    # This is a failed decoding. If it isn't, the original is "�", so that's fine.
-    if "�" in decoded_token:
-        return original_token
-    if added_token := added_tokens.get(original_token):
+    if "�" in decoded:
+        return original
+    elif added_token := added_token_dict.get(original):
         # If we get here, the token is an added token.
         if added_token.normalized:
             # The added token is already normalized
-            return decoded_token
-        token = "".join(preprocessor.preprocess(decoded_token))
-        return token
+            return decoded
+        else:
+            reprocessed = "".join(preprocessor.preprocess(decoded))
+    else:
+        preprocessed_tokens = preprocessor.preprocess(decoded)
+        if len(preprocessed_tokens) != 1:
+            return original if keep else None
+        reprocessed = preprocessed_tokens[0]
+    if subword_prefix is not None:
+        reprocessed = f"{preprocessor.subword_prefix}{reprocessed}"
+    if word_prefix is None and preprocessor.word_prefix:
+        reprocessed = reprocessed.removeprefix(preprocessor.word_prefix)
 
-    preprocessed_tokens = preprocessor.preprocess(decoded_token)
-    if len(preprocessed_tokens) != 1:
-        return decoded_token if keep else None
-    preprocessed_token = preprocessed_tokens[0]
-
-    token_changed = preprocessed_token != original_token
-    # If the token changed but the preprocessed version was already in vocab, we have a collision.
-    if token_changed:
-        if not keep or preprocessed_token in seen:
-            return decoded_token if keep else None
-    return preprocessed_token
+    return reprocessed
 
 
 def clean_vocabulary(
     vocabulary: list[str],
     added_tokens: list[AddedToken],
-    preprocessor: "Preprocessor",
+    old_preprocessor: "Preprocessor",
+    new_preprocessor: "Preprocessor",
     keep: bool,
 ) -> list[str | None]:
     """Preprocess the vocabulary of a tokenizer."""
     processed_vocab: list[str | None] = []
     # Decoded tokens. These tokens have no prefix markers.
-    decoded = preprocessor.decode_sequences(vocabulary)
-    seen = set([x.decoded for x in decoded])
+    decoded_sequences = old_preprocessor.decode_sequences(vocabulary)
     added_token_dict = {at.content: at for at in added_tokens}
 
-    for decoded_token in decoded:
-        processed = _determine_collision(
-            decoded_token.decoded, decoded_token.original, added_token_dict, seen, preprocessor, keep
+    new_vocab: list[tuple[str | None, str]] = []
+
+    for decoded_token in decoded_sequences:
+        decoded = decoded_token.decoded
+        original = decoded_token.original
+        reprocessed = _process(
+            decoded,
+            original,
+            added_token_dict,
+            new_preprocessor,
+            keep,
+            decoded_token.subword_prefix,
+            decoded_token.word_prefix,
         )
-        if isinstance(processed, str):
-            seen.add(processed)
+        new_vocab.append((reprocessed, original))
+
+    # We give preference for unchanged tokens. These should not be removed.
+    seen: dict[str, int] = {x: i for i, (x, y) in enumerate(new_vocab) if x is not None and x == y}
+
+    processed_vocab = []
+    for i, (processed, original) in enumerate(new_vocab):
+        if processed is None:
+            processed_vocab.append(processed)
+            continue
+        index = seen.get(processed)
+        if index is not None and index != i:
+            processed_vocab.append(original if keep else None)
+            continue
+        seen[processed] = i
         processed_vocab.append(processed)
 
     return processed_vocab

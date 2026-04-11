@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -12,7 +14,13 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.common import PathLike
 from skeletoken.decoders import DecoderDiscriminator
-from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
+from skeletoken.models import (
+    MODELS_THAT_NEED_UNK,
+    ModelDiscriminator,
+    WordPiece,
+    get_subword_prefix_token,
+    set_subword_prefix_token,
+)
 from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
 from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
@@ -364,7 +372,7 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
         if not model.lowercases_input:
             model._add_normalizer_inplace(LowercaseNormalizer())
-        return model._prune(keep=True)
+        return model._prune(keep=True, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
 
     def decase(self) -> TokenizerModel:
         """Decases the vocabulary.
@@ -378,7 +386,7 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
         if not model.lowercases_input:
             model._add_normalizer_inplace(LowercaseNormalizer())
-        return model._prune(keep=False)
+        return model._prune(keep=False, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
 
     def prune_and_convert(self) -> TokenizerModel:
         """Remove all uppercase tokens from the vocabulary.
@@ -390,7 +398,7 @@ class TokenizerModel(BaseModel):
 
         """
         model = self.deep_copy()
-        return model._prune(keep=True)
+        return model._prune(keep=True, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
 
     def prune(self) -> TokenizerModel:
         """Decases the vocabulary.
@@ -402,33 +410,32 @@ class TokenizerModel(BaseModel):
 
         """
         model = self.deep_copy()
-        return model._prune(keep=False)
+        return model._prune(keep=False, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
 
-    def _prune(self, keep: bool) -> TokenizerModel:
-        """Private method to decase the vocabulary."""
+    def _prune(self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor) -> TokenizerModel:
+        """Private method to prune the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
         sorted_vocab = self.model.vocab.sorted_vocabulary
         vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
-            preprocessor=self.preprocessor,
+            old_preprocessor=old_preprocessor,
+            new_preprocessor=new_preprocessor,
             keep=keep,
         )
         sorted_vocabulary = self.sorted_vocabulary
         added_tokens = {token.content: token for token in self.added_tokens.root}
-        to_remove = []
-        from tqdm import tqdm
-
-        for i, token in enumerate(tqdm(vocabulary)):
+        token_iterator = list(enumerate(vocabulary))
+        tokens_to_remove = [sorted_vocabulary[i] for i, token in token_iterator if token is None]
+        # First, remove all tokens.
+        self._remove_tokens_from_vocabulary(tokens_to_remove)
+        for i, token in enumerate(vocabulary):
             if token is None:
-                to_remove.append(sorted_vocabulary[i])
                 continue
             original_token = sorted_vocabulary[i]
             if original_token != token:
                 is_added_token = bool(added_tokens.get(token))
                 self._replace_token_in_vocabulary(original_token, token, is_added_token=is_added_token)
-        self._remove_tokens_from_vocabulary(to_remove)
-        self._remap_added_token_ids()
 
         return self
 
@@ -630,6 +637,15 @@ class TokenizerModel(BaseModel):
     def subword_prefix(self) -> str | None:
         """Get the prefix token, if any."""
         return get_subword_prefix_token(self.model)
+
+    @subword_prefix.setter
+    def subword_prefix(self, prefix: str) -> None:
+        """Set the subword prefix and re-encode the vocabulary."""
+        old_preprocessor = deepcopy(self.preprocessor)
+        self._preprocessor = None
+        set_subword_prefix_token(self.model, prefix)
+        new_preprocessor = self.preprocessor
+        self._prune(keep=True, old_preprocessor=old_preprocessor, new_preprocessor=new_preprocessor)
 
     @property
     def word_prefix(self) -> str | None:
@@ -879,3 +895,23 @@ class TokenizerModel(BaseModel):
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
         model._remap_added_token_ids()
         return model
+
+    def as_decoded_vocabulary(self) -> list[DecodedToken]:
+        """Return a decoded vocabulary, suitable for re-encoding with another tokenizer."""
+        decoded = self.preprocessor.decode_sequences(self.sorted_vocabulary)
+        out: list[DecodedToken] = []
+        for token in decoded:
+            form = token.decoded
+            is_subword = False
+            if self.subword_prefix and token.subword_prefix == self.subword_prefix:
+                is_subword = True
+            if self.word_prefix and token.word_prefix is None:
+                is_subword = True
+            out.append(DecodedToken(form=form, is_subword=is_subword))
+        return out
+
+
+@dataclass
+class DecodedToken:
+    form: str
+    is_subword: bool

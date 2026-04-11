@@ -423,7 +423,19 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
         assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
     else:
         assert isinstance(model.normalizer, LowercaseNormalizer)
-    assert model.model.vocab.sorted_vocabulary == ["[UNK]", "a", "b", "c", "d", " ", "f"]
+        assert model.model.vocab.sorted_vocabulary == [
+            "[pad]",
+            "[sep]",
+            "[unk]",
+            "[cls]",
+            "[mask]",
+            "a",
+            "b",
+            "c",
+            "d",
+            " ",
+            "f",
+        ]
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
 
@@ -446,7 +458,7 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
         "c",
         "d",
         " ",
-        "f",
+        "F",
         "ADD",
         "add_keep",
     ]
@@ -462,13 +474,17 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
     model = model.decase()
     assert model.model.vocab.sorted_vocabulary == [
+        "[pad]",
+        "[sep]",
         "[UNK]",
+        "[cls]",
+        "[mask]",
         "a",
         "b",
         "c",
         "d",
         " ",
-        "f",
+        "F",
         "ADD",
         "add_keep",
     ]
@@ -571,9 +587,9 @@ def test_word_prefix(small_tokenizer: Tokenizer) -> None:
 def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test replacing a token in the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.replace_token_in_vocabulary("f", "g")
-    assert model.model.vocab["g"] is not None
-    assert model.added_tokens.get_token("g") is not None
+    model = model.replace_token_in_vocabulary("F", "G")
+    assert model.model.vocab["G"] is not None
+    assert model.added_tokens.get_token("G") is not None
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -582,9 +598,9 @@ def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
 def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test removing a token from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.added_tokens.get_token("f") is not None
-    model = model.remove_token_from_vocabulary("f")
-    assert model.added_tokens.get_token("f") is None
+    assert model.added_tokens.get_token("F") is not None
+    model = model.remove_token_from_vocabulary("F")
+    assert model.added_tokens.get_token("F") is None
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -756,7 +772,7 @@ def test_model_delta(small_tokenizer: Tokenizer) -> None:
     delta = model.model_delta
     assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 7, 7: 8, 8: 9}
     assert delta.new_vocabulary_size == 13
-    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12, "f": 9}
+    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12, "F": 9}
 
 
 def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
@@ -782,22 +798,22 @@ def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
     assert model.pad_token == "[UNK]"
 
     tokenizer = model.to_tokenizer()
-    encoded = tokenizer.encode("abcdef")
-    assert encoded.tokens == ["[UNK]", "f"]
+    encoded = tokenizer.encode("abcdeF")
+    assert encoded.tokens == ["[UNK]", "F"]
     assert encoded.ids == [2, 10]
 
 
 def test_token_to_id_and_id_to_token(small_tokenizer: Tokenizer) -> None:
     """Test the tokens_to_ids and ids_to_tokens methods."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    tokens = ["a", "b", "c", "d", "f"]
+    tokens = ["a", "b", "c", "D", "F"]
     ids = model.tokens_to_ids(tokens)
     assert ids == [5, 6, 7, 8, 10]
     recovered_tokens = model.ids_to_tokens(ids)
     assert recovered_tokens == tokens
 
     tokenizer = model.to_tokenizer()
-    encoded = tokenizer.encode_batch(["a", "b", "c", "d", "f"])
+    encoded = tokenizer.encode_batch(["a", "b", "c", "D", "F"])
     assert [enc.tokens[0] for enc in encoded] == tokens
     assert [enc.ids[0] for enc in encoded] == ids
 
@@ -897,7 +913,7 @@ def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model = model.lowercase()
-    assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "f"]
+    assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "F"]
 
     # Implicit test. If this fails, the model is incorrect.
     model.to_tokenizer()
@@ -918,9 +934,9 @@ def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
         "G",
         "b",
         "c",
-        "d",
+        "D",
         " ",
-        "f",
+        "F",
         "GpG",
     ]
 
@@ -940,11 +956,13 @@ def test_prune(small_tokenizer: Tokenizer) -> None:
         "[UNK]",
         "[CLS]",
         "[MASK]",
+        "G",
         "b",
         "c",
-        "d",
+        "D",
         " ",
-        "f",
+        "F",
+        "GpG",
     ]
 
     # Implicit test. If this fails, the model is incorrect.
@@ -1162,14 +1180,14 @@ def test_load_with_added(small_tokenizer_json: dict[str, Any]) -> None:
     """Tests whether added tokens are added to the vocabulary when loading."""
     json_data = json.dumps(small_tokenizer_json)
     model = TokenizerModel.from_string(json_data)
-    assert "f" in model.sorted_vocabulary
+    assert "F" in model.sorted_vocabulary
 
 
 def test_prune_added_tokens(small_tokenizer_json: dict[str, Any]) -> None:
     """Tests whether added tokens get pruned."""
     json_data = json.dumps(small_tokenizer_json)
     model = TokenizerModel.from_string(json_data)
-    assert [x.content for x in model.added_tokens.root] == ["f", "[UNK]"]
+    assert [x.content for x in model.added_tokens.root] == ["F", "[UNK]"]
     # Only tokens that aren't special tokens should get pruned.
     model = model.prune_added_tokens()
     assert [x.content for x in model.added_tokens.root] == ["[UNK]"]
@@ -1195,7 +1213,7 @@ def test_prune_added_tokens_post_processor(
     json_data = json.dumps(small_tokenizer_json)
     model = TokenizerModel.from_string(json_data)
 
-    assert [(x.content, x.id) for x in model.added_tokens.root] == [("f", 10), ("[UNK]", 2)]
+    assert [(x.content, x.id) for x in model.added_tokens.root] == [("F", 10), ("[UNK]", 2)]
 
     for token in template_post_processor.special_tokens.values():
         for t in token.tokens:
@@ -1206,7 +1224,7 @@ def test_prune_added_tokens_post_processor(
 
     model = model.add_post_processor(template_post_processor)
     assert [(x.content, x.id) for x in model.added_tokens.root] == [
-        ("f", 10),
+        ("F", 10),
         ("[UNK]", 2),
         ("[CLS]", 3),
         ("[MASK]", 4),
