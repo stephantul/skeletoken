@@ -417,7 +417,7 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
     """Test the decasing of the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.added_tokens = AddedTokens([])
-    model = model.decase()
+    model = model.decase_vocabulary()
     # This tokenizer does not assign any special tokens, so this is true.
     if isinstance(model.normalizer, NormalizerSequence):
         assert any(isinstance(norm, LowercaseNormalizer) for norm in model.normalizer.normalizers)
@@ -445,7 +445,7 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
-    model = model.decase(keep_duplicates=True)
+    model = model.decase_vocabulary(keep_duplicates=True)
     # This tokenizer does not assign any special tokens, so this is true.
     assert model.model.vocab.sorted_vocabulary == [
         "[pad]",
@@ -472,7 +472,7 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model = model.add_addedtoken("ADD", is_special=False, normalized=True)
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
-    model = model.decase()
+    model = model.decase_vocabulary()
     assert model.model.vocab.sorted_vocabulary == [
         "[pad]",
         "[sep]",
@@ -912,7 +912,7 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.decase(keep_duplicates=True)
+    model = model.decase_vocabulary(keep_duplicates=True)
     assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "F"]
 
     # Implicit test. If this fails, the model is incorrect.
@@ -924,7 +924,7 @@ def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model = model.add_token_to_vocabulary("apa")
     model = model.add_normalizer(ReplaceNormalizer(pattern="a", content="G"))
-    model = model.collapse_vocab(keep_duplicates=True)
+    model = model.collapse_vocabulary(keep_duplicates=True)
     assert model.sorted_vocabulary == [
         "[PAD]",
         "[SEP]",
@@ -949,7 +949,7 @@ def test_prune(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model = model.add_token_to_vocabulary("apa")
     model = model.add_normalizer(ReplaceNormalizer(pattern="a", content="G"))
-    model = model.collapse_vocab()
+    model = model.collapse_vocabulary()
     assert model.sorted_vocabulary == [
         "[PAD]",
         "[SEP]",

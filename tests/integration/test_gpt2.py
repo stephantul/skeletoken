@@ -26,7 +26,7 @@ def test_load() -> None:
 def test_basic_collapse() -> None:
     """Test collapsing the basic tokenizer."""
     model = TokenizerModel.from_pretrained(_PATH)
-    model = model.collapse_vocab(keep_duplicates=False)
+    model = model.collapse_vocabulary(keep_duplicates=False)
     assert model.vocabulary_size == 50257
     new_tokens = model.model_delta.new_tokens
     assert not new_tokens

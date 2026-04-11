@@ -359,7 +359,7 @@ class TokenizerModel(BaseModel):
 
         return self
 
-    def decase(self, keep_duplicates: bool = False) -> TokenizerModel:
+    def decase_vocabulary(self, keep_duplicates: bool = False) -> TokenizerModel:
         """Decases the vocabulary.
 
         Parameters
@@ -380,10 +380,10 @@ class TokenizerModel(BaseModel):
             keep=keep_duplicates, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor
         )
 
-    def collapse_vocab(self, keep_duplicates: bool = False) -> TokenizerModel:
-        """Prune the vocabulary.
+    def collapse_vocabulary(self, keep_duplicates: bool = False) -> TokenizerModel:
+        """Collapse the vocabulary.
 
-        Pruning reinterprets tokens according to the current pretokenization rules AND removes tokens that:
+        Collapse reinterprets tokens according to the current pretokenization rules AND removes tokens that:
             1. can't be found by the current pretokenization/normalization
             2. collide with other tokens because of pretokenization or normalization
 
