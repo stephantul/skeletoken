@@ -30,10 +30,16 @@ def test_preprocessor() -> None:
     assert preprocessor.preprocess("This is a test.") == ["this", "is", "a", "test", "."]
     assert preprocessor.preprocess("This is a test.") == preprocessor.preprocess("This is a test.")
 
-    assert preprocessor.preprocess_sequences(["This is a test.", "Another test!"]) == [
-        ["this", "is", "a", "test", "."],
-        ["another", "test", "!"],
-    ]
+
+def test_preprocessor_empty() -> None:
+    """Test the Preprocessor class with normalizer and pretokenizer."""
+    normalizer = TokenizersNormalizerSequence(normalizers=[NFD(), Lowercase()])  # type: ignore[arg-type]
+    pretokenizer = TokenizersPreTokenizerSequence(pre_tokenizers=[Whitespace()])  # type: ignore[arg-type]
+    preprocessor = Preprocessor(normalizer=normalizer, pretokenizer=pretokenizer)
+    assert preprocessor.normalizer is not None
+    assert preprocessor.pretokenizer is not None
+    assert preprocessor.preprocess("") == [""]
+    assert preprocessor.preprocess("  ") == preprocessor.preprocess("  ")
 
 
 def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:

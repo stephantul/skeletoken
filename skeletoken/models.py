@@ -224,6 +224,8 @@ def set_subword_prefix_token(model: Model, prefix: str) -> None:
     """Set the subword prefix. This will raise a ValueError if the model does not support one."""
     if isinstance(model, (WordPiece, BPE)):
         model.continuing_subword_prefix = prefix
+    else:
+        raise ValueError("Setting a subword prefix token is not supported for Unigram or Wordlevel models.")
 
 
 MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)

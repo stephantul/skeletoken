@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from copy import deepcopy
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -12,6 +11,7 @@ from tokenizers import Tokenizer
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
+from skeletoken.clean import clean_vocabulary
 from skeletoken.common import PathLike
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import (
@@ -39,7 +39,6 @@ from skeletoken.pretokenizers import (
     get_metaspace,
     get_pretokenizer_of_type,
 )
-from skeletoken.prune import clean_vocabulary
 from skeletoken.truncation import Truncation
 
 if TYPE_CHECKING:
@@ -360,8 +359,13 @@ class TokenizerModel(BaseModel):
 
         return self
 
-    def lowercase(self) -> TokenizerModel:
-        """Lowercase the vocabulary.
+    def decase(self, keep_duplicates: bool = False) -> TokenizerModel:
+        """Decases the vocabulary.
+
+        Parameters
+        ----------
+        keep_duplicates: bool
+            Whether to keep duplicates or remove them.
 
         Returns
         -------
@@ -372,47 +376,42 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
         if not model.lowercases_input:
             model._add_normalizer_inplace(LowercaseNormalizer())
-        return model._prune(keep=True, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
+        return model._collapse(
+            keep=keep_duplicates, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor
+        )
 
-    def decase(self) -> TokenizerModel:
-        """Decases the vocabulary.
+    def collapse_vocab(self, keep_duplicates: bool = False) -> TokenizerModel:
+        """Prune the vocabulary.
 
-        Returns
-        -------
-        TokenizerModel
-            The tokenizer model with a decased vocabulary.
+        Pruning reinterprets tokens according to the current pretokenization rules AND removes tokens that:
+            1. can't be found by the current pretokenization/normalization
+            2. collide with other tokens because of pretokenization or normalization
 
-        """
-        model = self.deep_copy()
-        if not model.lowercases_input:
-            model._add_normalizer_inplace(LowercaseNormalizer())
-        return model._prune(keep=False, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
+        An example of the former is adding a pretokenizer which splits on punctuation. For example, if we
+        have "..." in the vocabulary, and add a pretokenizer that splits on punctuation, it will become
+        impossible for "..." to be found. An example of the latter is when lowercase normalization is applied:
+        e.g., let's say 'dog' and 'Dog' are in the vocabulary. When normalization is applied, these two tokens
+        have the same form, and the latter one will be removed.
 
-    def prune_and_convert(self) -> TokenizerModel:
-        """Remove all uppercase tokens from the vocabulary.
-
-        Returns
-        -------
-        TokenizerModel
-            The tokenizer model with uppercase tokens removed.
-
-        """
-        model = self.deep_copy()
-        return model._prune(keep=True, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
-
-    def prune(self) -> TokenizerModel:
-        """Decases the vocabulary.
+        Parameters
+        ----------
+        keep_duplicates: bool
+            If this is set, duplicates are kept, even though these tokens can't be found anymore. If `keep_duplicates`
+            is set to False, your tokenizer will no longer match your model, and you should remap your models input
+            embeddings to match.
 
         Returns
         -------
         TokenizerModel
-            The tokenizer model with a decased vocabulary.
+            The tokenizer model with a pruned vocabulary.
 
         """
         model = self.deep_copy()
-        return model._prune(keep=False, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor)
+        return model._collapse(
+            keep=keep_duplicates, old_preprocessor=model.preprocessor, new_preprocessor=model.preprocessor
+        )
 
-    def _prune(self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor) -> TokenizerModel:
+    def _collapse(self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor) -> TokenizerModel:
         """Private method to prune the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
         sorted_vocab = self.model.vocab.sorted_vocabulary
@@ -645,7 +644,7 @@ class TokenizerModel(BaseModel):
         self._preprocessor = None
         set_subword_prefix_token(self.model, prefix)
         new_preprocessor = self.preprocessor
-        self._prune(keep=True, old_preprocessor=old_preprocessor, new_preprocessor=new_preprocessor)
+        self._collapse(keep=True, old_preprocessor=old_preprocessor, new_preprocessor=new_preprocessor)
 
     @property
     def word_prefix(self) -> str | None:
@@ -895,23 +894,3 @@ class TokenizerModel(BaseModel):
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
         model._remap_added_token_ids()
         return model
-
-    def as_decoded_vocabulary(self) -> list[DecodedToken]:
-        """Return a decoded vocabulary, suitable for re-encoding with another tokenizer."""
-        decoded = self.preprocessor.decode_sequences(self.sorted_vocabulary)
-        out: list[DecodedToken] = []
-        for token in decoded:
-            form = token.decoded
-            is_subword = False
-            if self.subword_prefix and token.subword_prefix == self.subword_prefix:
-                is_subword = True
-            if self.word_prefix and token.word_prefix is None:
-                is_subword = True
-            out.append(DecodedToken(form=form, is_subword=is_subword))
-        return out
-
-
-@dataclass
-class DecodedToken:
-    form: str
-    is_subword: bool

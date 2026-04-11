@@ -16,9 +16,9 @@ class Decoded:
     # The base string form
     decoded: str
     # The subword prefix the token had
-    subword_prefix: str | None
+    subword_prefix: bool
     # The word prefix the token had
-    word_prefix: str | None
+    word_prefix: bool
 
 
 def _remove_prefix(sequence: str, prefix: str | None) -> tuple[str, bool]:
@@ -55,15 +55,15 @@ class Preprocessor:
         return Decoded(
             original=sequence,
             decoded=decoded,
-            subword_prefix=self.subword_prefix if has_subword else None,
-            word_prefix=self.word_prefix if has_word else None,
+            subword_prefix=has_subword,
+            word_prefix=has_word,
         )
 
     def decode_sequences(self, sequences: list[str]) -> list[Decoded]:
         """Preprocess a list of sequences using multithreading."""
         return [self.decode(seq) for seq in sequences]
 
-    def preprocess(self, sequence: str) -> list[str]:
+    def preprocess(self, sequence: str, had_word_prefix: bool = False, had_subword_prefix: bool = False) -> list[str]:
         """Preprocess a single sequence.
 
         Note that word prefix and subword prefix tokens like '##' and `_` are
@@ -74,14 +74,23 @@ class Preprocessor:
         if self.normalizer is not None:
             sequence = self.normalizer.normalize_str(sequence)
         if self.pretokenizer is not None:
-            x = [text for text, _ in self.pretokenizer.pre_tokenize_str(sequence)]
+            processed = [text for text, _ in self.pretokenizer.pre_tokenize_str(sequence)]
         else:
-            x = [sequence]
-        return x
+            processed = [sequence]
+        # This is annoying: pretokenizers turn the empty string into an empty list.
+        if not sequence:
+            processed = [self.word_prefix or "" if had_word_prefix else ""]
+        if processed:
+            first_token = processed[0]
+            if not had_word_prefix and self.word_prefix:
+                first_token = first_token.removeprefix(self.word_prefix)
+            if had_subword_prefix:
+                # This should not happen.
+                assert self.subword_prefix is not None
+                first_token = f"{self.subword_prefix}{first_token}"
+            processed[0] = first_token
 
-    def preprocess_sequences(self, sequences: list[str]) -> list[list[str]]:
-        """Preprocess a list of sequences using multithreading."""
-        return [self.preprocess(seq) for seq in sequences]
+        return processed
 
     @classmethod
     def from_tokenizer_model(cls, model: TokenizerModel) -> Preprocessor:
