@@ -414,28 +414,29 @@ class TokenizerModel(BaseModel):
     def _collapse(self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor) -> TokenizerModel:
         """Private method to prune the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
-        sorted_vocab = self.model.vocab.sorted_vocabulary
-        vocabulary = clean_vocabulary(
+        sorted_vocab = self.sorted_vocabulary
+        new_vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
             old_preprocessor=old_preprocessor,
             new_preprocessor=new_preprocessor,
             keep=keep,
         )
-        sorted_vocabulary = self.sorted_vocabulary
-        added_tokens = {token.content: token for token in self.added_tokens.root}
-        token_iterator = list(enumerate(vocabulary))
-        tokens_to_remove = [sorted_vocabulary[i] for i, token in token_iterator if token is None]
-        # First, remove all tokens.
-        self._remove_tokens_from_vocabulary(tokens_to_remove)
-        for i, token in enumerate(vocabulary):
+        for old_token, token in zip(sorted_vocab, new_vocabulary, strict=True):
             if token is None:
                 continue
-            original_token = sorted_vocabulary[i]
-            if original_token != token:
-                is_added_token = bool(added_tokens.get(token))
-                self._replace_token_in_vocabulary(original_token, token, is_added_token=is_added_token)
+            self.added_tokens.maybe_replace_token(old_token, token)
+            if self.post_processor is not None:
+                self.post_processor = maybe_replace_token_in_post_processor(
+                    old_token, token, self.model.vocab[old_token], self.post_processor
+                )
+            if self.pad_token == old_token:
+                self.pad_token = token
+            if self.unk_token == old_token:
+                self.unk_token = token
 
+        # This needs to be done in one go, because of merges.
+        self.model.replace_vocabulary(new_vocabulary)
         return self
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool = False) -> TokenizerModel:
