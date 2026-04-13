@@ -1,5 +1,6 @@
 from skeletoken import TokenizerModel
 from skeletoken.postprocessors import TemplatePostProcessor
+from tests.conftest import call_tokenizer
 
 _PATH = "tests/data/bert-base-uncased"
 
@@ -26,6 +27,8 @@ def test_load() -> None:
     for token in model.added_tokens.root:
         assert model.vocabulary[token.content] == token.id
 
+    call_tokenizer(model)
+
 
 def test_basic_collapse() -> None:
     """Test collapsing the basic tokenizer."""
@@ -42,6 +45,8 @@ def test_basic_collapse() -> None:
     assert len(removed_tokens) == 999
     assert [x for x in removed_tokens if not x.startswith("[")] == ["..."]
 
+    call_tokenizer(model)
+
 
 def test_set_prefix() -> None:
     """Test whether setting the subword prefix removes all useless tokens."""
@@ -56,3 +61,5 @@ def test_set_prefix() -> None:
         else:
             # Special tokens like `[PAD]` get normalized to `[pad]`.
             assert token.lower() in new_tokens
+
+    call_tokenizer(model)

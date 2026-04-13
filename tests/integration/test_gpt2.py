@@ -1,5 +1,6 @@
 from skeletoken import TokenizerModel
 from skeletoken.postprocessors import ByteLevelPostProcessor
+from tests.conftest import call_tokenizer
 
 _PATH = "tests/data/gpt2"
 
@@ -22,6 +23,8 @@ def test_load() -> None:
     for token in model.added_tokens.root:
         assert model.vocabulary[token.content] == token.id
 
+    call_tokenizer(model)
+
 
 def test_basic_collapse() -> None:
     """Test collapsing the basic tokenizer."""
@@ -33,3 +36,5 @@ def test_basic_collapse() -> None:
 
     removed_tokens = model.model_delta.removed_tokens
     assert not removed_tokens
+
+    call_tokenizer(model)

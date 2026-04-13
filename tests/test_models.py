@@ -16,6 +16,7 @@ from skeletoken.models import (
     set_subword_prefix_token,
 )
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from tests.conftest import call_tokenizer
 
 
 @overload
@@ -95,8 +96,7 @@ def test_model(small_tokenizer_json: dict[str, Any], model_type: ModelType) -> N
     assert model.model.type == model_type
     assert isinstance(model.model, internal_model.__class__)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def _get_none_unigram() -> Unigram:

@@ -45,6 +45,7 @@ from skeletoken.pretokenizers import (
     StringPattern,
     WhitespacePreTokenizer,
 )
+from tests.conftest import call_tokenizer
 
 
 def test_post_init(small_tokenizer_json: dict[str, Any]) -> None:
@@ -269,8 +270,7 @@ def test_add_processor(small_tokenizer: Tokenizer) -> None:
     assert isinstance(model.post_processor, PostProcessorSequence)
     assert len(model.post_processor.processors) == 3
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
@@ -316,7 +316,7 @@ def test_make_greedy(small_tokenizer: Tokenizer) -> None:
     model = model.add_pre_tokenizer(ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True))
     model = model.make_model_greedy()
     assert model.model.type == ModelType.WORDPIECE
-    assert model.to_tokenizer()
+    call_tokenizer(model)
     pre_tok_length = None
     if model.pre_tokenizer is not None:
         if isinstance(model.pre_tokenizer, PreTokenizerSequence):
@@ -337,8 +337,7 @@ def test_lowercase(small_tokenizer: Tokenizer) -> None:
     assert model.lowercases_input
     assert model.lowercases_input == model.normalizer._lowercases
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
@@ -351,8 +350,7 @@ def test_byte_normalizes(small_tokenizer: Tokenizer) -> None:
     model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=False)
     assert model.transforms_into_bytes
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remove_token(small_tokenizer: Tokenizer) -> None:
@@ -363,8 +361,7 @@ def test_remove_token(small_tokenizer: Tokenizer) -> None:
         model = model.remove_token_from_vocabulary("a")
     assert "a" not in model.model.vocab.vocabulary
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_add_token(small_tokenizer: Tokenizer) -> None:
@@ -375,8 +372,7 @@ def test_add_token(small_tokenizer: Tokenizer) -> None:
     model = model.add_token_to_vocabulary("new_token")
     assert "new_token" in model.model.vocab.vocabulary
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_replace_token(small_tokenizer: Tokenizer) -> None:
@@ -388,8 +384,22 @@ def test_replace_token(small_tokenizer: Tokenizer) -> None:
     assert "b" not in model.model.vocab.vocabulary
     assert "x" in model.model.vocab.vocabulary
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
+
+
+def test_replace_unk_and_pad_token(small_tokenizer: Tokenizer) -> None:
+    """Test replace token interface."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.unk_token = "a"
+    model = model.replace_token_in_vocabulary("a", "x")
+    assert model.unk_token == "x"
+
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pad_token = "a"
+    model = model.replace_token_in_vocabulary("a", "x")
+    assert model.pad_token == "x"
+
+    call_tokenizer(model)
 
 
 def test_replace_token_template(small_tokenizer: Tokenizer) -> None:
@@ -409,8 +419,7 @@ def test_replace_token_template(small_tokenizer: Tokenizer) -> None:
     assert "b" not in model.model.vocab.vocabulary
     assert "x" in model.model.vocab.vocabulary
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
@@ -436,8 +445,7 @@ def test_decase_vocabulary(small_tokenizer: Tokenizer) -> None:
             " ",
             "f",
         ]
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
@@ -463,8 +471,7 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
         "add_keep",
     ]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
@@ -489,8 +496,7 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
         "add_keep",
     ]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_eos(small_tokenizer: Tokenizer) -> None:
@@ -515,8 +521,7 @@ def test_eos(small_tokenizer: Tokenizer) -> None:
     )
     assert model.eos is None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_bos(small_tokenizer: Tokenizer) -> None:
@@ -541,8 +546,7 @@ def test_bos(small_tokenizer: Tokenizer) -> None:
     )
     assert model.bos is None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_split(small_tokenizer: Tokenizer) -> None:
@@ -556,8 +560,7 @@ def test_split(small_tokenizer: Tokenizer) -> None:
     model = model.add_pre_tokenizer(pretokenizer)
     assert model.splits
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_subword_prefix(small_tokenizer: Tokenizer) -> None:
@@ -565,8 +568,7 @@ def test_subword_prefix(small_tokenizer: Tokenizer) -> None:
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     assert model.subword_prefix == "##"
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_word_prefix(small_tokenizer: Tokenizer) -> None:
@@ -580,8 +582,7 @@ def test_word_prefix(small_tokenizer: Tokenizer) -> None:
     model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
     assert model.word_prefix == "▁"
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
@@ -591,8 +592,7 @@ def test_replace_token_in_vocabulary(small_tokenizer: Tokenizer) -> None:
     assert model.model.vocab["G"] is not None
     assert model.added_tokens.get_token("G") is not None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
@@ -602,8 +602,7 @@ def test_remove_token_from_vocabulary(small_tokenizer: Tokenizer) -> None:
     model = model.remove_token_from_vocabulary("F")
     assert model.added_tokens.get_token("F") is None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
@@ -636,8 +635,7 @@ def test_set_unk_token(small_tokenizer: Tokenizer) -> None:
 
     model.unk_token = None
     model.unk_token = "OSTENTATIOUS"
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_set_unk_token_template(small_tokenizer: Tokenizer) -> None:
@@ -657,8 +655,7 @@ def test_set_unk_token_template(small_tokenizer: Tokenizer) -> None:
     assert isinstance(model.post_processor, TemplatePostProcessor)
     assert model.post_processor.special_tokens["bos"].tokens == ["b"]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_get_padding_token(small_tokenizer: Tokenizer) -> None:
@@ -670,8 +667,7 @@ def test_get_padding_token(small_tokenizer: Tokenizer) -> None:
     model.padding = Padding(pad_token="[PAD]", pad_id=3, pad_type_id=0)
     assert model.pad_token == "[PAD]"
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
@@ -691,8 +687,7 @@ def test_set_padding_token(small_tokenizer: Tokenizer) -> None:
     model.pad_token = "FUN"
     assert model.added_tokens.get_token("FUN") is not None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_from_transformers(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
@@ -703,8 +698,7 @@ def test_from_transformers(transformers_tokenizer: PreTrainedTokenizerFast) -> N
     assert isinstance(model.model, WordPiece)
     assert isinstance(model.added_tokens, AddedTokens)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_from_transformers_missing_unk(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
@@ -715,8 +709,7 @@ def test_from_transformers_missing_unk(transformers_tokenizer: PreTrainedTokeniz
     assert model.model is not None
     assert isinstance(model.added_tokens, AddedTokens)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_from_transformers_missing_pad(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
@@ -728,8 +721,7 @@ def test_from_transformers_missing_pad(transformers_tokenizer: PreTrainedTokeniz
     assert isinstance(model.model, WordPiece)
     assert isinstance(model.added_tokens, AddedTokens)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
@@ -744,8 +736,7 @@ def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> N
     assert model.model is not None
     assert isinstance(model.added_tokens, AddedTokens)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_deep_copy(small_tokenizer: Tokenizer) -> None:
@@ -905,8 +896,7 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
     for token in tokens_to_remove:
         assert token not in model.model.vocab.vocabulary
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
@@ -915,8 +905,7 @@ def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     model = model.decase_vocabulary(keep_duplicates=True)
     assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "F"]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
@@ -940,8 +929,7 @@ def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
         "GpG",
     ]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_prune(small_tokenizer: Tokenizer) -> None:
@@ -965,8 +953,7 @@ def test_prune(small_tokenizer: Tokenizer) -> None:
         "GpG",
     ]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
@@ -999,8 +986,7 @@ def test_remap_added_token_ids(small_tokenizer: Tokenizer) -> None:
     model._remap_added_token_ids()
     assert model.post_processor.special_tokens["bos"].ids == [new_token.id]
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_get_pad_token_id(small_tokenizer: Tokenizer) -> None:
@@ -1011,8 +997,7 @@ def test_get_pad_token_id(small_tokenizer: Tokenizer) -> None:
     model.pad_token = "[PAD_IN_DE_KORF]"
     assert model.pad_token_id == 11
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_get_unk_token_id(small_tokenizer: Tokenizer) -> None:
@@ -1037,8 +1022,7 @@ def test_get_unk_token_id(small_tokenizer: Tokenizer) -> None:
     model.unk_token = None
     assert model.unk_token_id is None
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def test_add_pad_token_post_init(small_tokenizer_json: dict[str, Any]) -> None:

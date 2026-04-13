@@ -24,6 +24,7 @@ from skeletoken.pretokenizers import (
     get_metaspace,
     to_tokenizers_pretokenizer,
 )
+from tests.conftest import call_tokenizer
 
 
 def _get_default_pretokenizer(pretokenizer_type: PreTokenizerType) -> PreTokenizer:  # noqa: C901
@@ -83,8 +84,7 @@ def test_pretokenizer(small_tokenizer_json: dict[str, Any], pretokenizer_type: P
     assert tokenizer.pre_tokenizer is not None
     assert tokenizer.pre_tokenizer.type == pretokenizer_type
 
-    # Implicit test. If this fails, the model is incorrect.
-    tokenizer.to_tokenizer()
+    call_tokenizer(tokenizer)
 
 
 @pytest.mark.parametrize(

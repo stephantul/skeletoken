@@ -192,13 +192,14 @@ Stéphan Tulkens
 If you use `skeletoken` in your work, please cite:
 
 ```bibtex
-@software{stephan_tulkens_2026_18501953,
+@software{stephan_tulkens_2026_19401859
+,
   author       = {Stephan Tulkens},
   title        = {skeletoken},
   month        = feb,
   year         = 2026,
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.18501953},
-  url          = {https://doi.org/10.5281/zenodo.18501953},
+  doi          = {10.5281/zenodo.19401859},
+  url          = {https://zenodo.org/records/19401859},
 }
 ```
