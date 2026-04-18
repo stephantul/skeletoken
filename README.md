@@ -27,7 +27,7 @@
 
 This package contains [`Pydantic`](https://docs.pydantic.dev/latest/) datamodels that fully describe the `tokenizer.json` file used in transformers via [Tokenizers](https://github.com/huggingface/tokenizers). This is useful, because working with this format is complicated.
 
-# Rationale
+## Rationale
 
 In one sentence: Validate, edit, and transform Hugging Face tokenizers safely.
 
@@ -37,7 +37,7 @@ Furthermore, `tokenizers` does not give reasonable errors when parsing a tokeniz
 
 This package contains datamodels (pydantic datamodels) that contain the same constraints as the `tokenizers` package. In other words, if you can create a model in this package, the `tokenizers` package can parse it. This allows you to progressively edit tokenizer json files, all the while getting productive error messages.
 
-# Installation
+## Installation
 
 Install it via pip
 
@@ -45,7 +45,7 @@ Install it via pip
 pip install skeletoken
 ```
 
-# What can it do?
+## What can it do?
 
 `skeletoken` allows you to:
 
@@ -56,11 +56,11 @@ pip install skeletoken
 * round-trip to `tokenizers` and `transformers`
 * apply tokenization changes to `transformers`, `sentence-transformers` and `pylate` models.
 
-# Example
+## Example
 
 Here's some examples of what skeletoken can do:
 
-## Autofixing a tokenizer
+### Autofixing a tokenizer
 
 `skeletoken` autofixes any tokenizer you load. See [automatic checks](./docs/2_automatic_checks.md) to see what gets fixed automatically. For example, the [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) tokenizer has a lot of special tokens that are not part of the regular tokenizer vocabulary. This leads to a mismatch between the size of a tokenizer and the number of tokens that tokenizer can produce. `skeletoken` adds these to the vocabulary automatically.
 
@@ -83,7 +83,7 @@ print(len(tokenizer))  # 151669
 
 ```
 
-## Adding components to a tokenizer
+### Adding components to a tokenizer
 
 `skeletoken` can add components to a tokenizer. First we load one, and inspect it:
 
@@ -119,7 +119,7 @@ print(new_tok.encode("hello 123").tokens)
 # ['hello', 'Ġ', '1', '2', '3']
 ```
 
-## Decasing a tokenizer
+### Decasing a tokenizer
 
 For background, see [this blogpost](https://stephantul.github.io/blog/uncasing/). Decasing is super easy using skeletoken.
 
@@ -143,7 +143,7 @@ print([lower_tokenizer.encode(x).tokens for x in ["Amsterdam", "amsterdam"]])
 
 ```
 
-## Making a tokenizer greedy
+### Making a tokenizer greedy
 
 For background, see [this blog post](https://stephantul.github.io/blog/greedy/). Like decasing, turning any tokenizer into a greedy one is super easy using skeletoken.
 
@@ -166,7 +166,7 @@ print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 
 ```
 
-# Roadmap
+## Roadmap
 
 Here's a rough roadmap:
 
@@ -179,26 +179,27 @@ Here's a rough roadmap:
 * Consistent tokenizer hashing: instantly know if two tokenizers implement the same thing.
 * Add a front end for `sentencepiece` training.
 
-# License
+## License
 
 MIT
 
-# Author
+## Author
 
 Stéphan Tulkens
 
-# Citation
+## Citation
 
 If you use `skeletoken` in your work, please cite:
 
 ```bibtex
-@software{stephan_tulkens_2026_18501953,
+@software{stephan_tulkens_2026_19401859
+,
   author       = {Stephan Tulkens},
   title        = {skeletoken},
   month        = feb,
   year         = 2026,
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.18501953},
-  url          = {https://doi.org/10.5281/zenodo.18501953},
+  doi          = {10.5281/zenodo.19401859},
+  url          = {https://zenodo.org/records/19401859},
 }
 ```
