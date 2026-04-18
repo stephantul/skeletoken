@@ -54,7 +54,7 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
 
     """
     if model.weights is not None:
-        if model.weights != len(model.embedding):
+        if len(model.weights) != len(model.embedding):
             raise ValueError("Model weights must match the number of embeddings. This means your model is quantized.")
     vocab_size = tokenizer_model.vocabulary_size
     delta = tokenizer_model.model_delta
@@ -68,7 +68,7 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
     new_embeddings[: len(remapped)] = remapped[:vocab_size]
 
     return StaticModel(
-        vectors=new_embeddings,
+        vectors=new_embeddings.astype(embeddings.dtype),
         tokenizer=tokenizer_model.to_tokenizer(),
         config=model.config,
         normalize=model.normalize,

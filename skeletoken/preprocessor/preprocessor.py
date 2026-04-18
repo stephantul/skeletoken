@@ -101,7 +101,7 @@ class Preprocessor:
             pretokenizer=tokenizer.pre_tokenizer,
             byte_transformer=ByteLevelDecoder() if model.transforms_into_bytes else None,
             subword_prefix=model.subword_prefix,
-            word_prefix=None if model.transforms_into_bytes else model.word_prefix,
+            word_prefix=model.word_prefix,
         )
 
     @classmethod
