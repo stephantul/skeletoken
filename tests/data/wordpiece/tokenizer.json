@@ -2,24 +2,26 @@
   "version": "1.0",
   "truncation": null,
   "padding": null,
-  "added_tokens": [{
-    "content": "f",
-    "special": true,
-    "single_word": false,
-    "lstrip": false,
-    "rstrip": false,
-    "normalized": true,
-    "id": 10
-  },
-  {
-    "content": "[UNK]",
-    "special": true,
-    "single_word": false,
-    "lstrip": false,
-    "rstrip": false,
-    "normalized": true,
-    "id": 2
-  }],
+  "added_tokens": [
+    {
+      "content": "F",
+      "special": true,
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": true,
+      "id": 10
+    },
+    {
+      "content": "[UNK]",
+      "special": true,
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": true,
+      "id": 2
+    }
+  ],
   "normalizer": null,
   "pre_tokenizer": null,
   "post_processor": null,
@@ -38,7 +40,7 @@
       "a": 5,
       "b": 6,
       "c": 7,
-      "d": 8,
+      "D": 8,
       " ": 9
     }
   }

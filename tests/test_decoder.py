@@ -17,6 +17,7 @@ from skeletoken.decoders import (
     StripDecoder,
     WordPieceDecoder,
 )
+from tests.conftest import call_tokenizer
 
 
 def _get_default_decoder(decoder_type: DecoderType) -> Decoder:
@@ -70,5 +71,4 @@ def test_decoder(small_tokenizer_json: dict[str, Any], decoder_type: DecoderType
     assert model.decoder is not None
     assert model.decoder.type == decoder_type
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)

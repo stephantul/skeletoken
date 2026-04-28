@@ -6,8 +6,15 @@ from pytest import FixtureRequest, fixture
 from tokenizers import Tokenizer
 from transformers import PreTrainedTokenizerFast
 
+from skeletoken.base import TokenizerModel
 from skeletoken.merges import Merges
 from skeletoken.postprocessors import TemplatePostProcessor
+
+
+def call_tokenizer(model: TokenizerModel) -> None:
+    """Call the tokenizer to ensure the model is correct."""
+    tokenizer = model.to_tokenizer()
+    tokenizer.encode("some text")
 
 
 def _get_path(name: str) -> Path:

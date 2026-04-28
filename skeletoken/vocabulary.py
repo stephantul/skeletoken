@@ -88,7 +88,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
     @property
     def sorted_vocabulary(self) -> list[str]:
         """Returns the vocabulary mapping sorted by token."""
-        return [x[0] for x in sorted(self._vocabulary.items(), key=lambda x: x[1])]
+        return [x[0] for x in self.root]
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Initialize the vocabulary."""

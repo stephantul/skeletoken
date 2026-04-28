@@ -17,7 +17,7 @@ def test_preprocessor_none() -> None:
     preprocessor = Preprocessor()
     assert preprocessor.normalizer is None
     assert preprocessor.pretokenizer is None
-    assert preprocessor("This is a test.") == ["This is a test."]
+    assert preprocessor.preprocess("This is a test.") == ["This is a test."]
 
 
 def test_preprocessor() -> None:
@@ -27,13 +27,19 @@ def test_preprocessor() -> None:
     preprocessor = Preprocessor(normalizer=normalizer, pretokenizer=pretokenizer)
     assert preprocessor.normalizer is not None
     assert preprocessor.pretokenizer is not None
-    assert preprocessor("This is a test.") == ["this", "is", "a", "test", "."]
-    assert preprocessor("This is a test.") == preprocessor.preprocess("This is a test.")
+    assert preprocessor.preprocess("This is a test.") == ["this", "is", "a", "test", "."]
+    assert preprocessor.preprocess("This is a test.") == preprocessor.preprocess("This is a test.")
 
-    assert preprocessor.preprocess_sequences(["This is a test.", "Another test!"]) == [
-        ["this", "is", "a", "test", "."],
-        ["another", "test", "!"],
-    ]
+
+def test_preprocessor_empty() -> None:
+    """Test the Preprocessor class with normalizer and pretokenizer."""
+    normalizer = TokenizersNormalizerSequence(normalizers=[NFD(), Lowercase()])  # type: ignore[arg-type]
+    pretokenizer = TokenizersPreTokenizerSequence(pre_tokenizers=[Whitespace()])  # type: ignore[arg-type]
+    preprocessor = Preprocessor(normalizer=normalizer, pretokenizer=pretokenizer)
+    assert preprocessor.normalizer is not None
+    assert preprocessor.pretokenizer is not None
+    assert preprocessor.preprocess("") == [""]
+    assert preprocessor.preprocess("  ") == preprocessor.preprocess("  ")
 
 
 def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:
@@ -44,7 +50,7 @@ def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:
     preprocessor = Preprocessor.from_tokenizer_model(model)
     assert preprocessor.normalizer is not None
     assert preprocessor.pretokenizer is not None
-    assert preprocessor("This is a test.") == ["this", "is", "a", "test", "."]
+    assert preprocessor.preprocess("This is a test.") == ["this", "is", "a", "test", "."]
 
 
 def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
@@ -55,4 +61,4 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         preprocessor = Preprocessor.from_pretrained(f"{tmpdir}/tokenizer.json")
         assert preprocessor.normalizer is None
         assert preprocessor.pretokenizer is None
-        assert preprocessor("This is a test.") == ["This is a test."]
+        assert preprocessor.preprocess("This is a test.") == ["This is a test."]

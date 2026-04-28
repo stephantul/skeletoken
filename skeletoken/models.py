@@ -142,15 +142,12 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
                 continue
             merge_index.append((left_idx, right_idx))
         self.vocab.replace_vocabulary(vocabulary)
-        new_merges = []
-        for left_idx, right_idx in merge_index:
-            left_token, right_token = vocabulary[left_idx], vocabulary[right_idx]
-            assert left_token is not None and right_token is not None
-            token = left_token + right_token
-            if token in self.vocab.vocabulary:
-                new_merges.append((left_token, right_token))
-        self.merges.root = new_merges
+        self.merges.root = []
         self.merges.model_post_init({})
+        v = set(self.vocab.sorted_vocabulary)
+
+        for token in self.vocab.sorted_vocabulary:
+            self.merges._add_merges_for_token_with_vocab(token, v)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
@@ -180,7 +177,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
         """Return the unknown token, if any."""
         if self.unk_id is None:
             return None
-        return self.vocab.sorted_vocabulary[self.unk_id]
+        return self.vocab.root[self.unk_id][0]
 
     @unk_token.setter
     def unk_token(self, token: str | None) -> None:
@@ -215,11 +212,17 @@ ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
 def get_subword_prefix_token(model: Model) -> str | None:
     """Get the prefix token from the model, if any."""
     # Only WordPiece and BPE models have these.
-    if isinstance(model, WordPiece):
-        return model.continuing_subword_prefix
-    elif isinstance(model, BPE):
+    if isinstance(model, (WordPiece, BPE)):
         return model.continuing_subword_prefix
     return None
+
+
+def set_subword_prefix_token(model: Model, prefix: str) -> None:
+    """Set the subword prefix. This will raise a ValueError if the model does not support one."""
+    if isinstance(model, (WordPiece, BPE)):
+        model.continuing_subword_prefix = prefix
+    else:
+        raise ValueError("Setting a subword prefix token is not supported for Unigram or Wordlevel models.")
 
 
 MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)

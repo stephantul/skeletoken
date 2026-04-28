@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -10,11 +11,21 @@ from tokenizers import Tokenizer
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
+from skeletoken.clean import clean_vocabulary
 from skeletoken.common import PathLike
-from skeletoken.decase.decase import decase_vocabulary
 from skeletoken.decoders import DecoderDiscriminator
-from skeletoken.models import MODELS_THAT_NEED_UNK, ModelDiscriminator, WordPiece, get_subword_prefix_token
-from skeletoken.normalizers import LowercaseNormalizer, NormalizerDiscriminator, NormalizerSequence
+from skeletoken.models import (
+    MODELS_THAT_NEED_UNK,
+    ModelDiscriminator,
+    WordPiece,
+    get_subword_prefix_token,
+    set_subword_prefix_token,
+)
+from skeletoken.normalizers import (
+    LowercaseNormalizer,
+    NormalizerDiscriminator,
+    NormalizerSequence,
+)
 from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
     PostProcessorDiscriminator,
@@ -94,7 +105,12 @@ class TokenizerModel(BaseModel):
             if not added_token:
                 logger.warning(f"Turning unk_token '{unk_token}' into an AddedToken.")
                 self._turn_into_addedtoken(
-                    unk_token, is_special=True, normalized=False, single_word=True, lstrip=False, rstrip=False
+                    unk_token,
+                    is_special=True,
+                    normalized=False,
+                    single_word=True,
+                    lstrip=False,
+                    rstrip=False,
                 )
         pad_token = self.pad_token
         if pad_token:
@@ -119,7 +135,12 @@ class TokenizerModel(BaseModel):
             if not added_token:
                 logger.warning(f"Turning pad_token '{pad_token}' into an AddedToken.")
                 self._turn_into_addedtoken(
-                    pad_token, is_special=True, normalized=True, single_word=True, lstrip=True, rstrip=True
+                    pad_token,
+                    is_special=True,
+                    normalized=True,
+                    single_word=True,
+                    lstrip=True,
+                    rstrip=True,
                 )
             self.pad_token = pad_token
 
@@ -238,7 +259,10 @@ class TokenizerModel(BaseModel):
         self.model.add_token(token, is_added_token=is_added_token)
 
     def replace_tokens_in_vocabulary(
-        self, old_tokens: Sequence[str], new_tokens: Sequence[str], preprocess_tokens: bool = True
+        self,
+        old_tokens: Sequence[str],
+        new_tokens: Sequence[str],
+        preprocess_tokens: bool = True,
     ) -> TokenizerModel:
         """Replace a list of tokens with another list of tokens.
 
@@ -280,12 +304,17 @@ class TokenizerModel(BaseModel):
             self.post_processor = maybe_replace_token_in_post_processor(
                 old_token, new_token, self.model.vocab[new_token], self.post_processor
             )
+        if self.pad_token == old_token:
+            self.pad_token = new_token
+        if self.unk_token == old_token:
+            self.unk_token = new_token
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
-        remapping = {old_id: new_id for new_id, old_id in self.model_delta.token_mapping.items()}
+        model_delta = self.model_delta
+        remapping = {old_id: new_id for new_id, old_id in model_delta.token_mapping.items()}
         for token in self.added_tokens.root:
-            remapped = self.model_delta.new_tokens.get(token.content)
+            remapped = model_delta.new_tokens.get(token.content)
             if remapped is None:
                 remapped = remapping.get(token.id, token.id)
             if token.id != remapped:
@@ -295,7 +324,10 @@ class TokenizerModel(BaseModel):
         if self.post_processor is not None:
             for added_token in self.added_tokens.root:
                 self.post_processor = maybe_replace_token_in_post_processor(
-                    added_token.content, added_token.content, added_token.id, self.post_processor
+                    added_token.content,
+                    added_token.content,
+                    added_token.id,
+                    self.post_processor,
                 )
 
     def remove_token_from_vocabulary(self, token: str) -> TokenizerModel:
@@ -322,42 +354,39 @@ class TokenizerModel(BaseModel):
         """
         model = self.deep_copy()
 
-        unk_token = model.unk_token
-        pad_token = model.pad_token
+        return model._remove_tokens_from_vocabulary(tokens)
+
+    def _remove_tokens_from_vocabulary(self, tokens: Sequence[str]) -> TokenizerModel:
+        """In-place version of `remove_tokens_from_vocabulary`."""
+        unk_token = self.unk_token
+        pad_token = self.pad_token
 
         if unk_token is not None and unk_token in tokens:
             try:
-                model.unk_token = None
+                self.unk_token = None
             except ValueError:
                 logger.warning(
                     f"Could not remove unknown token '{unk_token}' from vocabulary. "
-                    f"You are using a {model.model.type.value} model, which does not support this."
+                    f"You are using a {self.model.type.value} model, which does not support this."
                 )
                 tokens = [x for x in tokens if x != unk_token]
-        pad_token = model.pad_token
+        pad_token = self.pad_token
         if pad_token is not None and pad_token in tokens:
-            model.pad_token = None
+            self.pad_token = None
 
         for token in tokens:
-            model.added_tokens.maybe_remove_token(token)
-        model.model.remove_tokens(tokens)
+            self.added_tokens.maybe_remove_token(token)
+        self.model.remove_tokens(tokens)
 
-        return model
+        return self
 
-    def remove_uppercase(self) -> TokenizerModel:
-        """Remove all uppercase tokens from the vocabulary.
-
-        Returns
-        -------
-        TokenizerModel
-            The tokenizer model with uppercase tokens removed.
-
-        """
-        model = self.deep_copy()
-        return model._decase(lower=False)
-
-    def decase_vocabulary(self) -> TokenizerModel:
+    def decase_vocabulary(self, keep: bool = False) -> TokenizerModel:
         """Decases the vocabulary.
+
+        Parameters
+        ----------
+        keep: bool
+            Whether to keep duplicates or remove them.
 
         Returns
         -------
@@ -366,45 +395,98 @@ class TokenizerModel(BaseModel):
 
         """
         model = self.deep_copy()
-        return model._decase(lower=True)
+        if not model.lowercases_input:
+            model._add_normalizer_inplace(LowercaseNormalizer())
+        return model._consolidate(
+            keep=keep,
+            old_preprocessor=model.preprocessor,
+            new_preprocessor=model.preprocessor,
+        )
 
-    def _decase(self, lower: bool) -> TokenizerModel:
-        """Private method to decase the vocabulary."""
+    def consolidate_vocabulary(self, keep: bool = False) -> TokenizerModel:
+        """Consolidate the vocabulary.
+
+        Consolidate reinterprets tokens according to the current pretokenization rules AND removes tokens that:
+            1. can't be found by the current pretokenization/normalization
+            2. collide with other tokens because of pretokenization or normalization
+
+        An example of the former is adding a pretokenizer which splits on punctuation. For example, if we
+        have "..." in the vocabulary, and add a pretokenizer that splits on punctuation, it will become
+        impossible for "..." to be found. An example of the latter is when lowercase normalization is applied:
+        e.g., let's say 'dog' and 'Dog' are in the vocabulary. When normalization is applied, these two tokens
+        have the same form, and the latter one will be removed.
+
+        Parameters
+        ----------
+        keep: bool
+            If this is set, duplicates are kept, even though these tokens can't be found anymore. If this
+            is set to False, your tokenizer will no longer match your model, and you should remap your models input
+            embeddings to match.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with a pruned vocabulary.
+
+        """
+        model = self.deep_copy()
+        return model._consolidate(
+            keep=keep,
+            old_preprocessor=model.preprocessor,
+            new_preprocessor=model.preprocessor,
+        )
+
+    def _consolidate(
+        self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor
+    ) -> TokenizerModel:
+        """Private method to prune the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
-        sorted_vocab = self.model.vocab.sorted_vocabulary
-        vocabulary = decase_vocabulary(
+        sorted_vocab = self.sorted_vocabulary
+        new_vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
-            is_byte=self.transforms_into_bytes,
-            lower=lower,
+            old_preprocessor=old_preprocessor,
+            new_preprocessor=new_preprocessor,
+            keep=keep,
         )
-        mapping: dict[int, int] = {}
-        for i, token in enumerate(vocabulary):
+        for old_token, token in zip(sorted_vocab, new_vocabulary, strict=True):
             if token is None:
                 continue
-            mapping[i] = len(mapping)
-        self.model.replace_vocabulary(vocabulary)
-        if not self.lowercases_input:
-            self._add_normalizer_inplace(LowercaseNormalizer(), prefix=True)
-        self._remap_added_token_ids()
+            self.added_tokens.maybe_replace_token(old_token, token)
+            if self.post_processor is not None:
+                self.post_processor = maybe_replace_token_in_post_processor(
+                    old_token, token, self.model.vocab[old_token], self.post_processor
+                )
+            if self.pad_token == old_token:
+                self.pad_token = token
+            if self.unk_token == old_token:
+                self.unk_token = token
 
+        # This needs to be done in one go, because of merges.
+        self.model.replace_vocabulary(new_vocabulary)
         return self
 
-    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator) -> TokenizerModel:
+    def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool = False) -> TokenizerModel:
         """Add a pre-tokenizer to the tokenizer model."""
         model = self.deep_copy()
-        model._add_pretokenizer_inplace(pre_tokenizer)
+        model._add_pretokenizer_inplace(pre_tokenizer, prefix)
         return model
 
-    def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator) -> None:
+    def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool) -> None:
         """Add a pre-tokenizer to the tokenizer model in place."""
         self._preprocessor = None
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
-            self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
+            if prefix:
+                self.pre_tokenizer.pretokenizers.insert(0, pre_tokenizer)
+            else:
+                self.pre_tokenizer.pretokenizers.append(pre_tokenizer)
         else:
-            self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
+            if prefix:
+                self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[pre_tokenizer, self.pre_tokenizer])
+            else:
+                self.pre_tokenizer = PreTokenizerSequence(pretokenizers=[self.pre_tokenizer, pre_tokenizer])
 
     def add_post_processor(self, post_processor: PostProcessorDiscriminator) -> TokenizerModel:
         """Add a post-processor to the tokenizer model."""
@@ -456,7 +538,10 @@ class TokenizerModel(BaseModel):
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):
-            self.normalizer.normalizers.append(normalizer)
+            if prefix:
+                self.normalizer.normalizers.insert(0, normalizer)
+            else:
+                self.normalizer.normalizers.append(normalizer)
         else:
             if prefix:
                 self.normalizer = NormalizerSequence(normalizers=[normalizer, self.normalizer])
@@ -580,6 +665,19 @@ class TokenizerModel(BaseModel):
         """Get the prefix token, if any."""
         return get_subword_prefix_token(self.model)
 
+    @subword_prefix.setter
+    def subword_prefix(self, prefix: str) -> None:
+        """Set the subword prefix and re-encode the vocabulary."""
+        old_preprocessor = deepcopy(self.preprocessor)
+        self._preprocessor = None
+        set_subword_prefix_token(self.model, prefix)
+        new_preprocessor = self.preprocessor
+        self._consolidate(
+            keep=True,
+            old_preprocessor=old_preprocessor,
+            new_preprocessor=new_preprocessor,
+        )
+
     @property
     def word_prefix(self) -> str | None:
         """Get the word prefix token, if any."""
@@ -616,7 +714,13 @@ class TokenizerModel(BaseModel):
             logger.info(f"Setting unk_token to '{token}'.")
             index = self.model.vocab[token]
             self.added_tokens.maybe_add_token(
-                token=token, is_special=True, normalized=True, single_word=True, rstrip=True, lstrip=True, id=index
+                token=token,
+                is_special=True,
+                normalized=True,
+                single_word=True,
+                rstrip=True,
+                lstrip=True,
+                id=index,
             )
         elif old_unk_token in self.model.vocab:
             logger.info(f"Changing unk_token from '{old_unk_token}' to '{token}'.")

@@ -16,6 +16,8 @@ class ModelDelta(BaseModel):
         A mapping from new token strings to their IDs. This is useful for inferring contents of the new tokens.
     new_vocabulary_size : int
         The size of the new vocabulary in the modified model.
+    removed_tokens: set[str]
+        Tokens that got removed during processing.
 
     """
 
@@ -25,6 +27,8 @@ class ModelDelta(BaseModel):
     new_tokens: dict[str, int]
     # The new vocabulary size. This is used to resize the embedding table.
     new_vocabulary_size: int
+    # The tokens that were removed
+    removed_tokens: set[str]
 
 
 def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> ModelDelta:
@@ -34,6 +38,7 @@ def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> M
     new_tokens = {}
     new_vocab = modified.sorted_vocabulary
     old_vocab = original.vocabulary
+    removed_tokens = set(original.vocabulary) - set(modified.vocabulary)
     for i, token in enumerate(new_vocab):
         if token in old_vocab:
             # This is an old token that got a new index
@@ -45,4 +50,9 @@ def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> M
     # Compute new tokens
     new_vocabulary_size = len(modified.vocabulary)
 
-    return ModelDelta(token_mapping=token_mapping, new_tokens=new_tokens, new_vocabulary_size=new_vocabulary_size)
+    return ModelDelta(
+        token_mapping=token_mapping,
+        new_tokens=new_tokens,
+        new_vocabulary_size=new_vocabulary_size,
+        removed_tokens=removed_tokens,
+    )

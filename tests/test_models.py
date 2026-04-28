@@ -5,8 +5,18 @@ import pytest
 
 from skeletoken.base import TokenizerModel
 from skeletoken.merges import Merges
-from skeletoken.models import BPE, Model, ModelType, Unigram, WordLevel, WordPiece, get_subword_prefix_token
+from skeletoken.models import (
+    BPE,
+    Model,
+    ModelType,
+    Unigram,
+    WordLevel,
+    WordPiece,
+    get_subword_prefix_token,
+    set_subword_prefix_token,
+)
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from tests.conftest import call_tokenizer
 
 
 @overload
@@ -86,8 +96,7 @@ def test_model(small_tokenizer_json: dict[str, Any], model_type: ModelType) -> N
     assert model.model.type == model_type
     assert isinstance(model.model, internal_model.__class__)
 
-    # Implicit test. If this fails, the model is incorrect.
-    model.to_tokenizer()
+    call_tokenizer(model)
 
 
 def _get_none_unigram() -> Unigram:
@@ -449,3 +458,15 @@ def test_bpe_replace_vocabulary_concat_present() -> None:
     # Call replace_vocabulary with identical list; this should preserve the ('x','y') merge
     bpe.replace_vocabulary(root_list)
     assert ("x", "y") in bpe.merges.root
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
+def test_set_subword_prefix_token(model: Model) -> None:
+    """Test whether setting the subword prefix token works."""
+    if isinstance(model, (WordPiece, BPE)):
+        assert hasattr(model, "continuing_subword_prefix")
+        set_subword_prefix_token(model, "haha")
+        assert model.continuing_subword_prefix == "haha"
+    else:
+        with pytest.raises(ValueError):
+            set_subword_prefix_token(model, "haha")
