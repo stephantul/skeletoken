@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.decoders import ByteLevel as TokenizersByteLevelDecoder
 from tokenizers.normalizers import Normalizer as BaseNormalizer
 from tokenizers.pre_tokenizers import PreTokenizer as BasePretokenizer
 
@@ -29,10 +29,17 @@ def _remove_prefix(sequence: str, prefix: str | None) -> tuple[str, bool]:
     return new_sequence, new_sequence != sequence
 
 
+def decoder_from_model(model: TokenizerModel) -> TokenizersByteLevelDecoder | None:
+    """Create a decoder from a model."""
+    if not model.transforms_into_bytes:
+        return None
+    return TokenizersByteLevelDecoder()
+
+
 class Preprocessor:
     def __init__(
         self,
-        byte_transformer: ByteLevelDecoder | None = None,
+        byte_transformer: TokenizersByteLevelDecoder | None = None,
         normalizer: BaseNormalizer | None = None,
         pretokenizer: BasePretokenizer | None = None,
         subword_prefix: str | None = None,
@@ -99,9 +106,9 @@ class Preprocessor:
         return cls(
             normalizer=tokenizer.normalizer,
             pretokenizer=tokenizer.pre_tokenizer,
-            byte_transformer=ByteLevelDecoder() if model.transforms_into_bytes else None,
+            byte_transformer=decoder_from_model(model),
             subword_prefix=model.subword_prefix,
-            word_prefix=model.word_prefix,
+            word_prefix=model.word_prefix if not model.transforms_into_bytes else None,
         )
 
     @classmethod

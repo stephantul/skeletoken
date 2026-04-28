@@ -144,10 +144,10 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         self.vocab.replace_vocabulary(vocabulary)
         self.merges.root = []
         self.merges.model_post_init({})
-        vocab = set(self.vocab.sorted_vocabulary)
+        v = set(self.vocab.sorted_vocabulary)
 
         for token in self.vocab.sorted_vocabulary:
-            self.merges._add_merges_for_token_with_vocab(token, vocab)
+            self.merges._add_merges_for_token_with_vocab(token, v)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):

@@ -29,7 +29,7 @@ def test_load() -> None:
 def test_basic_collapse() -> None:
     """Test collapsing the basic tokenizer."""
     model = TokenizerModel.from_pretrained(_PATH)
-    model = model.collapse_vocabulary(keep_duplicates=False)
+    model = model.consolidate_vocabulary(keep=False)
     assert model.vocabulary_size == 50257
     new_tokens = model.model_delta.new_tokens
     assert not new_tokens
@@ -38,3 +38,34 @@ def test_basic_collapse() -> None:
     assert not removed_tokens
 
     call_tokenizer(model)
+
+
+def test_decase() -> None:
+    """Test the decase operation."""
+    model = TokenizerModel.from_pretrained(_PATH)
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["Ġam", "sterdam"]
+    assert tok.encode(" Amsterdam").tokens == ["ĠAmsterdam"]
+
+    model = model.decase_vocabulary(keep=True)
+    assert model.vocabulary_size == 50257
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["Ġamsterdam"]
+    assert tok.encode(" amsterdam").tokens == ["Ġamsterdam"]
+
+
+def test_decase_prune() -> None:
+    """Test the decase operation."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["Ġam", "sterdam"]
+    assert tok.encode(" Amsterdam").tokens == ["ĠAmsterdam"]
+
+    model = model.decase_vocabulary(keep=False)
+    assert model.vocabulary_size == 39372
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["Ġamsterdam"]
+    assert tok.encode(" amsterdam").tokens == ["Ġamsterdam"]

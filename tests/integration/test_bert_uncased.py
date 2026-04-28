@@ -33,7 +33,7 @@ def test_load() -> None:
 def test_basic_collapse() -> None:
     """Test collapsing the basic tokenizer."""
     model = TokenizerModel.from_pretrained(_PATH)
-    model = model.collapse_vocabulary(keep_duplicates=False)
+    model = model.consolidate_vocabulary(keep=False)
     assert model.vocabulary_size == 29527
     assert model.model_delta.new_tokens == {"[cls]": 2, "[mask]": 4, "[sep]": 3, "[unk]": 1}
     assert model.unk_token == "[unk]"
@@ -63,3 +63,34 @@ def test_set_prefix() -> None:
             assert token.lower() in new_tokens
 
     call_tokenizer(model)
+
+
+def test_decase() -> None:
+    """Test the decase operation."""
+    model = TokenizerModel.from_pretrained(_PATH)
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+
+    model = model.decase_vocabulary(keep=True)
+    assert model.vocabulary_size == 30522
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+
+
+def test_decase_prune() -> None:
+    """Test the decase operation."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+
+    model = model.decase_vocabulary(keep=False)
+    assert model.vocabulary_size == 29527
+
+    tok = model.to_tokenizer()
+    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
