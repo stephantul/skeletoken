@@ -192,8 +192,7 @@ Stéphan Tulkens
 If you use `skeletoken` in your work, please cite:
 
 ```bibtex
-@software{stephan_tulkens_2026_19401859
-,
+@software{stephan_tulkens_2026_19401859,
   author       = {Stephan Tulkens},
   title        = {skeletoken},
   month        = feb,
