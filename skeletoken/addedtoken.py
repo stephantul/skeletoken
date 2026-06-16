@@ -1,4 +1,6 @@
-from pydantic import BaseModel, RootModel
+from typing import Any
+
+from pydantic import BaseModel, PrivateAttr, RootModel
 
 
 class AddedToken(BaseModel):
@@ -22,9 +24,9 @@ class AddedToken(BaseModel):
     rstrip : bool
         If set, the token will be stripped from the right side.
     normalized : bool
-        If set, the token form is searched _before_ normalization and pretokenization happens.
-        For example, if you use a lowercase normalizer, the token "Hello" will be found as "hello",
-        but only if normalized is set to True. If it is False, "Hello" will be found as is.
+        If set, the token is already in its normalized form and will be kept as-is during
+        vocabulary consolidation. If False, the token will be re-preprocessed when the
+        tokenizer's normalization or pretokenization rules change.
     special : bool
         If set, the token is a special token.
         Special tokens are skipped during decoding, and are represented as single tokens in the vocabulary.
@@ -47,57 +49,77 @@ class AddedToken(BaseModel):
 class AddedTokens(RootModel[list[AddedToken]]):
     """Represents a collection of AddedTokens."""
 
+    _index: dict[str, AddedToken] = PrivateAttr(default_factory=dict)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Build the content→token index."""
+        self._index = {t.content: t for t in self.root}
+
     def __getitem__(self, index: int) -> AddedToken:
         """Get an addedtoken by index."""
         return self.root[index]
 
     def get_token(self, token: str) -> AddedToken | None:
         """Return the added token for a given form."""
-        for added_token in self.root:
-            if added_token.content == token:
-                return added_token
-        return None
+        return self._index.get(token)
 
-    def maybe_add_token(
+    def upsert_token(
         self,
         token: str,
         id: int,
-        is_special: bool = False,
-        normalized: bool = False,
-        single_word: bool = True,
-        lstrip: bool = True,
-        rstrip: bool = True,
+        is_special: bool | None = None,
+        normalized: bool | None = None,
+        single_word: bool | None = None,
+        lstrip: bool | None = None,
+        rstrip: bool | None = None,
     ) -> None:
-        """Add a new added token."""
-        # If the token already exists, update it. Don't create a new one.
-        if added_token := self.get_token(token):
-            added_token.special = is_special
-            added_token.normalized = normalized
-            added_token.single_word = single_word
-            added_token.lstrip = lstrip
-            added_token.rstrip = rstrip
+        """Add a token, or update its id in-place if it already exists.
+
+        When the token already exists, only `id` is updated; omitted keyword
+        arguments leave the existing field values unchanged.  Pass an explicit
+        value to also update that field on an existing token.
+        """
+        if added_token := self._index.get(token):
             added_token.id = id
+            if is_special is not None:
+                added_token.special = is_special
+            if normalized is not None:
+                added_token.normalized = normalized
+            if single_word is not None:
+                added_token.single_word = single_word
+            if lstrip is not None:
+                added_token.lstrip = lstrip
+            if rstrip is not None:
+                added_token.rstrip = rstrip
         else:
             new_token = AddedToken(
                 content=token,
-                special=is_special,
-                normalized=normalized,
-                single_word=single_word,
-                lstrip=lstrip,
-                rstrip=rstrip,
+                special=is_special or False,
+                normalized=normalized or False,
+                single_word=single_word if single_word is not None else True,
+                lstrip=lstrip if lstrip is not None else True,
+                rstrip=rstrip if rstrip is not None else True,
                 id=id,
             )
             self.root.append(new_token)
+            self._index[token] = new_token
 
     def maybe_remove_token(self, token: str) -> None:
         """Remove the added token for a given form if it exists."""
-        self.root = [added_token for added_token in self.root if added_token.content != token]
+        if token in self._index:
+            self._index.pop(token)
+            self.root = [t for t in self.root if t.content != token]
 
     def maybe_replace_token(self, old_token: str, new_token: str) -> None:
         """Replace the added token for a given form, if it exists."""
-        added_token = self.get_token(old_token)
+        if old_token == new_token:
+            return
+        added_token = self._index.get(old_token)
         if added_token:
+            self.maybe_remove_token(new_token)
+            self._index.pop(old_token)
             added_token.content = new_token
+            self._index[new_token] = added_token
 
     def get_special_tokens(self) -> list[AddedToken]:
         """Return a list of all special added tokens."""

@@ -57,18 +57,22 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     mapping = delta.token_mapping
     embedding = model.get_input_embeddings()
     assert isinstance(embedding, torch.nn.Embedding)
+    original_vocab_size = embedding.weight.shape[0]
     weight = _remap_embeddings(embedding.weight, mapping)
     embedding.weight.data = weight
     model.resize_token_embeddings(vocab_size)
 
-    embedding = model.get_input_embeddings()
-
-    for key in model.config:
+    # token_mapping is new→old; invert to old→new for updating config IDs.
+    inv_mapping = {old: new for new, old in mapping.items()}
+    for key in vars(model.config):
         if key == "vocab_size":
             setattr(model.config, key, vocab_size)
         elif key.endswith("_id"):
             current_id = getattr(model.config, key)
-            if isinstance(current_id, int) and current_id in mapping:
-                setattr(model.config, key, mapping[current_id])
+            if isinstance(current_id, int):
+                if current_id in inv_mapping:
+                    setattr(model.config, key, inv_mapping[current_id])
+                elif 0 <= current_id < original_vocab_size:
+                    setattr(model.config, key, None)
 
     return model

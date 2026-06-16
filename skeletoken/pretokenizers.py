@@ -353,7 +353,8 @@ def get_metaspace(pre_tokenizer: PreTokenizerDiscriminator) -> str | None:
     """Get the metaspace token from a pre-tokenizer."""
     if isinstance(pre_tokenizer, PreTokenizerSequence):
         for pt in pre_tokenizer.pretokenizers:
-            if result := get_metaspace(pt):
+            result = get_metaspace(pt)
+            if result is not None:
                 return result
     elif isinstance(pre_tokenizer, MetaspacePreTokenizer):
         return pre_tokenizer.replacement
@@ -369,13 +370,13 @@ def get_add_prefix_space(pre_tokenizer: PreTokenizerDiscriminator) -> bool | Non
 T = TypeVar("T")
 
 
-def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, type: type[T]) -> T | None:
+def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, pretokenizer_type: type[T]) -> T | None:
     """Get a pretokenizer of a specific type."""
-    if isinstance(pre_tokenizer, type):
+    if isinstance(pre_tokenizer, pretokenizer_type):
         return pre_tokenizer
     elif isinstance(pre_tokenizer, PreTokenizerSequence):
         for pt in pre_tokenizer.pretokenizers:
-            if result := get_pretokenizer_of_type(pt, type):
+            if result := get_pretokenizer_of_type(pt, pretokenizer_type):
                 return result
     return None
 

@@ -35,11 +35,12 @@ class Merges(RootModel[list[_Merge]]):
                 left, right = token_form[index], token_form[index + 1]
                 form = "".join([left, right])
                 if not (left in vocab and right in vocab and form in vocab):
-                    break
+                    continue
                 found = True
                 bigram = (left, right)
-                self.root.append(bigram)
-                self._merge_index[bigram] = len(self.root) - 1
+                if bigram not in self._merge_index:
+                    self.root.append(bigram)
+                    self._merge_index[bigram] = len(self.root) - 1
                 if left not in self._all_merge_tokens:
                     added_merges.append(left)
                 if right not in self._all_merge_tokens:
@@ -60,8 +61,9 @@ class Merges(RootModel[list[_Merge]]):
             for index in range(0, len(token_form) - 1, 2):
                 left, right = token_form[index], token_form[index + 1]
                 bigram = (left, right)
-                self.root.append(bigram)
-                self._merge_index[bigram] = len(self.root) - 1
+                if bigram not in self._merge_index:
+                    self.root.append(bigram)
+                    self._merge_index[bigram] = len(self.root) - 1
                 if left not in self._all_merge_tokens:
                     added_merges.append(left)
                 if right not in self._all_merge_tokens:

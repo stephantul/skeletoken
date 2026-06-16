@@ -117,7 +117,7 @@ class TokenizerModel(BaseModel):
             if pad_token not in self.model.vocab:
                 current_pad_token_id = self.pad_token_id
                 assert current_pad_token_id is not None
-                if current_pad_token_id > self.vocabulary_size:
+                if current_pad_token_id >= self.vocabulary_size:
                     logger.warning(
                         f"pad_token_id {current_pad_token_id} is greater than vocabulary size {self.vocabulary_size}."
                     )
@@ -206,7 +206,7 @@ class TokenizerModel(BaseModel):
                 f"Token '{token}' not found in the vocabulary. Please add it first using "
                 "`add_token_to_vocabulary` or `add_addedtoken`."
             )
-        self.added_tokens.maybe_add_token(
+        self.added_tokens.upsert_token(
             token,
             is_special=is_special,
             normalized=normalized,
@@ -359,8 +359,6 @@ class TokenizerModel(BaseModel):
     def _remove_tokens_from_vocabulary(self, tokens: Sequence[str]) -> TokenizerModel:
         """In-place version of `remove_tokens_from_vocabulary`."""
         unk_token = self.unk_token
-        pad_token = self.pad_token
-
         if unk_token is not None and unk_token in tokens:
             try:
                 self.unk_token = None
@@ -449,6 +447,8 @@ class TokenizerModel(BaseModel):
             new_preprocessor=new_preprocessor,
             keep=keep,
         )
+        pad_token_update = None
+        unk_token_update = None
         for old_token, token in zip(sorted_vocab, new_vocabulary, strict=True):
             if token is None:
                 continue
@@ -458,12 +458,16 @@ class TokenizerModel(BaseModel):
                     old_token, token, self.model.vocab[old_token], self.post_processor
                 )
             if self.pad_token == old_token:
-                self.pad_token = token
+                pad_token_update = token
             if self.unk_token == old_token:
-                self.unk_token = token
+                unk_token_update = token
 
         # This needs to be done in one go, because of merges.
         self.model.replace_vocabulary(new_vocabulary)
+        if pad_token_update is not None:
+            self.pad_token = pad_token_update
+        if unk_token_update is not None:
+            self.unk_token = unk_token_update
         return self
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool = False) -> TokenizerModel:
@@ -500,6 +504,8 @@ class TokenizerModel(BaseModel):
         """Adds tokens that are in the post processor as added tokens."""
         all_special_tokens_from_post_processor = [*(self.eos or []), *(self.bos or [])]
         pruned = [token for token in all_special_tokens_from_post_processor if token not in self.vocabulary]
+        if not pruned:
+            return self
         return self.add_addedtokens(pruned)
 
     def _add_post_processor_inplace(self, post_processor: PostProcessorDiscriminator) -> None:
@@ -713,7 +719,7 @@ class TokenizerModel(BaseModel):
                 self._add_token_to_vocabulary(token, is_added_token=True)
             logger.info(f"Setting unk_token to '{token}'.")
             index = self.model.vocab[token]
-            self.added_tokens.maybe_add_token(
+            self.added_tokens.upsert_token(
                 token=token,
                 is_special=True,
                 normalized=True,
@@ -768,7 +774,7 @@ class TokenizerModel(BaseModel):
             self.padding.pad_token = token
 
         # We know token is in vocab here.
-        self.added_tokens.maybe_add_token(
+        self.added_tokens.upsert_token(
             token,
             id=self.model.vocab[token],
             is_special=True,

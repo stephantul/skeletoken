@@ -79,7 +79,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
 
     def to_greedy(self) -> WordPiece:
         """Convert the BPE model to a greedy WordPiece model."""
-        if not self.unk_token:
+        if self.unk_token is None:
             logger.warning("BPE model has no unk_token, using the first token in the vocab.")
             unk_token = self.vocab.sorted_vocabulary[0]
         else:
@@ -98,8 +98,8 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
             return
         self.merges._add_merges_for_token(token)
         new_tokens = sorted(self.merges._all_merge_tokens - set(self.vocab.vocabulary))
-        for token in new_tokens:
-            self.vocab.add_token(token)
+        for new_token in new_tokens:
+            self.vocab.add_token(new_token)
 
     def replace_token(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token in the vocabulary."""
@@ -127,20 +127,6 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         vocab = self.vocab.root
         if len(vocabulary) != len(vocab):
             raise ValueError("New vocabulary must be of the same length as the existing vocabulary.")
-        current_vocab = self.vocab.vocabulary
-        merge_index: list[tuple[int, int]] = []
-        for left, right in self.merges.root:
-            # We know that this merge leads somewhere
-            merge_token = left + right
-            index = current_vocab[merge_token]
-            # No need to merge things that are removed
-            if vocabulary[index] is None:
-                continue
-            left_idx = current_vocab[left]
-            right_idx = current_vocab[right]
-            if vocabulary[left_idx] is None or vocabulary[right_idx] is None:
-                continue
-            merge_index.append((left_idx, right_idx))
         self.vocab.replace_vocabulary(vocabulary)
         self.merges.root = []
         self.merges.model_post_init({})

@@ -11,7 +11,7 @@ class ModelDelta(BaseModel):
     Attributes
     ----------
     token_mapping : dict[int, int]
-        A mapping from old token IDs to new token IDs.
+        A mapping from new token IDs to old token IDs.
     new_tokens : dict[str, int]
         A mapping from new token strings to their IDs. This is useful for inferring contents of the new tokens.
     new_vocabulary_size : int

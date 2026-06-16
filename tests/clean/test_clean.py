@@ -1,5 +1,5 @@
 from tokenizers.normalizers import Lowercase
-from tokenizers.pre_tokenizers import Metaspace
+from tokenizers.pre_tokenizers import Metaspace, WhitespaceSplit
 
 from skeletoken.addedtoken import AddedToken
 from skeletoken.clean.clean import _process, clean_vocabulary
@@ -99,3 +99,18 @@ def test_process() -> None:
     assert x == "Z"
     x = _process("a a a", "Z", {}, p, True, False, False)
     assert x == "Z"
+
+
+def test_process_added_token_empty_preprocess() -> None:
+    """normalized=False added token whose decoded form yields no pretokens."""
+    p = Preprocessor(pretokenizer=WhitespaceSplit())
+    at = AddedToken(content="[WS]", single_word=True, normalized=False, special=True, lstrip=False, rstrip=False, id=0)
+    added_token_dict = {"[WS]": at}
+
+    # " " is non-empty so the empty-string guard in preprocess doesn't fire,
+    # but WhitespaceSplit returns [] for whitespace-only input → hits line 28.
+    x = _process(" ", "[WS]", added_token_dict, p, False, False, False)
+    assert x is None
+
+    x = _process(" ", "[WS]", added_token_dict, p, True, False, False)
+    assert x == "[WS]"

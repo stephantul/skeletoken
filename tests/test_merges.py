@@ -91,6 +91,38 @@ def test_remove_merges_batch_updates_index(small_merges: Merges) -> None:
     assert small_merges._merge_index == {("a", "bc"): 0}
 
 
+def test_add_merges_no_duplicates() -> None:
+    """_add_merges_for_token must not append the same bigram twice."""
+    merges = Merges([])
+    # "abab" produces token_form ('a','b','a','b'); with step=2 both index 0 and 2
+    # yield ('a','b'), so the guard is exercised.
+    merges._add_merges_for_token("abab")
+    assert merges.root.count(("a", "b")) == 1
+    # Priority (index 0) must be preserved, not pushed to a higher index.
+    assert merges._merge_index[("a", "b")] == 0
+
+
+def test_add_merges_with_vocab_skips_invalid_pair_but_continues() -> None:
+    """A pair that fails the vocab check must not block later valid pairs in the same pass."""
+    merges = Merges([])
+    # 'a'/'b' are absent from vocab; 'c'/'d'/'cd' are all present.
+    # With the old `break`, the failure at index 0 would prevent ('c','d') from being added.
+    vocab = {"c", "d", "cd"}
+    merges._add_merges_for_token_with_vocab("abcd", vocab)
+    assert ("c", "d") in merges._merge_index
+    assert ("a", "b") not in merges._merge_index
+
+
+def test_add_merges_with_vocab_no_duplicates() -> None:
+    """_add_merges_for_token_with_vocab must not append the same bigram twice."""
+    merges = Merges([])
+    vocab = {"a", "b", "ab"}
+    # "abab" → token_form ('a','b','a','b'); both even indices produce ('a','b').
+    merges._add_merges_for_token_with_vocab("abab", vocab)
+    assert merges.root.count(("a", "b")) == 1
+    assert merges._merge_index[("a", "b")] == 0
+
+
 def test_remove_merges_batch_noop_when_token_not_present(small_merges: Merges) -> None:
     """Removing tokens that aren't involved leaves merges unchanged."""
     before_root = list(small_merges.root)

@@ -152,7 +152,7 @@ class LowercaseNormalizer(BaseNormalizer):
     """Lowercases the input text."""
 
     type: Literal[NormalizerType.LOWERCASE] = NormalizerType.LOWERCASE
-    _lowercases: bool = True
+    _lowercases: bool = PrivateAttr(default=True)
 
 
 class NmtNormalizer(BaseNormalizer):

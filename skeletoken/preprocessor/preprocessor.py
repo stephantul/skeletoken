@@ -15,10 +15,10 @@ class Decoded:
     original: str
     # The base string form
     decoded: str
-    # The subword prefix the token had
-    subword_prefix: bool
-    # The word prefix the token had
-    word_prefix: bool
+    # Whether the token had a subword prefix
+    had_subword_prefix: bool
+    # Whether the token had a word prefix
+    had_word_prefix: bool
 
 
 def _remove_prefix(sequence: str, prefix: str | None) -> tuple[str, bool]:
@@ -62,8 +62,8 @@ class Preprocessor:
         return Decoded(
             original=sequence,
             decoded=decoded,
-            subword_prefix=has_subword,
-            word_prefix=has_word,
+            had_subword_prefix=has_subword,
+            had_word_prefix=has_word,
         )
 
     def decode_sequences(self, sequences: list[str]) -> list[Decoded]:
@@ -86,7 +86,7 @@ class Preprocessor:
             processed = [sequence]
         # This is annoying: pretokenizers turn the empty string into an empty list.
         if not sequence:
-            processed = [self.word_prefix or "" if had_word_prefix else ""]
+            return [self.word_prefix or "" if had_word_prefix else ""]
         if processed:
             first_token = processed[0]
             if not had_word_prefix and self.word_prefix:

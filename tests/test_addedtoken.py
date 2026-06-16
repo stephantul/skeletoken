@@ -43,10 +43,10 @@ def test_addedtoken(small_tokenizer_json: dict[str, Any]) -> None:
 def test_addedtokens_object() -> None:
     """Test the AddedTokens object."""
     tokens = AddedTokens([])
-    tokens.maybe_add_token("a", 11)
+    tokens.upsert_token("a", 11)
     assert len(tokens) == 1
     assert tokens.root[0].id == 11
-    tokens.maybe_add_token("a", 12)
+    tokens.upsert_token("a", 12)
     assert len(tokens) == 1
     assert tokens.root[0].id == 12
 
@@ -57,12 +57,12 @@ def test_addedtokens_object() -> None:
     tokens.maybe_remove_token("a")
     tokens.maybe_replace_token("a", "b")
 
-    tokens.maybe_add_token("a", 10)
+    tokens.upsert_token("a", 10)
     tokens.maybe_replace_token("a", "b")
     assert len(tokens) == 1
     assert tokens.root[0].content == "b"
 
-    tokens.maybe_add_token("b", 10, normalized=True)
+    tokens.upsert_token("b", 10, normalized=True)
     assert len(tokens) == 1
     assert tokens.root[0].id == 10
     assert tokens.root[0].normalized is True

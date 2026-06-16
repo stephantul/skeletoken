@@ -67,6 +67,11 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
     remapped = _remap_embeddings(embeddings, mapping)
     new_embeddings[: len(remapped)] = remapped[:vocab_size]
 
+    new_weights = None
+    if model.weights is not None:
+        remapped_weights = _remap_embeddings(model.weights, mapping)
+        new_weights = remapped_weights[:vocab_size]
+
     return StaticModel(
         vectors=new_embeddings.astype(embeddings.dtype),
         tokenizer=tokenizer_model.to_tokenizer(),
@@ -74,6 +79,6 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
         normalize=model.normalize,
         base_model_name=model.base_model_name,
         language=model.language,
-        weights=model.weights,
+        weights=new_weights,
         token_mapping=model.token_mapping,
     )

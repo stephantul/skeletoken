@@ -191,10 +191,11 @@ def get_bos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return [post_processor.cls[0]]
     if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
-        if single_encoding[0].type != TokenType.SPECIAL:
+        if not single_encoding or single_encoding[0].type != TokenType.SPECIAL:
             return None
         identifier = single_encoding[0].id
-        return post_processor.special_tokens[identifier].tokens
+        info = post_processor.special_tokens.get(identifier)
+        return info.tokens if info is not None else None
 
 
 def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str] | None:
@@ -207,10 +208,11 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return [post_processor.sep[0]]
     if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
         single_encoding = post_processor.single
-        if single_encoding[-1].type != TokenType.SPECIAL:
+        if not single_encoding or single_encoding[-1].type != TokenType.SPECIAL:
             return None
         identifier = single_encoding[-1].id
-        return post_processor.special_tokens[identifier].tokens
+        info = post_processor.special_tokens.get(identifier)
+        return info.tokens if info is not None else None
 
 
 def maybe_replace_token_in_post_processor(
@@ -235,13 +237,13 @@ def maybe_replace_token_in_post_processor(
         The post-processor with the token replaced, if it existed.
 
     """
-    post_processor = post_processor.model_copy(deep=True)
     if isinstance(post_processor, PostProcessorSequence):
         return PostProcessorSequence(
             processors=[
                 maybe_replace_token_in_post_processor(old_token, new_token, index, p) for p in post_processor.processors
             ]
         )
+    post_processor = post_processor.model_copy(deep=True)
     if isinstance(post_processor, ByteLevelPostProcessor):
         # Has no tokens.
         return post_processor
