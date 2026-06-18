@@ -71,6 +71,9 @@ arg-type-hints-in-docstring = true
 check-return-types = true
 require-return-section-when-returning-nothing = false
 
+[tool.pytest.ini_options]
+addopts = "--ignore=tests/integration"
+
 [tool.mypy]
 python_version = "3.10"
 warn_unused_configs = true

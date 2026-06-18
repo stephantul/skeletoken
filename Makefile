@@ -5,6 +5,9 @@ install:
 test:
 	uv run pytest --cov=skeletoken --cov-report=term-missing
 
+test-integration:
+	uv run pytest tests/integration
+
 install-no-pre-commit:
 	uv sync --all-extras
 

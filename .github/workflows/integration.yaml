@@ -1,0 +1,55 @@
+name: Run integration tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-integration:
+    name: Integration • Python 3.12 • ubuntu-latest
+    runs-on: ubuntu-latest
+
+    steps:
+      # -------- Checkout --------
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # -------- Python setup --------
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      # -------- Cache (uv + venv) --------
+      - name: Cache virtualenv and uv cache
+        id: cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+          key: ${{ runner.os }}-uv-3.12-${{ hashFiles('uv.lock', 'pyproject.toml', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-3.12-
+
+      # -------- uv + venv --------
+      - name: Set up virtual environment (uv)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv venv .venv --clear
+          echo "VIRTUAL_ENV=.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      # -------- Dependencies --------
+      - name: Install project dependencies
+        run: make install-no-pre-commit
+
+      # -------- Integration Tests --------
+      - name: Run integration tests
+        run: make test-integration
