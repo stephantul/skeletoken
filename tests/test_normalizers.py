@@ -24,6 +24,7 @@ from skeletoken.normalizers import (
     StripNormalizer,
     to_tokenizers_normalizer,
 )
+from tests.conftest import call_tokenizer
 
 
 def _get_default_normalizer(normalizer_type: NormalizerType) -> Normalizer:  # noqa: C901
@@ -87,8 +88,7 @@ def test_normalizer(small_tokenizer_json: dict[str, Any], normalizer_type: Norma
     assert tokenizer.normalizer is not None
     assert tokenizer.normalizer.type == normalizer_type
 
-    # Implicit test. If this fails, the model is incorrect.
-    tokenizer.to_tokenizer()
+    call_tokenizer(tokenizer)
 
 
 @pytest.mark.parametrize(

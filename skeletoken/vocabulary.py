@@ -35,7 +35,7 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
 
     @property
     def sorted_vocabulary(self) -> list[str]:
-        """Returns the vocabulary mapping sorted by token."""
+        """Returns the tokens sorted by their ID, so sorted_vocabulary[id] == token."""
         return [x[0] for x in sorted(self.root.items(), key=lambda x: x[1])]
 
     def add_token(self, token: str) -> None:
@@ -59,9 +59,11 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
 
     def remove_tokens(self, tokens: Sequence[str]) -> None:
         """Remove multiple tokens from the vocabulary."""
+        tokens = list(dict.fromkeys(tokens))
         for token in tokens:
             if token not in self.root:
                 raise ValueError(f"Token '{token}' does not exist in vocabulary.")
+        for token in tokens:
             self.root.pop(token)
         # Rebuild the vocabulary to ensure indices are contiguous, but only if it is non-empty
         if self.root:
@@ -88,7 +90,7 @@ class UnigramVocabulary(RootModel[list[tuple[str, float]]], VocabMixin):
     @property
     def sorted_vocabulary(self) -> list[str]:
         """Returns the vocabulary mapping sorted by token."""
-        return [x[0] for x in sorted(self._vocabulary.items(), key=lambda x: x[1])]
+        return [x[0] for x in self.root]
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Initialize the vocabulary."""

@@ -6,8 +6,37 @@ from pytest import FixtureRequest, fixture
 from tokenizers import Tokenizer
 from transformers import PreTrainedTokenizerFast
 
+from skeletoken.base import TokenizerModel
 from skeletoken.merges import Merges
 from skeletoken.postprocessors import TemplatePostProcessor
+
+
+def call_tokenizer(model: TokenizerModel) -> None:
+    """Call the tokenizer to ensure the model is correct."""
+    tokenizer = model.to_tokenizer()
+    tokenizer.encode("some text")
+
+
+def assert_vocabulary_consistent(model: TokenizerModel) -> None:
+    """Assert that the model's vocabulary is internally consistent."""
+    vocab = model.vocabulary
+    size = model.vocabulary_size
+    # IDs form a contiguous range [0, size)
+    assert sorted(vocab.values()) == list(range(size))
+    assert len(model.sorted_vocabulary) == size
+    # Every added token lives in the vocabulary with a matching ID
+    for token in model.added_tokens.root:
+        assert token.content in vocab, f"Added token {token.content!r} missing from vocabulary"
+        assert vocab[token.content] == token.id, (
+            f"Added token {token.content!r} has id={token.id} but vocabulary says {vocab[token.content]}"
+        )
+    # Special token IDs are self-consistent
+    if model.unk_token:
+        assert model.unk_token in vocab
+        assert vocab[model.unk_token] == model.unk_token_id
+    if model.pad_token:
+        assert model.pad_token in vocab
+        assert vocab[model.pad_token] == model.pad_token_id
 
 
 def _get_path(name: str) -> Path:

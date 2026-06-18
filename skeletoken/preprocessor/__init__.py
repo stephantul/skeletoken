@@ -1,3 +1,3 @@
-from skeletoken.preprocessor.preprocessor import Preprocessor
+from skeletoken.preprocessor.preprocessor import Decoded, Preprocessor
 
-__all__ = ["Preprocessor"]
+__all__ = ["Preprocessor", "Decoded"]

@@ -79,7 +79,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
 
     def to_greedy(self) -> WordPiece:
         """Convert the BPE model to a greedy WordPiece model."""
-        if not self.unk_token:
+        if self.unk_token is None:
             logger.warning("BPE model has no unk_token, using the first token in the vocab.")
             unk_token = self.vocab.sorted_vocabulary[0]
         else:
@@ -98,8 +98,8 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
             return
         self.merges._add_merges_for_token(token)
         new_tokens = sorted(self.merges._all_merge_tokens - set(self.vocab.vocabulary))
-        for token in new_tokens:
-            self.vocab.add_token(token)
+        for new_token in new_tokens:
+            self.vocab.add_token(new_token)
 
     def replace_token(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token in the vocabulary."""
@@ -127,30 +127,13 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         vocab = self.vocab.root
         if len(vocabulary) != len(vocab):
             raise ValueError("New vocabulary must be of the same length as the existing vocabulary.")
-        current_vocab = self.vocab.vocabulary
-        merge_index: list[tuple[int, int]] = []
-        for left, right in self.merges.root:
-            # We know that this merge leads somewhere
-            merge_token = left + right
-            index = current_vocab[merge_token]
-            # No need to merge things that are removed
-            if vocabulary[index] is None:
-                continue
-            left_idx = current_vocab[left]
-            right_idx = current_vocab[right]
-            if vocabulary[left_idx] is None or vocabulary[right_idx] is None:
-                continue
-            merge_index.append((left_idx, right_idx))
         self.vocab.replace_vocabulary(vocabulary)
-        new_merges = []
-        for left_idx, right_idx in merge_index:
-            left_token, right_token = vocabulary[left_idx], vocabulary[right_idx]
-            assert left_token is not None and right_token is not None
-            token = left_token + right_token
-            if token in self.vocab.vocabulary:
-                new_merges.append((left_token, right_token))
-        self.merges.root = new_merges
+        self.merges.root = []
         self.merges.model_post_init({})
+        v = set(self.vocab.sorted_vocabulary)
+
+        for token in self.vocab.sorted_vocabulary:
+            self.merges._add_merges_for_token(token, vocab=v)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
@@ -180,7 +163,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
         """Return the unknown token, if any."""
         if self.unk_id is None:
             return None
-        return self.vocab.sorted_vocabulary[self.unk_id]
+        return self.vocab.root[self.unk_id][0]
 
     @unk_token.setter
     def unk_token(self, token: str | None) -> None:
@@ -215,11 +198,17 @@ ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
 def get_subword_prefix_token(model: Model) -> str | None:
     """Get the prefix token from the model, if any."""
     # Only WordPiece and BPE models have these.
-    if isinstance(model, WordPiece):
-        return model.continuing_subword_prefix
-    elif isinstance(model, BPE):
+    if isinstance(model, (WordPiece, BPE)):
         return model.continuing_subword_prefix
     return None
+
+
+def set_subword_prefix_token(model: Model, prefix: str) -> None:
+    """Set the subword prefix. This will raise a ValueError if the model does not support one."""
+    if isinstance(model, (WordPiece, BPE)):
+        model.continuing_subword_prefix = prefix
+    else:
+        raise ValueError("Setting a subword prefix token is not supported for Unigram or Wordlevel models.")
 
 
 MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)

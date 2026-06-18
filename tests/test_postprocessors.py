@@ -20,6 +20,7 @@ from skeletoken.postprocessors import (
     get_eos_token_from_post_processor,
     maybe_replace_token_in_post_processor,
 )
+from tests.conftest import call_tokenizer
 
 
 def _get_default_postprocessor(post_processor_type: PostProcessorType) -> PostProcessor:  # noqa: C901
@@ -72,8 +73,7 @@ def test_post_processor(small_tokenizer_json: dict[str, Any], post_processor_typ
     assert tokenizer.post_processor is not None
     assert tokenizer.post_processor.type == post_processor_type
 
-    # Implicit test. If this fails, the model is incorrect.
-    tokenizer.to_tokenizer()
+    call_tokenizer(tokenizer)
 
 
 def _get_no_eos_template() -> TemplatePostProcessor:

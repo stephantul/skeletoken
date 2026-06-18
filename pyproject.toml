@@ -87,3 +87,17 @@ skeletoken = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "skeletoken.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--tb=short", "--strict-markers", "--cov=semble", "--cov-report=term-missing", "--ignore=tests/integration"]
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.coverage.report]
+skip_covered = true
+exclude_also = ["if __name__ == .__main__.:", "@abstractmethod"]
+
+[tool.uv]
+exclude-newer = "1 week"
