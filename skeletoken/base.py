@@ -468,6 +468,7 @@ class TokenizerModel(BaseModel):
             self.pad_token = pad_token_update
         if unk_token_update is not None:
             self.unk_token = unk_token_update
+        self._remap_added_token_ids()
         return self
 
     def add_pre_tokenizer(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool = False) -> TokenizerModel:

@@ -203,12 +203,19 @@ def test_add_token(model: Model) -> None:
         assert model.merges.root == [
             ("d", "e"),
             ("n", "e"),
+            ("e", "w"),
             ("w", "_"),
+            ("_", "t"),
             ("t", "o"),
+            ("o", "k"),
             ("k", "e"),
+            ("e", "n"),
             ("ne", "w_"),
+            ("w_", "to"),
             ("to", "ke"),
+            ("ke", "n"),
             ("new_", "toke"),
+            ("toke", "n"),
             ("new_toke", "n"),
         ]
     else:
@@ -266,12 +273,19 @@ def test_replace_token(model: Model) -> None:
         assert model.merges.root == [
             ("d", "e"),
             ("n", "e"),
+            ("e", "w"),
             ("w", "_"),
+            ("_", "t"),
             ("t", "o"),
+            ("o", "k"),
             ("k", "e"),
+            ("e", "n"),
             ("ne", "w_"),
+            ("w_", "to"),
             ("to", "ke"),
+            ("ke", "n"),
             ("new_", "toke"),
+            ("toke", "n"),
             ("new_toke", "n"),
         ]
     else:

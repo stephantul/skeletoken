@@ -67,7 +67,7 @@ class Preprocessor:
         )
 
     def decode_sequences(self, sequences: list[str]) -> list[Decoded]:
-        """Preprocess a list of sequences using multithreading."""
+        """Preprocess a list of sequences."""
         return [self.decode(seq) for seq in sequences]
 
     def preprocess(self, sequence: str, had_word_prefix: bool = False, had_subword_prefix: bool = False) -> list[str]:

@@ -24,17 +24,21 @@ class Merges(RootModel[list[_Merge]]):
             self._all_merge_tokens.add(left)
             self._all_merge_tokens.add(right)
 
-    def _add_merges_for_token_with_vocab(self, token: str, vocab: set[str]) -> list[str]:
-        """Add merge operations for a specific token."""
-        # Convert to tuple for typing.
+    def _add_merges_for_token(self, token: str, vocab: set[str] | None = None) -> list[str]:
+        """Add merge operations for a specific token.
+
+        When vocab is provided, a bigram is only added when both component strings
+        and their concatenation are present in the vocabulary; the loop stops early
+        if no such bigram is found.  Without a vocab constraint every consecutive
+        pair is added until the token fully merges.
+        """
         token_form = tuple(self._merge(token))
         added_merges = []
         while len(token_form) > 1:
             found = False
-            for index in range(0, len(token_form) - 1, 2):
+            for index in range(len(token_form) - 1):
                 left, right = token_form[index], token_form[index + 1]
-                form = "".join([left, right])
-                if not (left in vocab and right in vocab and form in vocab):
+                if vocab is not None and not (left in vocab and right in vocab and left + right in vocab):
                     continue
                 found = True
                 bigram = (left, right)
@@ -49,27 +53,6 @@ class Merges(RootModel[list[_Merge]]):
                 self._all_merge_tokens.add(right)
             if not found:
                 break
-            token_form = tuple(self._merge(token))
-        return sorted(set(added_merges))
-
-    def _add_merges_for_token(self, token: str) -> list[str]:
-        """Add merge operations for a specific token."""
-        # Convert to tuple for typing.
-        token_form = tuple(self._merge(token))
-        added_merges = []
-        while len(token_form) > 1:
-            for index in range(0, len(token_form) - 1, 2):
-                left, right = token_form[index], token_form[index + 1]
-                bigram = (left, right)
-                if bigram not in self._merge_index:
-                    self.root.append(bigram)
-                    self._merge_index[bigram] = len(self.root) - 1
-                if left not in self._all_merge_tokens:
-                    added_merges.append(left)
-                if right not in self._all_merge_tokens:
-                    added_merges.append(right)
-                self._all_merge_tokens.add(left)
-                self._all_merge_tokens.add(right)
             token_form = tuple(self._merge(token))
         return sorted(set(added_merges))
 

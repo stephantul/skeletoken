@@ -40,15 +40,27 @@ def test_merge(small_merges: Merges) -> None:
                 ("c", "d"),
                 ("ab", "c"),
                 ("a", "bc"),
+                # stride-1 pass 1: all consecutive pairs from the 11-char form
                 ("e", "l"),
+                ("l", "e"),
                 ("e", "p"),
+                ("p", "h"),
                 ("h", "a"),
+                ("a", "n"),
                 ("n", "t"),
+                ("t", "i"),
                 ("i", "n"),
+                ("n", "e"),
+                # pass 2: all pairs from the 6-element form
                 ("el", "ep"),
+                ("ep", "ha"),
                 ("ha", "nt"),
+                ("nt", "in"),
                 ("in", "e"),
+                # pass 3: pairs from the 3-element form
                 ("elep", "hant"),
+                ("hant", "ine"),
+                # pass 4: final pair
                 ("elephant", "ine"),
             ],
         ),
@@ -94,8 +106,8 @@ def test_remove_merges_batch_updates_index(small_merges: Merges) -> None:
 def test_add_merges_no_duplicates() -> None:
     """_add_merges_for_token must not append the same bigram twice."""
     merges = Merges([])
-    # "abab" produces token_form ('a','b','a','b'); with step=2 both index 0 and 2
-    # yield ('a','b'), so the guard is exercised.
+    # "abab" → ('a','b','a','b'); stride-1 visits ('a','b') at both index 0 and 2,
+    # so the duplicate-guard is exercised.
     merges._add_merges_for_token("abab")
     assert merges.root.count(("a", "b")) == 1
     # Priority (index 0) must be preserved, not pushed to a higher index.
@@ -106,19 +118,19 @@ def test_add_merges_with_vocab_skips_invalid_pair_but_continues() -> None:
     """A pair that fails the vocab check must not block later valid pairs in the same pass."""
     merges = Merges([])
     # 'a'/'b' are absent from vocab; 'c'/'d'/'cd' are all present.
-    # With the old `break`, the failure at index 0 would prevent ('c','d') from being added.
+    # The failure at index 0 must not prevent ('c','d') from being added.
     vocab = {"c", "d", "cd"}
-    merges._add_merges_for_token_with_vocab("abcd", vocab)
+    merges._add_merges_for_token("abcd", vocab=vocab)
     assert ("c", "d") in merges._merge_index
     assert ("a", "b") not in merges._merge_index
 
 
 def test_add_merges_with_vocab_no_duplicates() -> None:
-    """_add_merges_for_token_with_vocab must not append the same bigram twice."""
+    """_add_merges_for_token with vocab must not append the same bigram twice."""
     merges = Merges([])
     vocab = {"a", "b", "ab"}
-    # "abab" → token_form ('a','b','a','b'); both even indices produce ('a','b').
-    merges._add_merges_for_token_with_vocab("abab", vocab)
+    # "abab" → ('a','b','a','b'); stride-1 visits ('a','b') at indices 0 and 2.
+    merges._add_merges_for_token("abab", vocab=vocab)
     assert merges.root.count(("a", "b")) == 1
     assert merges._merge_index[("a", "b")] == 0
 

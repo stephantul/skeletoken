@@ -24,9 +24,20 @@ def _process(
             return original
         else:
             preprocessed_tokens = preprocessor.preprocess(decoded, word_prefix, subword_prefix)
-            if not preprocessed_tokens:
-                return original if keep else None
-            reprocessed = "".join(preprocessed_tokens)
+            if len(preprocessed_tokens) != 1:
+                # Check whether the join equals the normalizer-only result. A pure-splitting
+                # pretokenizer (e.g. BERT's punctuation splitter) still gives a correct join;
+                # a prefix-inserting pretokenizer (e.g. Metaspace) does not.
+                joined = "".join(preprocessed_tokens)
+                if preprocessor.normalizer is not None:
+                    normalized = preprocessor.normalizer.normalize_str(decoded)
+                else:
+                    normalized = decoded
+                if joined != normalized:
+                    return original if keep else None
+                reprocessed = joined
+            else:
+                reprocessed = preprocessed_tokens[0]
     else:
         preprocessed_tokens = preprocessor.preprocess(decoded, word_prefix, subword_prefix)
         if len(preprocessed_tokens) != 1:

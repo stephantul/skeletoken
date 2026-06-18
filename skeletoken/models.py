@@ -133,7 +133,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         v = set(self.vocab.sorted_vocabulary)
 
         for token in self.vocab.sorted_vocabulary:
-            self.merges._add_merges_for_token_with_vocab(token, v)
+            self.merges._add_merges_for_token(token, vocab=v)
 
 
 class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
