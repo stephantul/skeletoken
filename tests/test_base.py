@@ -1241,3 +1241,40 @@ def test_remove_token_unk_token(small_tokenizer_json: dict[str, Any]) -> None:
     model = model.remove_token_from_vocabulary(pad)
     assert model.pad_token is None
     assert pad not in model.vocabulary
+
+
+def test_consolidate_with_post_processor_and_none_token(small_tokenizer: Tokenizer) -> None:
+    """Test _consolidate covers the post_processor update and None-token continue paths."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    # 'A' after decasing collides with existing 'a' → maps to None (keep=False), covering the continue branch
+    model = model.add_token_to_vocabulary("A")
+    model.post_processor = BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 3))
+    model = model.decase_vocabulary(keep=False)
+    assert "A" not in model.sorted_vocabulary
+    assert "a" in model.sorted_vocabulary
+    assert model.post_processor is not None
+    call_tokenizer(model)
+
+
+def test_consolidate_pad_token_update(small_tokenizer: Tokenizer) -> None:
+    """Test _consolidate exercises the pad_token update path (lines 461 and 468).
+
+    The pad_token setter adds 'D' to added_tokens as normalized=True, so _process returns it
+    unchanged. Lines 461 and 468 are still reached: pad_token_update is set and re-applied.
+    """
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pad_token = "D"
+    assert model.pad_token == "D"
+    model = model.decase_vocabulary()
+    # 'D' is a special normalized added token, so it is not renamed during consolidation
+    assert model.pad_token == "D"
+    call_tokenizer(model)
+
+
+def test_set_subword_prefix(small_tokenizer: Tokenizer) -> None:
+    """Test that setting subword_prefix re-encodes the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert model.subword_prefix == "##"
+    model.subword_prefix = "@@"
+    assert model.subword_prefix == "@@"
+    call_tokenizer(model)

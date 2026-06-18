@@ -1,4 +1,5 @@
 from tokenizers.normalizers import Lowercase
+from tokenizers.pre_tokenizers import BertPreTokenizer as HFBertPreTokenizer
 from tokenizers.pre_tokenizers import Metaspace, WhitespaceSplit
 
 from skeletoken.addedtoken import AddedToken
@@ -99,6 +100,39 @@ def test_process() -> None:
     assert x == "Z"
     x = _process("a a a", "Z", {}, p, True, False, False)
     assert x == "Z"
+
+
+def test_process_added_token_pure_split_join() -> None:
+    """Test _process for an added token (normalized=False) whose multi-token split rejoins cleanly.
+
+    BertPreTokenizer splits "a.b" into ["a", ".", "b"] without inserting any extra characters,
+    so joined ("a.b") equals decoded ("a.b") and the reprocessed = joined branch is reached.
+    """
+    p = Preprocessor(pretokenizer=HFBertPreTokenizer())
+    at = AddedToken(content="a.b", single_word=False, normalized=False, special=False, lstrip=False, rstrip=False, id=0)
+    added_token_dict = {"a.b": at}
+    result = _process("a.b", "a.b", added_token_dict, p, False, False, False)
+    assert result == "a.b"
+
+
+def test_process_added_token_normalizer_and_prefix_split() -> None:
+    """Test _process for an added token (normalized=False) that splits into multiple parts with a normalizer.
+
+    With a Metaspace pretokenizer + Lowercase normalizer, "HELLO WORLD" (decoded from "▁HELLO WORLD")
+    becomes ["▁hello", "▁world"]. joined = "▁hello▁world" differs from
+    normalizer.normalize_str("HELLO WORLD") = "hello world", triggering the mismatch return.
+    """
+    p = Preprocessor(
+        normalizer=Lowercase(),
+        word_prefix="▁",
+        pretokenizer=Metaspace(replacement="▁"),
+    )
+    at = AddedToken(
+        content="▁HELLO WORLD", single_word=False, normalized=False, special=False, lstrip=False, rstrip=False, id=0
+    )
+    added_token_dict = {"▁HELLO WORLD": at}
+    assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, False, False, True) is None
+    assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, True, False, True) == "▁HELLO WORLD"
 
 
 def test_process_added_token_empty_preprocess() -> None:
