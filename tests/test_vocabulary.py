@@ -1,6 +1,6 @@
 import pytest
 
-from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from skeletoken.vocabulary import UnigramVocabulary, Vocabulary, tokens_ordered_by_id
 
 
 def _simple_vocabulary_fixture() -> Vocabulary:
@@ -108,3 +108,35 @@ def test_getitem(vocab: Vocabulary | UnigramVocabulary) -> None:
 def test_len(vocab: Vocabulary | UnigramVocabulary) -> None:
     """Test the vocabulary implementation."""
     assert len(vocab) == 2
+
+
+def test_inverse_vocabulary_with_gap() -> None:
+    """`inverse_vocabulary` must look tokens up by their real ID, not by list position."""
+    vocab = Vocabulary({"a": 0, "b": 2, "c": 3})
+    assert vocab.inverse_vocabulary == {0: "a", 2: "b", 3: "c"}
+
+
+def test_add_token_reuses_gap_instead_of_colliding() -> None:
+    """`add_token` must not silently collide with an existing ID when there's a gap.
+
+    len(self.root) is only a safe ID to assign when IDs are already contiguous. If a
+    token was removed leaving a gap, len(self.root) can point at an ID that's still in
+    use by another token.
+    """
+    vocab = Vocabulary({"a": 0, "b": 1, "c": 3})  # gap at id 2, len(root) == 3 collides with "c"
+    vocab.add_token("d")
+    assert vocab.vocabulary["d"] == 2
+    assert len(set(vocab.vocabulary.values())) == len(vocab.vocabulary)
+
+
+def test_sorted_vocabulary_raises_on_gap() -> None:
+    """`sorted_vocabulary` must fail loud rather than silently mis-index a gapped vocabulary."""
+    vocab = Vocabulary({"a": 0, "b": 2, "c": 3})
+    with pytest.raises(ValueError, match="gaps"):
+        _ = vocab.sorted_vocabulary
+
+
+def test_tokens_ordered_by_id_allows_gaps() -> None:
+    """Unlike `sorted_vocabulary`, `tokens_ordered_by_id` must not raise on a gapped vocabulary."""
+    vocab = Vocabulary({"a": 0, "b": 2, "c": 3})
+    assert tokens_ordered_by_id(vocab.inverse_vocabulary) == ["a", "b", "c"]

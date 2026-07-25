@@ -42,11 +42,12 @@ def test_compute_model_delta_with_moved_token(small_tokenizer_json: dict[str, An
 
     # Create modified but replace vocabulary so that token 'a' moves to a different index
     mod_json = dict(small_tokenizer_json)
-    # Create a new vocab mapping where 'a' is at the end
-    new_vocab = dict(mod_json["model"]["vocab"]).copy()
-    new_vocab.pop("a")
-    max_index = max(new_vocab.values())
-    new_vocab["a"] = max_index + 1
+    # Create a new vocab mapping where 'a' is at the end. IDs must stay contiguous, so the
+    # remaining tokens are shifted down to fill the gap left by 'a'.
+    old_vocab = dict(mod_json["model"]["vocab"])
+    remaining = sorted((token for token in old_vocab if token != "a"), key=lambda t: old_vocab[t])
+    new_vocab = {token: idx for idx, token in enumerate(remaining)}
+    new_vocab["a"] = len(new_vocab)
     mod_json = dict(mod_json)
     mod_json["model"] = dict(mod_json["model"])  # shallow copy
     mod_json["model"]["vocab"] = new_vocab
@@ -55,12 +56,10 @@ def test_compute_model_delta_with_moved_token(small_tokenizer_json: dict[str, An
 
     delta = compute_model_delta(orig, mod)
 
-    # Find the new index for 'a' in the modified sorted vocabulary
-    new_sorted = mod.sorted_vocabulary
-    new_index = new_sorted.index("a")
-    # The delta should map the new index back to the original index
-    assert new_index in delta.token_mapping
-    assert delta.token_mapping[new_index] == orig.vocabulary["a"]
+    # The delta should map 'a's new (real) ID back to its original ID.
+    new_id = mod.vocabulary["a"]
+    assert new_id in delta.token_mapping
+    assert delta.token_mapping[new_id] == orig.vocabulary["a"]
 
 
 def test_compute_model_delta_detects_new_tokens(small_tokenizer_json: dict[str, Any]) -> None:

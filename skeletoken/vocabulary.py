@@ -4,6 +4,15 @@ from typing import Any
 from pydantic import PrivateAttr, RootModel
 
 
+def tokens_ordered_by_id(inverse_vocabulary: dict[int, str]) -> list[str]:
+    """Return tokens ordered by ascending ID.
+
+    Unlike `Vocabulary.sorted_vocabulary`, this never raises: it doesn't assume IDs are
+    contiguous, so it's safe to use internally on a vocabulary that may have gaps.
+    """
+    return [inverse_vocabulary[i] for i in sorted(inverse_vocabulary)]
+
+
 class VocabMixin:
     """Mixin class for vocabulary-related functionality."""
 
@@ -11,6 +20,16 @@ class VocabMixin:
     def vocabulary(self) -> dict[str, int]:
         """Returns the vocabulary mapping."""
         raise NotImplementedError()  # pragma: no cover
+
+    @property
+    def inverse_vocabulary(self) -> dict[int, str]:
+        """Returns a mapping from ID to token.
+
+        Unlike `sorted_vocabulary`, this is safe to use even when IDs are not
+        contiguous, since it looks tokens up by their actual ID instead of by
+        position in a sorted list.
+        """
+        return {idx: token for token, idx in self.vocabulary.items()}
 
     def __contains__(self, token: str) -> bool:
         """Check if a token is in the vocabulary."""
@@ -35,14 +54,38 @@ class Vocabulary(RootModel[dict[str, int]], VocabMixin):
 
     @property
     def sorted_vocabulary(self) -> list[str]:
-        """Returns the tokens sorted by their ID, so sorted_vocabulary[id] == token."""
-        return [x[0] for x in sorted(self.root.items(), key=lambda x: x[1])]
+        """Returns the tokens ordered by ascending ID.
+
+        Raises
+        ------
+        ValueError
+            If the vocabulary's IDs have gaps (are not contiguous from 0). In that case
+            `sorted_vocabulary[id] == token` would not hold, which silently produces
+            wrong results for callers who index into this list by ID. Use
+            `inverse_vocabulary` to look up a token by its actual ID instead.
+
+        """
+        inverse = self.inverse_vocabulary
+        if set(inverse) != set(range(len(inverse))):
+            raise ValueError(
+                "Vocabulary IDs are not contiguous from 0 (it has gaps), so "
+                "`sorted_vocabulary` cannot be used safely. Use `inverse_vocabulary` "
+                "to look up a token by its actual ID instead."
+            )
+        return tokens_ordered_by_id(inverse)
 
     def add_token(self, token: str) -> None:
         """Add a token to the vocabulary."""
         if token in self.root:
             raise ValueError(f"Token '{token}' already exists in vocabulary.")
-        self.root[token] = len(self.root)
+        # Don't assume IDs are contiguous: len(self.root) can collide with an
+        # existing ID if the vocabulary has a gap (e.g. a special token that was
+        # removed and is being re-added). Use the smallest free ID instead.
+        existing_ids = set(self.root.values())
+        new_id = len(self.root)
+        if new_id in existing_ids:
+            new_id = next(i for i in range(len(self.root) + 1) if i not in existing_ids)
+        self.root[token] = new_id
 
     def replace_token(self, old_token: str, new_token: str) -> None:
         """Replace tokens."""

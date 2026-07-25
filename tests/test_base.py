@@ -809,6 +809,32 @@ def test_token_to_id_and_id_to_token(small_tokenizer: Tokenizer) -> None:
     assert [enc.ids[0] for enc in encoded] == ids
 
 
+def test_id_to_token_with_vocabulary_gap(small_tokenizer_json: dict[str, Any]) -> None:
+    """`ids_to_tokens` must resolve tokens by their real ID even if the vocabulary has a gap.
+
+    Positional lookups (indexing into a list sorted by ID) silently return the wrong
+    token, or raise an IndexError, whenever an ID is missing below the queried ID.
+    """
+    small_tokenizer_json["model"]["vocab"] = {
+        "[PAD]": 0,
+        "[SEP]": 1,
+        "[UNK]": 2,
+        "[CLS]": 3,
+        "[MASK]": 4,
+        "a": 5,
+        "b": 7,
+        "c": 8,
+        "D": 9,
+        " ": 10,
+    }
+    small_tokenizer_json["added_tokens"] = [t for t in small_tokenizer_json["added_tokens"] if t["content"] != "F"]
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.tokens_to_ids(["b"]) == [7]
+    assert model.ids_to_tokens([7]) == ["b"]
+    assert model.ids_to_tokens([10]) == [" "]
+
+
 def test_to_transformers(small_tokenizer: Tokenizer) -> None:
     """Test saving and loading a tokenizer model."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)

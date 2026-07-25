@@ -44,6 +44,7 @@ from skeletoken.pretokenizers import (
     get_pretokenizer_of_type,
 )
 from skeletoken.truncation import Truncation
+from skeletoken.vocabulary import tokens_ordered_by_id
 
 if TYPE_CHECKING:
     from skeletoken.model_delta import ModelDelta  # pragma: nocover
@@ -121,8 +122,7 @@ class TokenizerModel(BaseModel):
                     logger.warning(
                         f"pad_token_id {current_pad_token_id} is greater than vocabulary size {self.vocabulary_size}."
                     )
-                else:
-                    current_index_token = self.sorted_vocabulary[current_pad_token_id]
+                elif current_index_token := self.model.vocab.inverse_vocabulary.get(current_pad_token_id):
                     logger.warning(
                         f"pad_token '{pad_token}' not found in vocabulary, but pad_token_id {current_pad_token_id} "
                         f"maps to existing token '{current_index_token}'."
@@ -439,7 +439,9 @@ class TokenizerModel(BaseModel):
     ) -> TokenizerModel:
         """Private method to prune the vocabulary."""
         # Special tokens and unnormalized added tokens need to be skipped.
-        sorted_vocab = self.sorted_vocabulary
+        # Use the gap-safe helper, not `self.sorted_vocabulary`: input tokenizers loaded
+        # from disk aren't guaranteed to have contiguous vocabulary IDs.
+        sorted_vocab = tokens_ordered_by_id(self.model.vocab.inverse_vocabulary)
         new_vocabulary = clean_vocabulary(
             sorted_vocab,
             self.added_tokens.root,
@@ -863,7 +865,7 @@ class TokenizerModel(BaseModel):
 
     def ids_to_tokens(self, ids: list[int]) -> list[str]:
         """Convert a list of IDs to their corresponding tokens."""
-        inv_vocab = self.model.vocab.sorted_vocabulary
+        inv_vocab = self.model.vocab.inverse_vocabulary
         return [inv_vocab[id] for id in ids]
 
     @property
@@ -878,7 +880,7 @@ class TokenizerModel(BaseModel):
 
     @property
     def sorted_vocabulary(self) -> list[str]:
-        """Get the sorted vocabulary as a list of tokens."""
+        """Get the vocabulary tokens ordered by ascending ID."""
         return self.model.vocab.sorted_vocabulary
 
     @property

@@ -8,7 +8,7 @@ from typing import Annotated, Generic, Literal, TypeVar
 from pydantic import BaseModel, Field
 
 from skeletoken.merges import Merges
-from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
+from skeletoken.vocabulary import UnigramVocabulary, Vocabulary, tokens_ordered_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         """Convert the BPE model to a greedy WordPiece model."""
         if self.unk_token is None:
             logger.warning("BPE model has no unk_token, using the first token in the vocab.")
-            unk_token = self.vocab.sorted_vocabulary[0]
+            unk_token = tokens_ordered_by_id(self.vocab.inverse_vocabulary)[0]
         else:
             unk_token = self.unk_token
         return WordPiece(
@@ -130,9 +130,10 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
         self.vocab.replace_vocabulary(vocabulary)
         self.merges.root = []
         self.merges.model_post_init({})
-        v = set(self.vocab.sorted_vocabulary)
+        tokens = tokens_ordered_by_id(self.vocab.inverse_vocabulary)
+        v = set(tokens)
 
-        for token in self.vocab.sorted_vocabulary:
+        for token in tokens:
             self.merges._add_merges_for_token(token, vocab=v)
 
 
