@@ -1,3 +1,4 @@
+import copy
 from typing import TypeVar
 
 import torch
@@ -49,9 +50,10 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     Returns
     -------
     T
-        The model with an updated embedding and vocabulary.
+        A new model, with an updated embedding and vocabulary. The input model is left untouched.
 
     """
+    model = copy.deepcopy(model)
     vocab_size = tokenizer_model.vocabulary_size
     delta = tokenizer_model.model_delta
     mapping = delta.token_mapping

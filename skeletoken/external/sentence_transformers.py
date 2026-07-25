@@ -1,3 +1,4 @@
+import copy
 from typing import TypeVar, cast
 
 from sentence_transformers import SentenceTransformer
@@ -22,16 +23,20 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     Returns
     -------
     T
-        The model with an updated embedding and vocabulary.
+        A new model, with an updated embedding and vocabulary. The input model is left untouched.
 
     """
+    model = copy.deepcopy(model)
     auto_model = cast(PreTrainedModel, model[0].auto_model)
     auto_model = _reshape_embeddings_transformers(auto_model, tokenizer_model)
     model[0].auto_model = auto_model
 
     current_tokenizer = model.tokenizer
     new_tokenizer = tokenizer_model.to_transformers()
-    model.tokenizer = new_tokenizer
+    try:
+        model.tokenizer = new_tokenizer
+    except AttributeError:
+        model[0].processor = new_tokenizer
     model.tokenizer.model_max_length = current_tokenizer.model_max_length
     model.tokenizer.model_input_names = current_tokenizer.model_input_names
 

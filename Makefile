@@ -6,7 +6,7 @@ test:
 	uv run pytest --cov=skeletoken --cov-report=term-missing
 
 test-integration:
-	uv run pytest tests/integration
+	uv run --with torch --with sentence-transformers --with pylate pytest tests/integration
 
 install-no-pre-commit:
 	uv sync --all-extras

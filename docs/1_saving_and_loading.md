@@ -76,7 +76,8 @@ from skeletoken import TokenizerModel
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 print(type(tokenizer))
 # Will show
-# <class 'transformers.models.gpt2.tokenization_gpt2_fast.GPT2TokenizerFast'>
+# <class 'transformers.models.gpt2.tokenization_gpt2.GPT2Tokenizer'>
+# (with transformers>=5; older versions show GPT2TokenizerFast instead)
 model = TokenizerModel.from_transformers_tokenizer(tokenizer)
 
 other_tokenizer = model.to_transformers(tokenizer_class=type(tokenizer))
