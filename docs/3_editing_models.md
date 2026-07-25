@@ -18,16 +18,18 @@ tokenizer_model = TokenizerModel.from_pretrained(model_name)
 print(tokenizer_model.model_delta)
 
 decased = tokenizer_model.decase_vocabulary()
-decased.add_token_to_vocabulary("pikachu")
+# Note: these methods return a new TokenizerModel rather than mutating in place,
+# so the result must be reassigned.
+decased = decased.add_token_to_vocabulary("pikachu")
 
 delta = decased.model_delta
 # New tokens
 print(delta.new_tokens)
-# {'pikachu': 229856}
+# {..., 'pikachu': 229866}
 print(delta.token_mapping)
 # dict mapping from ints to ints (really long)
 print(delta.new_vocabulary_size)
-# 229857
+# 229867
 
 ```
 
@@ -49,7 +51,7 @@ test_string = "this is a test string"
 
 token_ids = model.tokenizer(test_string)['input_ids']
 print(token_ids)
-# [0, 903, 83, 10, 3034, 79315, 33600, 31, 2]
+# [0, 903, 83, 10, 3034, 79315, 2]
 embeddings = model[0].get_parameter("auto_model.embeddings.word_embeddings.weight")
 print(embeddings.shape)
 e = embeddings[token_ids].detach().cpu()
@@ -59,11 +61,11 @@ x = model.encode(test_string)
 decased_model = reshape_embeddings(model, decased)
 token_ids = decased_model.tokenizer(test_string)['input_ids']
 print(token_ids)
-# [0, 826, 82, 10, 2785, 72030, 32122, 2]
+# [0, 826, 82, 10, 2785, 72030, 2]
 embeddings = decased_model[0].get_parameter("auto_model.embeddings.word_embeddings.weight")
 print(embeddings.shape)
 e2 = embeddings[token_ids].detach().cpu()
-# [229856, 384]
+# [229866, 384]
 x2 = decased_model.encode(test_string)
 
 # Despite the token indices being different, the result vector is the same

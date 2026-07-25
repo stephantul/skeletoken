@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 from model2vec import StaticModel
 
@@ -45,7 +47,7 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
     Returns
     -------
     StaticModel
-        The model with an updated embedding and vocabulary.
+        A new model, with an updated embedding and vocabulary. The input model is left untouched.
 
     Raises
     ------
@@ -69,16 +71,20 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
 
     new_weights = None
     if model.weights is not None:
+        new_weights = np.ones(vocab_size, dtype=model.weights.dtype)
         remapped_weights = _remap_embeddings(model.weights, mapping)
-        new_weights = remapped_weights[:vocab_size]
+        new_weights[: len(remapped_weights)] = remapped_weights[:vocab_size]
 
+    # config/language/token_mapping are otherwise passed by reference: StaticModel.__init__
+    # stores them as-is, so without copying, mutating the new model's config/language later
+    # would silently mutate the original model's too.
     return StaticModel(
         vectors=new_embeddings.astype(embeddings.dtype),
         tokenizer=tokenizer_model.to_tokenizer(),
-        config=model.config,
+        config=copy.deepcopy(model.config),
         normalize=model.normalize,
         base_model_name=model.base_model_name,
-        language=model.language,
+        language=copy.deepcopy(model.language),
         weights=new_weights,
-        token_mapping=model.token_mapping,
+        token_mapping=None if model.token_mapping is None else model.token_mapping.copy(),
     )

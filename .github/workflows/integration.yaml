@@ -50,5 +50,8 @@ jobs:
         run: make install-no-pre-commit
 
       # -------- Integration Tests --------
+      # `make test-integration` installs torch/sentence-transformers/pylate ephemerally
+      # (needed by tests/integration/test_external_*.py) without touching the pinned
+      # project dependencies.
       - name: Run integration tests
         run: make test-integration

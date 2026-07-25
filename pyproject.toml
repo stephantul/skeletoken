@@ -32,6 +32,9 @@ dev = [
     "ruff",
     "ty",
 ]
+integration = [
+    "model2vec",
+]
 
 [tool.ruff]
 exclude = [".venv/"]
