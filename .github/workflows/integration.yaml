@@ -3,8 +3,7 @@ name: Run integration tests
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: integration-${{ github.workflow }}-${{ github.ref }}

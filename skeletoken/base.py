@@ -30,6 +30,7 @@ from skeletoken.padding import Padding
 from skeletoken.postprocessors import (
     PostProcessorDiscriminator,
     PostProcessorSequence,
+    TemplatePostProcessor,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
     maybe_replace_token_in_post_processor,
@@ -795,6 +796,22 @@ class TokenizerModel(BaseModel):
         pad_token = special_tokens.get("pad_token", None)
 
         model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer)
+
+        # transformers>=5 unconditionally synthesizes a post-processor for any fast tokenizer whose
+        # underlying tokenizer.json had none (see TokensBackend.update_post_processor), without logging
+        # that it did so. When it has no bos/eos tokens to add, the result is a no-op template
+        # (single="$A:0", pair="$A:0 $B:1", no special tokens) that doesn't reflect the source tokenizer.
+        # Detect and undo that specific synthesis so round-tripping stays faithful to the original file.
+        if getattr(hf_tokenizer, "_should_update_post_processor", False):
+            post_processor = model.post_processor
+            if isinstance(post_processor, TemplatePostProcessor) and not post_processor.special_tokens:
+                logger.warning(
+                    "The HuggingFace tokenizer had no post-processor, but transformers synthesized a "
+                    "no-op TemplateProcessing post-processor when loading it (a change in transformers>=5). "
+                    "Resetting Skeletoken's post_processor to None to match the original tokenizer."
+                )
+                model.post_processor = None
+
         if unk_token is not None and isinstance(unk_token, str):
             if model.unk_token is not None and model.unk_token != unk_token:
                 logger.warning(
@@ -826,7 +843,11 @@ class TokenizerModel(BaseModel):
     @classmethod
     def from_transformers(cls, path: PathLike) -> TokenizerModel:  # pragma: nocover
         """Load a HuggingFace tokenizer from a local path or a model repo."""
-        hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)
+        # transformers>=5's AutoTokenizer.from_pretrained stub returns TokenizersBackend |
+        # SentencePieceBackend rather than PreTrainedTokenizerFast, even though
+        # PreTrainedTokenizerFast is literally an alias for TokenizersBackend at runtime.
+        # The mismatch (and whether it fires at all) depends on the installed transformers version.
+        hf_tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(path)  # type: ignore[assignment]
         return cls.from_transformers_tokenizer(hf_tokenizer)
 
     def to_transformers(self, tokenizer_class: type[PreTrainedTokenizerFast] | None = None) -> PreTrainedTokenizerFast:
