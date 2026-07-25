@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -7,7 +6,7 @@ import pytest
 from tokenizers import Tokenizer
 from tokenizers.models import BPE as TokenizersBPE
 from transformers import PreTrainedTokenizerFast
-from transformers.models.gpt2 import GPT2TokenizerFast
+from transformers.models.gpt2 import GPT2Tokenizer
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.base import TokenizerModel
@@ -300,14 +299,28 @@ def test_from_pretrained(small_tokenizer: Tokenizer) -> None:
         assert isinstance(model.added_tokens, AddedTokens)
         assert model.normalizer is None
         assert model.pre_tokenizer is None
-        try:
-            assert model.post_processor is None
-        except AssertionError:
-            print("\n=== File contents ===")  # noqa: T201
-            print(Path(f"{temp_dir}/tokenizer.json").read_text())  # noqa: T201
-            print("=====================\n")  # noqa: T201
-            raise
+        assert model.post_processor is None
         assert model.decoder is None
+
+
+def test_from_pretrained_falls_back_when_transformers_loading_fails(
+    small_tokenizer: Tokenizer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that from_pretrained loads tokenizer.json directly when the transformers path fails."""
+
+    def _raise(cls: type[TokenizerModel], path: Any) -> TokenizerModel:
+        raise ValueError("simulated transformers loading failure")
+
+    monkeypatch.setattr(TokenizerModel, "from_transformers", classmethod(_raise))
+
+    with TemporaryDirectory() as temp_dir:
+        small_tokenizer.save(f"{temp_dir}/tokenizer.json")
+
+        model = TokenizerModel.from_pretrained(temp_dir)
+
+        assert model.version == "1.0"
+        assert isinstance(model.model, WordPiece)
+        assert isinstance(model.added_tokens, AddedTokens)
 
 
 def test_make_greedy(small_tokenizer: Tokenizer) -> None:
@@ -726,10 +739,10 @@ def test_from_transformers_missing_pad(transformers_tokenizer: PreTrainedTokeniz
 
 def test_missing_unk_model(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
     """Test creating a TokenizerModel from a transformers tokenizer."""
-    transformers_tokenizer._tokenizer.model = TokenizersBPE(
+    transformers_tokenizer.backend_tokenizer.model = TokenizersBPE(
         vocab={"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, " ": 6}, merges=[], unk_token=None
     )  # type: ignore
-    transformers_tokenizer._tokenizer.enable_padding(pad_id=3, pad_token="[PAD]")
+    transformers_tokenizer.backend_tokenizer.enable_padding(pad_id=3, pad_token="[PAD]")
 
     model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
     assert model.version == "1.0"
@@ -891,12 +904,12 @@ def test_to_transformers_to_class(small_tokenizer: Tokenizer) -> None:
     transformers_tokenizer = model.to_transformers(tokenizer_class=PreTrainedTokenizerFast)
     assert isinstance(transformers_tokenizer, PreTrainedTokenizerFast)
 
-    transformers_tokenizer = model.to_transformers(tokenizer_class=GPT2TokenizerFast)
-    assert isinstance(transformers_tokenizer, GPT2TokenizerFast)
+    transformers_tokenizer = model.to_transformers(tokenizer_class=GPT2Tokenizer)
+    assert isinstance(transformers_tokenizer, GPT2Tokenizer)
 
-    model._original_class = GPT2TokenizerFast
+    model._original_class = GPT2Tokenizer
     transformers_tokenizer = model.to_transformers()
-    assert isinstance(transformers_tokenizer, GPT2TokenizerFast)
+    assert isinstance(transformers_tokenizer, GPT2Tokenizer)
 
 
 def test_vocabulary(small_tokenizer: Tokenizer) -> None:

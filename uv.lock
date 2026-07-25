@@ -1523,8 +1523,8 @@ requires-dist = [
     { name = "pytest-coverage", marker = "extra == 'dev'" },
     { name = "regex" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "tokenizers" },
-    { name = "transformers" },
+    { name = "tokenizers", specifier = ">=0.21.2" },
+    { name = "transformers", specifier = ">=4.55" },
     { name = "ty", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]
