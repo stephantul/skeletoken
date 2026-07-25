@@ -6,11 +6,8 @@ dynamic = ["version"]
 requires-python = ">=3.10"
 
 dependencies = [
-    # <0.21.2 lacks the FixedLength pre-tokenizer variant skeletoken emits
     "tokenizers>=0.21.2",
     "pydantic",
-    # <4.55 can resolve without any tokenizers pin at all (e.g. 4.17.0), which breaks
-    # transformers round-tripping; see tests/test_base.py::test_to_transformers_to_class
     "transformers>=4.55",
     # For tokenizers loading
     "protobuf",
@@ -77,10 +74,6 @@ check-return-types = true
 require-return-section-when-returning-nothing = false
 
 [tool.mypy]
-# Not 3.10 (skeletoken's actual floor): numpy's bundled stubs (pulled in transitively via
-# transformers) use PEP 695 `type` statements unconditionally, which mypy refuses to parse
-# below 3.12 and aborts the whole run over. Real 3.10 syntax compatibility is already enforced
-# by the pytest CI matrix running under an actual Python 3.10 interpreter.
 python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true

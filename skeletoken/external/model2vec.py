@@ -75,9 +75,6 @@ def reshape_embeddings(model: StaticModel, tokenizer_model: TokenizerModel) -> S
         remapped_weights = _remap_embeddings(model.weights, mapping)
         new_weights[: len(remapped_weights)] = remapped_weights[:vocab_size]
 
-    # config/language/token_mapping are otherwise passed by reference: StaticModel.__init__
-    # stores them as-is, so without copying, mutating the new model's config/language later
-    # would silently mutate the original model's too.
     return StaticModel(
         vectors=new_embeddings.astype(embeddings.dtype),
         tokenizer=tokenizer_model.to_tokenizer(),
