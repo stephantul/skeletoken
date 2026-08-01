@@ -1,7 +1,7 @@
 from skeletoken import TokenizerModel
 from skeletoken.postprocessors import TemplatePostProcessor
 from skeletoken.pretokenizers import DigitsPreTokenizer
-from tests.conftest import assert_vocabulary_consistent, call_tokenizer
+from tests.conftest import assert_bpe_merges_consistent, assert_vocabulary_consistent, call_tokenizer
 
 _PATH = "tests/data/ModernBERT-base"
 
@@ -115,6 +115,49 @@ def test_add_special_token() -> None:
     assert model.vocabulary["[QUERY]"] == added.id
     assert_vocabulary_consistent(model)
     call_tokenizer(model)
+
+
+def test_add_multiple_special_tokens() -> None:
+    """Test adding several special tokens at once keeps vocabulary consistent."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    new_tokens = ["[PROTEIN]", "[DISEASE]", "[DRUG]"]
+    model = model.add_addedtokens(new_tokens, is_special=True)
+    assert model.vocabulary_size == initial_size + 3
+    for token in new_tokens:
+        assert token in model.vocabulary
+        added = model.added_tokens.get_token(token)
+        assert added is not None
+        assert model.vocabulary[token] == added.id
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
+def test_add_tokens_to_vocabulary() -> None:
+    """Test that batch-adding regular tokens makes each one encode as a single unit."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    new_tokens = ["skeletoken", "amsterdamnify", "worldzzz"]
+    model = model.add_tokens_to_vocabulary(new_tokens)
+    assert model.vocabulary_size >= initial_size + len(new_tokens)
+    for token in new_tokens:
+        assert token in model.vocabulary
+    assert_vocabulary_consistent(model)
+    assert_bpe_merges_consistent(model)
+
+    tok = model.to_tokenizer()
+    for token in new_tokens:
+        assert tok.encode(token).tokens == ["[CLS]", token, "[SEP]"]
+    call_tokenizer(model)
+
+
+def test_add_non_initial_token_is_a_no_op() -> None:
+    """Test that is_initial=False is a safe no-op for ModernBERT's config."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial = model.add_token_to_vocabulary("skeletonize")
+    non_initial = model.add_token_to_vocabulary("skeletonize", is_initial=False)
+    assert initial.vocabulary == non_initial.vocabulary
+    call_tokenizer(non_initial)
 
 
 def test_remove_non_essential_added_token() -> None:

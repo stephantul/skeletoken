@@ -44,6 +44,7 @@ from skeletoken.pretokenizers import (
     StringPattern,
     WhitespacePreTokenizer,
 )
+from skeletoken.vocabulary import Vocabulary
 from tests.conftest import call_tokenizer
 
 
@@ -1136,6 +1137,47 @@ def test_preprocess_token(small_tokenizer_json: dict[str, Any]) -> None:
     assert model._preprocessor is None
     assert model._preprocess_token("hello") == "hello"
     assert model._preprocessor is not None
+
+
+def test_preprocess_token_is_initial(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that is_initial=False produces a continuation-piece form (e.g. "##hello" for WordPiece)."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    assert model.subword_prefix == "##"
+    # Default (is_initial=True): a plain, word-initial piece.
+    assert model._preprocess_token("hello") == "hello"
+    # is_initial=False: the continuation marker is added instead.
+    assert model._preprocess_token("hello", is_initial=False) == "##hello"
+
+
+def test_add_token_to_vocabulary_is_initial(small_tokenizer: Tokenizer) -> None:
+    """Test that add_token_to_vocabulary(is_initial=False) adds a usable mid-word continuation piece."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("skeletonize", is_initial=False)
+    assert "##skeletonize" in model.vocabulary
+    assert "skeletonize" not in model.vocabulary
+    call_tokenizer(model)
+
+
+def test_preprocess_token_is_initial_byte_level_add_prefix_space() -> None:
+    """Test is_initial on byte-level BPE with add_prefix_space=True, where "Ġ" IS deterministic."""
+    bpe = BPE(
+        vocab=Vocabulary({c: i for i, c in enumerate("abcdefghijklmnopqrstuvwxyzĠ")}),
+        merges=Merges([]),
+        dropout=None,
+        unk_token=None,
+        continuing_subword_prefix="",
+        end_of_word_suffix=None,
+        fuse_unk=False,
+        byte_fallback=False,
+        ignore_merges=False,
+    )
+    model = TokenizerModel(model=bpe)
+    model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
+    assert model.transforms_into_bytes
+    assert model.adds_prefix_space is True
+
+    assert model._preprocess_token("skeletonize", is_initial=True) == "Ġskeletonize"
+    assert model._preprocess_token("skeletonize", is_initial=False) == "skeletonize"
 
 
 def test_preprocess_token_with_pretokenizer(small_tokenizer_json: dict[str, Any]) -> None:

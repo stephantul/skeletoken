@@ -217,28 +217,56 @@ class TokenizerModel(BaseModel):
             id=self.model.vocab[token],
         )
 
-    def add_tokens_to_vocabulary(self, tokens: Sequence[str], preprocess_tokens: bool = True) -> TokenizerModel:
+    def add_tokens_to_vocabulary(
+        self, tokens: Sequence[str], preprocess_tokens: bool = True, is_initial: bool = True
+    ) -> TokenizerModel:
         """Add multiple tokens to the vocabulary.
 
         This can be much faster than calling `add_token_to_vocabulary` multiple times,
         because the copy only happens once.
+
+        Parameters
+        ----------
+        tokens: Sequence[str]
+            The tokens to add.
+        preprocess_tokens: bool
+            Whether to preprocess the tokens (normalize, pretokenize) before adding them.
+        is_initial: bool
+            Whether the tokens should be treated as word-initial (e.g. get a leading "▁" for
+            Metaspace-based models, or "Ġ" for byte-level BPE with add_prefix_space=True) or as
+            a non-initial/continuation piece (e.g. get a leading "##" for WordPiece, or no "▁"/
+            "Ġ" marker). Defaults to True, i.e. tokens are added as standalone words.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the tokens added.
+
         """
         model = self.deep_copy()
         if preprocess_tokens:
-            tokens = [self._preprocess_token(token) for token in tokens]
+            tokens = [self._preprocess_token(token, is_initial=is_initial) for token in tokens]
 
         for token in tokens:
             model._add_token_to_vocabulary(token, is_added_token=False)
 
         return model
 
-    def add_token_to_vocabulary(self, token: str, preprocess_token: bool = True) -> TokenizerModel:
-        """Add a token to the tokenizer's vocabulary."""
-        return self.add_tokens_to_vocabulary([token], preprocess_tokens=preprocess_token)
+    def add_token_to_vocabulary(
+        self, token: str, preprocess_token: bool = True, is_initial: bool = True
+    ) -> TokenizerModel:
+        """Add a token to the tokenizer's vocabulary.
 
-    def _preprocess_token(self, token: str) -> str:
+        See `add_tokens_to_vocabulary` for the meaning of `is_initial`.
+        """
+        return self.add_tokens_to_vocabulary([token], preprocess_tokens=preprocess_token, is_initial=is_initial)
+
+    def _preprocess_token(self, token: str, is_initial: bool = True) -> str:
         """Preprocesses a token."""
-        token_list = self.preprocessor.preprocess(token)
+        had_subword_prefix = not is_initial and self.preprocessor.subword_prefix is not None
+        token_list = self.preprocessor.preprocess(
+            token, had_word_prefix=is_initial, had_subword_prefix=had_subword_prefix
+        )
         if len(token_list) > 1:
             tokens_formatted = [f" '{token}'" for token in token_list]
             token_list_string = f"{','.join(tokens_formatted)}".strip()
@@ -251,7 +279,8 @@ class TokenizerModel(BaseModel):
             raise ValueError(f"The token {token} got removed during preprocessing.")
         new_token, *_ = token_list
 
-        logger.info(f"Preprocessed '{token}' into '{new_token}'.")
+        if token != new_token:
+            logger.info(f"Preprocessed '{token}' into '{new_token}'.")
 
         return new_token
 

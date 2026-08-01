@@ -103,12 +103,15 @@ class Preprocessor:
     def from_tokenizer_model(cls, model: TokenizerModel) -> Preprocessor:
         """Set the normalizer and pretokenizer from a TokenizerModel."""
         tokenizer = model.to_tokenizer()
+        word_prefix = model.word_prefix
+        if model.transforms_into_bytes and not model.adds_prefix_space:
+            word_prefix = None
         return cls(
             normalizer=tokenizer.normalizer,
             pretokenizer=tokenizer.pre_tokenizer,
             byte_transformer=decoder_from_model(model),
             subword_prefix=model.subword_prefix,
-            word_prefix=model.word_prefix if not model.transforms_into_bytes else None,
+            word_prefix=word_prefix,
         )
 
     @classmethod

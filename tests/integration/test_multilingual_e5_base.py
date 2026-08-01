@@ -122,6 +122,39 @@ def test_add_query_prefix_token() -> None:
     call_tokenizer(model)
 
 
+def test_add_tokens_to_vocabulary() -> None:
+    """Test that batch-adding regular tokens to a Unigram model makes each one encode as a single unit."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    new_tokens = ["skeletoken", "amsterdamnify", "worldzzz"]
+    model = model.add_tokens_to_vocabulary(new_tokens)
+    assert model.vocabulary_size == initial_size + len(new_tokens)
+    for token in new_tokens:
+        assert token not in model.vocabulary
+        assert "▁" + token in model.vocabulary
+    assert_vocabulary_consistent(model)
+
+    tok = model.to_tokenizer()
+    for token in new_tokens:
+        assert tok.encode(token).tokens == ["<s>", "▁" + token, "</s>"]
+    call_tokenizer(model)
+
+
+def test_add_non_initial_token() -> None:
+    """Test that is_initial=False adds a usable, bare (no "▁") mid-word continuation piece."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    model = model.add_token_to_vocabulary("skeletonize", is_initial=False)
+    assert model.vocabulary_size == initial_size + 1
+    assert "skeletonize" in model.vocabulary
+    assert "▁skeletonize" not in model.vocabulary
+    assert_vocabulary_consistent(model)
+    tok = model.to_tokenizer()
+    # " amsterdam" already splits as "▁am", "ster", "dam"; "skeletonize" attaches as a continuation.
+    assert tok.encode(" amsterdamskeletonize").tokens == ["<s>", "▁am", "ster", "dam", "skeletonize", "</s>"]
+    call_tokenizer(model)
+
+
 def test_add_multiple_prefix_tokens() -> None:
     """Test adding query and passage prefix tokens used by e5-style embedding models."""
     model = TokenizerModel.from_pretrained(_PATH)
