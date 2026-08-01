@@ -39,8 +39,16 @@ def test_preprocessor_empty() -> None:
     preprocessor = Preprocessor(normalizer=normalizer, pretokenizer=pretokenizer)
     assert preprocessor.normalizer is not None
     assert preprocessor.pretokenizer is not None
-    assert preprocessor.preprocess("") == [""]
+    assert preprocessor.preprocess("") == []
+    assert preprocessor.preprocess("", empty_sequence_is_token=True) == [""]
     assert preprocessor.preprocess("  ") == preprocessor.preprocess("  ")
+
+
+def test_preprocessor_empty_sequence_is_token_with_prefixes() -> None:
+    """An empty sequence that decoded from a prefixed token round-trips to that prefix."""
+    preprocessor = Preprocessor(word_prefix="▁", subword_prefix="##")
+    assert preprocessor.preprocess("", had_word_prefix=True, empty_sequence_is_token=True) == ["▁"]
+    assert preprocessor.preprocess("", had_subword_prefix=True, empty_sequence_is_token=True) == ["##"]
 
 
 def test_preprocessor_from_model(small_tokenizer: Tokenizer) -> None:
