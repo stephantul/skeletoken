@@ -81,6 +81,51 @@ def test_reshape_embeddings_new_token_gets_a_row() -> None:
     assert vector.shape == (4,)
 
 
+def test_reshape_embeddings_new_tokens_get_rows() -> None:
+    """Test that batch-adding tokens via add_tokens_to_vocabulary each get a real embedding row."""
+    model = _make_static_model()
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    new_tokens = ["skeletokentesttoken", "anothernewtoken"]
+    added = tokenizer_model.add_tokens_to_vocabulary(new_tokens)
+
+    reshaped = reshape_embeddings(model, added)
+    assert reshaped.embedding.shape == (added.vocabulary_size, 4)
+    assert added.vocabulary_size == tokenizer_model.vocabulary_size + len(new_tokens)
+
+    for token in new_tokens:
+        vector = reshaped.encode([token])[0]
+        assert vector.shape == (4,)
+
+
+def test_reshape_embeddings_new_added_token_gets_a_row() -> None:
+    """Test that a special/added token added after loading gets a real (non-degenerate) row."""
+    model = _make_static_model()
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    added = tokenizer_model.add_addedtoken("[SKELETOKEN]", is_special=True)
+
+    reshaped = reshape_embeddings(model, added)
+    assert reshaped.embedding.shape == (added.vocabulary_size, 4) == (tokenizer_model.vocabulary_size + 1, 4)
+
+    vector = reshaped.encode(["[SKELETOKEN]"])[0]
+    assert vector.shape == (4,)
+
+
+def test_reshape_embeddings_new_added_tokens_get_rows() -> None:
+    """Test that batch-adding tokens via add_addedtokens each get a real embedding row."""
+    model = _make_static_model()
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    new_tokens = ["[PROTEIN]", "[DISEASE]", "[DRUG]"]
+    added = tokenizer_model.add_addedtokens(new_tokens, is_special=True)
+
+    reshaped = reshape_embeddings(model, added)
+    assert reshaped.embedding.shape == (added.vocabulary_size, 4)
+    assert added.vocabulary_size == tokenizer_model.vocabulary_size + len(new_tokens)
+
+    for token in new_tokens:
+        vector = reshaped.encode([token])[0]
+        assert vector.shape == (4,)
+
+
 def test_reshape_embeddings_grows_weights_array() -> None:
     """Growing the vocabulary must also grow `weights`, not just `embedding`."""
     model = _make_static_model(with_weights=True)

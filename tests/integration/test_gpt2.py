@@ -1,7 +1,7 @@
 from skeletoken import TokenizerModel
 from skeletoken.postprocessors import ByteLevelPostProcessor
 from skeletoken.pretokenizers import DigitsPreTokenizer
-from tests.conftest import assert_vocabulary_consistent, call_tokenizer
+from tests.conftest import assert_bpe_merges_consistent, assert_vocabulary_consistent, call_tokenizer
 
 _PATH = "tests/data/gpt2"
 
@@ -150,6 +150,45 @@ def test_prune_added_tokens_keeps_unk() -> None:
     assert pruned.vocabulary_size == model.vocabulary_size
     assert_vocabulary_consistent(pruned)
     call_tokenizer(pruned)
+
+
+def test_add_tokens_to_vocabulary() -> None:
+    """Test that batch-adding regular tokens makes each one encode as a single unit."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    new_tokens = ["skeletoken", "amsterdamnify", "worldzzz"]
+    model = model.add_tokens_to_vocabulary(new_tokens)
+    assert model.vocabulary_size >= initial_size + len(new_tokens)
+    for token in new_tokens:
+        assert token in model.vocabulary
+    assert_vocabulary_consistent(model)
+    assert_bpe_merges_consistent(model)
+
+    tok = model.to_tokenizer()
+    for token in new_tokens:
+        assert tok.encode(token).tokens == [token]
+    call_tokenizer(model)
+
+
+def test_add_tokens_to_vocabulary_orphaned_merge_regression() -> None:
+    """Regression test: adding tokens that partially decompose into existing GPT-2 pieces."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    model = model.add_tokens_to_vocabulary(["hellozz", "worldzzz"])
+    assert_bpe_merges_consistent(model)
+
+    tok = model.to_tokenizer()
+    assert tok.encode("hellozz").tokens == ["hellozz"]
+    assert tok.encode("worldzzz").tokens == ["worldzzz"]
+    call_tokenizer(model)
+
+
+def test_add_non_initial_token_is_a_no_op() -> None:
+    """Test that is_initial=False is a safe no-op for GPT-2's default config (add_prefix_space=False)."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial = model.add_token_to_vocabulary("skeletonize")
+    non_initial = model.add_token_to_vocabulary("skeletonize", is_initial=False)
+    assert initial.vocabulary == non_initial.vocabulary
+    call_tokenizer(non_initial)
 
 
 def test_add_then_remove_special_token() -> None:

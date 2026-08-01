@@ -173,6 +173,38 @@ def test_add_regular_token() -> None:
     call_tokenizer(model)
 
 
+def test_add_tokens_to_vocabulary() -> None:
+    """Test that batch-adding regular tokens makes each one encode as a single unit."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    new_tokens = ["skeletoken", "amsterdamnify", "worldzzz"]
+    model = model.add_tokens_to_vocabulary(new_tokens)
+    assert model.vocabulary_size == initial_size + len(new_tokens)
+    for token in new_tokens:
+        assert token in model.vocabulary
+    assert_vocabulary_consistent(model)
+
+    tok = model.to_tokenizer()
+    for token in new_tokens:
+        assert tok.encode(token).tokens == ["[CLS]", token, "[SEP]"]
+    call_tokenizer(model)
+
+
+def test_add_non_initial_token() -> None:
+    """Test that is_initial=False adds a usable "##"-prefixed mid-word continuation piece."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    initial_size = model.vocabulary_size
+    model = model.add_token_to_vocabulary("skeletonize", is_initial=False)
+    assert model.vocabulary_size == initial_size + 1
+    assert "##skeletonize" in model.vocabulary
+    assert "skeletonize" not in model.vocabulary
+    assert_vocabulary_consistent(model)
+    tok = model.to_tokenizer()
+    # "un" is an existing whole-word token; "##skeletonize" only matches mid-word.
+    assert tok.encode("unskeletonize").tokens == ["[CLS]", "un", "##skeletonize", "[SEP]"]
+    call_tokenizer(model)
+
+
 def test_add_multiple_special_tokens() -> None:
     """Test adding several special tokens at once keeps vocabulary consistent."""
     model = TokenizerModel.from_pretrained(_PATH)

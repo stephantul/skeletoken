@@ -8,6 +8,7 @@ from transformers import PreTrainedTokenizerFast
 
 from skeletoken.base import TokenizerModel
 from skeletoken.merges import Merges
+from skeletoken.models import BPE
 from skeletoken.postprocessors import TemplatePostProcessor
 
 
@@ -37,6 +38,16 @@ def assert_vocabulary_consistent(model: TokenizerModel) -> None:
     if model.pad_token:
         assert model.pad_token in vocab
         assert vocab[model.pad_token] == model.pad_token_id
+
+
+def assert_bpe_merges_consistent(model: TokenizerModel) -> None:
+    """Assert every BPE merge rule's operands and result are in the vocabulary."""
+    assert isinstance(model.model, BPE)
+    vocab = model.vocabulary
+    for left, right in model.model.merges.root:
+        assert left in vocab, f"Merge component {left!r} missing from vocabulary"
+        assert right in vocab, f"Merge component {right!r} missing from vocabulary"
+        assert left + right in vocab, f"Merge result {left + right!r} missing from vocabulary"
 
 
 def _get_path(name: str) -> Path:

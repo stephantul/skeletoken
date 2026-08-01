@@ -92,7 +92,7 @@ version = {attr = "skeletoken.version.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--tb=short", "--strict-markers", "--cov=semble", "--cov-report=term-missing", "--ignore=tests/integration"]
+addopts = ["--tb=short", "--strict-markers", "--cov=skeletoken", "--cov-report=term-missing", "--ignore=tests/integration"]
 
 [tool.coverage.run]
 relative_files = true

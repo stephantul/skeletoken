@@ -73,6 +73,32 @@ def test_decoder_from_model_byte_level(small_tokenizer: Tokenizer) -> None:
     assert isinstance(decoder, TokenizersByteLevelDecoder)
 
 
+def test_preprocessor_from_model_byte_level_without_add_prefix_space(small_tokenizer: Tokenizer) -> None:
+    """Test that word_prefix is forced to None for byte-level models without add_prefix_space."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=False, use_regex=True, trim_offsets=True)
+    preprocessor = Preprocessor.from_tokenizer_model(model)
+    assert preprocessor.word_prefix is None
+
+
+def test_preprocessor_word_and_subword_prefix_interplay() -> None:
+    """Test that had_word_prefix and had_subword_prefix compose: strip one marker, add the other."""
+    from tokenizers.pre_tokenizers import Metaspace
+
+    preprocessor = Preprocessor(
+        pretokenizer=Metaspace(replacement="▁", prepend_scheme="always"),
+        word_prefix="▁",
+        subword_prefix="##",
+    )
+
+    # Word-initial (default): the pretokenizer's "▁" marker is kept.
+    assert preprocessor.preprocess("hello", had_word_prefix=True, had_subword_prefix=False) == ["▁hello"]
+    # Non-initial: the "▁" is stripped
+    assert preprocessor.preprocess("hello", had_word_prefix=False, had_subword_prefix=False) == ["hello"]
+    # Non-initial: "▁" is stripped.
+    assert preprocessor.preprocess("hello", had_word_prefix=False, had_subword_prefix=True) == ["##hello"]
+
+
 def test_preprocessor_decode_with_byte_transformer() -> None:
     """Test Preprocessor.decode applies the byte_transformer when set."""
     preprocessor = Preprocessor(byte_transformer=TokenizersByteLevelDecoder())

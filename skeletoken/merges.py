@@ -28,16 +28,18 @@ class Merges(RootModel[list[_Merge]]):
         """Add merge operations for a specific token.
 
         When vocab is provided, a bigram is only added when both component strings
-        and their concatenation are present in the vocabulary; the loop stops early
-        if no such bigram is found.  Without a vocab constraint every consecutive
-        pair is added until the token fully merges.
+        and their concatenation are present in the vocabulary; a pair that fails the
+        check is skipped without blocking later pairs in the same pass. Without a
+        vocab constraint every non-overlapping pair is added until the token fully
+        merges.
         """
         token_form = tuple(self._merge(token))
         added_merges = []
         while len(token_form) > 1:
             found = False
-            for index in range(len(token_form) - 1):
+            for index in range(0, len(token_form) - 1, 2):
                 left, right = token_form[index], token_form[index + 1]
+                # If there is a pre-existing vocabulary, we can skip merges that are fully in vocab already.
                 if vocab is not None and not (left in vocab and right in vocab and left + right in vocab):
                     continue
                 found = True

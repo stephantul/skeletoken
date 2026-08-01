@@ -40,27 +40,15 @@ def test_merge(small_merges: Merges) -> None:
                 ("c", "d"),
                 ("ab", "c"),
                 ("a", "bc"),
-                # stride-1 pass 1: all consecutive pairs from the 11-char form
                 ("e", "l"),
-                ("l", "e"),
                 ("e", "p"),
-                ("p", "h"),
                 ("h", "a"),
-                ("a", "n"),
                 ("n", "t"),
-                ("t", "i"),
                 ("i", "n"),
-                ("n", "e"),
-                # pass 2: all pairs from the 6-element form
                 ("el", "ep"),
-                ("ep", "ha"),
                 ("ha", "nt"),
-                ("nt", "in"),
                 ("in", "e"),
-                # pass 3: pairs from the 3-element form
                 ("elep", "hant"),
-                ("hant", "ine"),
-                # pass 4: final pair
                 ("elephant", "ine"),
             ],
         ),
@@ -106,11 +94,8 @@ def test_remove_merges_batch_updates_index(small_merges: Merges) -> None:
 def test_add_merges_no_duplicates() -> None:
     """_add_merges_for_token must not append the same bigram twice."""
     merges = Merges([])
-    # "abab" → ('a','b','a','b'); stride-1 visits ('a','b') at both index 0 and 2,
-    # so the duplicate-guard is exercised.
     merges._add_merges_for_token("abab")
     assert merges.root.count(("a", "b")) == 1
-    # Priority (index 0) must be preserved, not pushed to a higher index.
     assert merges._merge_index[("a", "b")] == 0
 
 
@@ -129,7 +114,6 @@ def test_add_merges_with_vocab_no_duplicates() -> None:
     """_add_merges_for_token with vocab must not append the same bigram twice."""
     merges = Merges([])
     vocab = {"a", "b", "ab"}
-    # "abab" → ('a','b','a','b'); stride-1 visits ('a','b') at indices 0 and 2.
     merges._add_merges_for_token("abab", vocab=vocab)
     assert merges.root.count(("a", "b")) == 1
     assert merges._merge_index[("a", "b")] == 0
