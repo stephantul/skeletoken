@@ -50,11 +50,13 @@ pip install skeletoken
 `skeletoken` allows you to:
 
 * validate tokenizer.json with human-readable errors
-* edit tokenizers as typed objects (Pydantic)
+* edit tokenizers as typed objects (Pydantic), catching invalid values at construction time instead of a cryptic `tokenizers` parse error later
+* safely add and remove tokens from vocabularies without breaking anything
+* consolidate vocabularies, merging duplicate/redundant entries while keeping the merge table and IDs consistent
 * apply common transformations (decasing, greedy merges, etc.)
-* auto-fix common inconsistencies
-* round-trip to `tokenizers` and `transformers`
-* apply tokenization changes to `transformers`, `sentence-transformers` and `pylate` models.
+* auto-fix common inconsistencies, e.g. adding special tokens referenced by a post-processor but missing from the vocabulary, or pruning stale `AddedToken` entries
+* round-trip to `tokenizers` and `transformers` without silently dropping fields
+* apply tokenization changes to `transformers`, `sentence-transformers`, `pylate` and `model2vec` models, resizing _and remapping_ the embedding table so tokens that survive an edit keep their learned embeddings
 
 ## Example
 
@@ -164,6 +166,51 @@ greedy_tokenizer = model.to_tokenizer()
 print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 # [['Ġhello', 'oo'], ['Ġblue', 'too', 'th']]
 
+```
+
+### Consolidating a vocabulary
+
+Adding a normalizer or pre-tokenizer can leave a vocabulary with entries that have become unreachable, or that now collide with another entry. `consolidate_vocabulary` finds and removes these automatically, keeping the merge table and IDs consistent.
+
+```python
+from skeletoken import TokenizerModel
+from skeletoken.normalizers import ReplaceNormalizer
+
+model = TokenizerModel.from_pretrained("bert-base-cased")
+# "A" and "a" are currently distinct tokens.
+print("A" in model.vocabulary, "a" in model.vocabulary)
+# True True
+
+# Add a normalizer that maps "A" to "a", making the two tokens collide.
+model = model.add_normalizer(ReplaceNormalizer(pattern="A", content="a"))
+model = model.consolidate_vocabulary()
+
+# The now-unreachable duplicate has been removed.
+print("A" in model.vocabulary, "a" in model.vocabulary)
+# False True
+```
+
+### Safely resizing model embeddings
+
+Editing a vocabulary changes token IDs, which normally means your model's embedding table and your tokenizer silently drift out of sync. `skeletoken` computes a `ModelDelta` (via `TokenizerModel.model_delta`) that maps old token IDs to new ones, and uses it to reshape a model's embedding table so that tokens which survive an edit *keep their learned embeddings*; only genuinely new tokens get fresh rows. This is supported for `transformers`, `sentence-transformers`, `pylate` and `model2vec` models, so you can prune or edit a vocabulary without retraining from scratch.
+
+```python
+from transformers import AutoModel
+from skeletoken import TokenizerModel
+from skeletoken.external.transformers import reshape_embeddings
+
+model_name = "bert-base-cased"
+model = AutoModel.from_pretrained(model_name)
+tokenizer_model = TokenizerModel.from_pretrained(model_name)
+
+# Decasing removes duplicate (now-colliding) tokens from the vocabulary.
+decased = tokenizer_model.decase_vocabulary()
+
+# The embedding table is resized to match, and every surviving token
+# keeps the embedding it already learned.
+new_model = reshape_embeddings(model, decased)
+print(model.get_input_embeddings().weight.shape[0])       # original vocabulary_size
+print(new_model.get_input_embeddings().weight.shape[0])   # decased.vocabulary_size
 ```
 
 ## Roadmap
