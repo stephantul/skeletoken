@@ -23,7 +23,9 @@ def _process(
             # The added token is already normalized
             return original
         else:
-            preprocessed_tokens = preprocessor.preprocess(decoded, word_prefix, subword_prefix)
+            preprocessed_tokens = preprocessor.preprocess(
+                decoded, word_prefix, subword_prefix, empty_sequence_is_token=True
+            )
             if len(preprocessed_tokens) != 1:
                 # Check whether the join equals the normalizer-only result. A pure-splitting
                 # pretokenizer (e.g. BERT's punctuation splitter) still gives a correct join;
@@ -39,7 +41,9 @@ def _process(
             else:
                 reprocessed = preprocessed_tokens[0]
     else:
-        preprocessed_tokens = preprocessor.preprocess(decoded, word_prefix, subword_prefix)
+        preprocessed_tokens = preprocessor.preprocess(
+            decoded, word_prefix, subword_prefix, empty_sequence_is_token=True
+        )
         if len(preprocessed_tokens) != 1:
             return original if keep else None
         reprocessed = preprocessed_tokens[0]

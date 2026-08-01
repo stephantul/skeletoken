@@ -70,23 +70,42 @@ class Preprocessor:
         """Preprocess a list of sequences."""
         return [self.decode(seq) for seq in sequences]
 
-    def preprocess(self, sequence: str, had_word_prefix: bool = False, had_subword_prefix: bool = False) -> list[str]:
+    def preprocess(
+        self,
+        sequence: str,
+        had_word_prefix: bool = False,
+        had_subword_prefix: bool = False,
+        empty_sequence_is_token: bool = False,
+    ) -> list[str]:
         """Preprocess a single sequence.
 
         Note that word prefix and subword prefix tokens like '##' and `_` are
         treated as regular characters here. So any tokens you input here should be
         decoded using `decode`. This removes these tokens and stores whether they had
         such a prefix.
+
+        If `sequence` is empty, returns `[]` unless `empty_sequence_is_token` is set,
+        in which case it returns the word or subword prefix if present, or `[""]`
+        otherwise.
         """
         if self.normalizer is not None:
             sequence = self.normalizer.normalize_str(sequence)
+        if not sequence:
+            # If the empty sequence is not supposed to be a token, return an empty list
+            if not empty_sequence_is_token:
+                return []
+            # If it was a token, and we have word prefix, return the word prefix
+            if had_word_prefix and self.word_prefix:
+                return [self.word_prefix]
+            # If it was a subword, and we have a subword prefix, return the subword prefix
+            if had_subword_prefix and self.subword_prefix:
+                return [self.subword_prefix]
+            # Return an empty string to still correctly roundtrip the token.
+            return [""]
         if self.pretokenizer is not None:
             processed = [text for text, _ in self.pretokenizer.pre_tokenize_str(sequence)]
         else:
             processed = [sequence]
-        # This is annoying: pretokenizers turn the empty string into an empty list.
-        if not sequence:
-            return [self.word_prefix or "" if had_word_prefix else ""]
         if processed:
             first_token = processed[0]
             if not had_word_prefix and self.word_prefix:
