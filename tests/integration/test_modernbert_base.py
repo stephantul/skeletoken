@@ -190,6 +190,21 @@ def test_prune_added_tokens() -> None:
     call_tokenizer(pruned)
 
 
+def test_prune_added_tokens_model_delta_maps_surviving_special_tokens() -> None:
+    """Test that surviving special tokens map back to their pre-prune ids instead of being treated as new."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    original_ids = {content: model.vocabulary[content] for content in ("[UNK]", "[CLS]", "[SEP]", "[PAD]")}
+
+    pruned = model.prune_added_tokens()
+    delta = pruned.model_delta
+    assert delta.new_tokens == {}
+    assert len(delta.token_mapping) == pruned.vocabulary_size
+
+    for content, original_id in original_ids.items():
+        new_id = pruned.vocabulary[content]
+        assert delta.token_mapping[new_id] == original_id
+
+
 def test_added_tokens_ids_consistent_after_add() -> None:
     """Test that all existing added tokens still have correct IDs after adding a new one."""
     model = TokenizerModel.from_pretrained(_PATH)
