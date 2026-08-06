@@ -61,6 +61,36 @@ def test_remove_multiword() -> None:
     assert decased == ["_dog", "_cat", None]
 
 
+def test_infer_word_initial_when_introducing_word_prefix() -> None:
+    """When a word prefix is newly introduced, bare (non-subword-prefixed) tokens are word-initial."""
+    old = Preprocessor(subword_prefix="##")
+    new = Preprocessor(subword_prefix="##", word_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False))
+    vocabulary = ["dog", "##cat", "cat"]
+    result = clean_vocabulary(
+        vocabulary,
+        added_tokens=[],
+        old_preprocessor=old,
+        new_preprocessor=new,
+        keep=False,
+    )
+    assert result == ["▁dog", "##cat", "▁cat"]
+
+
+def test_no_infer_word_initial_without_subword_prefix_scheme() -> None:
+    """Without an old subword prefix scheme, there's no signal to infer word-initial-ness from."""
+    old = Preprocessor()
+    new = Preprocessor(word_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False))
+    vocabulary = ["dog", "cat"]
+    result = clean_vocabulary(
+        vocabulary,
+        added_tokens=[],
+        old_preprocessor=old,
+        new_preprocessor=new,
+        keep=False,
+    )
+    assert result == ["dog", "cat"]
+
+
 def test_process() -> None:
     """Test the process function with a lot of inputs."""
     p = Preprocessor(subword_prefix="##", word_prefix="P", pretokenizer=Metaspace(replacement="P"))

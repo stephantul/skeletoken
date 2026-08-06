@@ -462,9 +462,13 @@ def test_bpe_replace_vocabulary_concat_present() -> None:
 
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
 def test_set_subword_prefix_token(model: Model) -> None:
-    """Test whether setting the subword prefix token works."""
-    if isinstance(model, (WordPiece, BPE)):
-        assert hasattr(model, "continuing_subword_prefix")
+    """Test whether setting the subword prefix token works.
+
+    Only WordPiece is supported: BPE also has a `continuing_subword_prefix` field, but setting it
+    without rebuilding the vocabulary/merges around it corrupts the model (skeletoken's merge-rebuilding
+    doesn't implement that convention, and `tokenizers` doesn't validate it, so it can even panic).
+    """
+    if isinstance(model, WordPiece):
         set_subword_prefix_token(model, "haha")
         assert model.continuing_subword_prefix == "haha"
     else:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -12,7 +11,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.clean import clean_vocabulary
-from skeletoken.common import PathLike
+from skeletoken.common import PathLike, PrependScheme
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import (
     MODELS_THAT_NEED_UNK,
@@ -38,6 +37,7 @@ from skeletoken.postprocessors import (
 from skeletoken.pretokenizers import (
     ByteLevelPreTokenizer,
     FixedLengthPreTokenizer,
+    MetaspacePreTokenizer,
     PreTokenizerDiscriminator,
     PreTokenizerSequence,
     get_add_prefix_space,
@@ -707,7 +707,7 @@ class TokenizerModel(BaseModel):
     @subword_prefix.setter
     def subword_prefix(self, prefix: str) -> None:
         """Set the subword prefix and re-encode the vocabulary."""
-        old_preprocessor = deepcopy(self.preprocessor)
+        old_preprocessor = self.preprocessor
         self._preprocessor = None
         set_subword_prefix_token(self.model, prefix)
         new_preprocessor = self.preprocessor
@@ -720,13 +720,48 @@ class TokenizerModel(BaseModel):
     @property
     def word_prefix(self) -> str | None:
         """Get the word prefix token, if any."""
-        if self.pre_tokenizer is None:
-            return None
         # Word prefixes are not handled by the model, but added
         # by pretokenizers
         if self.transforms_into_bytes:
             return "Ġ"
+        if self.pre_tokenizer is None:
+            return None
         return get_metaspace(self.pre_tokenizer)
+
+    @word_prefix.setter
+    def word_prefix(self, prefix: str) -> None:
+        """Set the word prefix and re-encode the vocabulary."""
+        if self.transforms_into_bytes:
+            logger.warning(
+                "This tokenizer transforms its input into bytes, so the word prefix is fixed to the "
+                "byte representation of ' ' and cannot be changed."
+            )
+            return
+        if len(prefix) != 1:
+            raise ValueError(f"The word prefix must be a single character, got '{prefix}'.")
+
+        old_preprocessor = self.preprocessor
+        self._preprocessor = None
+
+        existing_metaspace = (
+            get_pretokenizer_of_type(self.pre_tokenizer, MetaspacePreTokenizer)
+            if self.pre_tokenizer is not None
+            else None
+        )
+        if existing_metaspace is not None:
+            existing_metaspace.replacement = prefix
+        else:
+            self._add_pretokenizer_inplace(
+                MetaspacePreTokenizer(replacement=prefix, prepend_scheme=PrependScheme.ALWAYS, split=False),
+                prefix=False,
+            )
+
+        new_preprocessor = self.preprocessor
+        self._consolidate(
+            keep=True,
+            old_preprocessor=old_preprocessor,
+            new_preprocessor=new_preprocessor,
+        )
 
     @property
     def unk_token(self) -> str | None:

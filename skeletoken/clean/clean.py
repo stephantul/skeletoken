@@ -63,6 +63,15 @@ def clean_vocabulary(
     decoded_sequences = old_preprocessor.decode_sequences(vocabulary)
     added_token_dict = {at.content: at for at in added_tokens}
 
+    # A word prefix is being introduced where none existed before. If the model already distinguishes
+    # continuation pieces via a subword prefix (e.g. WordPiece's "##"), the absence of that marker
+    # reliably means the token was word-initial, so it should now receive the new word prefix too.
+    can_infer_word_initial = (
+        old_preprocessor.word_prefix is None
+        and new_preprocessor.word_prefix is not None
+        and old_preprocessor.subword_prefix is not None
+    )
+
     processed_results = [
         _process(
             dt.decoded,
@@ -71,7 +80,7 @@ def clean_vocabulary(
             new_preprocessor,
             keep,
             dt.had_subword_prefix,
-            dt.had_word_prefix,
+            not dt.had_subword_prefix if can_infer_word_initial else dt.had_word_prefix,
         )
         for dt in decoded_sequences
     ]

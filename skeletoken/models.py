@@ -205,11 +205,19 @@ def get_subword_prefix_token(model: Model) -> str | None:
 
 
 def set_subword_prefix_token(model: Model, prefix: str) -> None:
-    """Set the subword prefix. This will raise a ValueError if the model does not support one."""
-    if isinstance(model, (WordPiece, BPE)):
+    """Set the subword prefix. This will raise a ValueError if the model does not support one.
+
+    Only WordPiece is supported here, even though BPE also has a `continuing_subword_prefix` field.
+    For BPE, that field is only meaningful if the vocabulary and merges were built around it from the
+    start (every continuation merge component prefixed, with a matching de-prefixed word-form also in
+    the vocabulary): skeletoken's merge-rebuilding logic doesn't construct that shape, and the
+    underlying `tokenizers` Rust BPE model doesn't validate it either, so setting this on an
+    otherwise-ordinary BPE model reliably corrupts it (and can panic when it's reloaded).
+    """
+    if isinstance(model, WordPiece):
         model.continuing_subword_prefix = prefix
     else:
-        raise ValueError("Setting a subword prefix token is not supported for Unigram or Wordlevel models.")
+        raise ValueError("Setting a subword prefix token is only supported for WordPiece models.")
 
 
 MODELS_THAT_NEED_UNK = (WordPiece, WordLevel)
