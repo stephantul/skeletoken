@@ -77,8 +77,6 @@ class TokenizerModel(BaseModel):
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
         """Post-initialization processing."""
-        # Helper for context. To be consolidated somewhere
-        self._original_tokenizer = self.deep_copy()
         # Add any missing added tokens to the vocabulary.
         # Sort to fill up the vocabulary in order.
         for token in sorted(self.added_tokens.root, key=lambda x: x.id):
@@ -144,6 +142,8 @@ class TokenizerModel(BaseModel):
                     rstrip=True,
                 )
             self.pad_token = pad_token
+
+        self._original_tokenizer = self.deep_copy()
 
     @property
     def preprocessor(self) -> Preprocessor:

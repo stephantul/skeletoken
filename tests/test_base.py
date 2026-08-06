@@ -775,9 +775,9 @@ def test_model_delta(small_tokenizer: Tokenizer) -> None:
     model.unk_token = "new_unk"
     model.pad_token = "[PAD]"
     delta = model.model_delta
-    assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 7, 7: 8, 8: 9}
+    assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 7, 7: 8, 8: 9, 9: 10}
     assert delta.new_vocabulary_size == 13
-    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12, "F": 9}
+    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12}
 
 
 def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
