@@ -78,8 +78,8 @@ def test_decase() -> None:
     assert model.vocabulary_size == 28996
 
     tok = model.to_tokenizer()
-    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
-    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
 
 
 def test_decase_prune() -> None:
@@ -93,8 +93,8 @@ def test_decase_prune() -> None:
     assert model.vocabulary_size == 25025
 
     tok = model.to_tokenizer()
-    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
-    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
 
 
 def test_add_digits_pretokenizer() -> None:

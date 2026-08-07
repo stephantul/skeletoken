@@ -36,14 +36,14 @@ def test_basic_collapse() -> None:
     model = TokenizerModel.from_pretrained(_PATH)
     model = model.consolidate_vocabulary(keep=False)
     assert model.vocabulary_size == 29527
-    assert model.model_delta.new_tokens == {"[cls]": 2, "[mask]": 4, "[sep]": 3, "[unk]": 1}
-    assert model.unk_token == "[unk]"
+    assert model.model_delta.new_tokens == {}
+    assert model.unk_token == "[UNK]"
     assert model.unk_token_id == 1
     assert model.pad_token == "[PAD]"
     assert model.pad_token_id == 0
 
     removed_tokens = model.model_delta.removed_tokens
-    assert len(removed_tokens) == 999
+    assert len(removed_tokens) == 995
     assert [x for x in removed_tokens if not x.startswith("[")] == ["..."]
 
     call_tokenizer(model)
@@ -78,8 +78,8 @@ def test_decase() -> None:
     assert model.vocabulary_size == 30522
 
     tok = model.to_tokenizer()
-    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
-    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
 
 
 def test_decase_prune() -> None:
@@ -93,8 +93,8 @@ def test_decase_prune() -> None:
     assert model.vocabulary_size == 29527
 
     tok = model.to_tokenizer()
-    assert tok.encode(" amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
-    assert tok.encode(" Amsterdam").tokens == ["[cls]", "amsterdam", "[sep]"]
+    assert tok.encode(" amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
+    assert tok.encode(" Amsterdam").tokens == ["[CLS]", "amsterdam", "[SEP]"]
 
 
 def test_add_digits_pretokenizer() -> None:
@@ -103,17 +103,17 @@ def test_add_digits_pretokenizer() -> None:
     model = model.add_pre_tokenizer(DigitsPreTokenizer(individual_digits=False))
     model = model.consolidate_vocabulary(keep=False)
     assert model.vocabulary_size == 29395
-    assert model.model_delta.new_tokens == {"[unk]": 1, "[cls]": 2, "[sep]": 3, "[mask]": 4}
+    assert model.model_delta.new_tokens == {}
 
     removed = model.model_delta.removed_tokens
-    assert len(removed) == 1131
+    assert len(removed) == 1127
     for token in {"51st", "2000s", "00pm", "a1"}:
         assert token in removed
 
     tok = model.to_tokenizer()
-    assert tok.encode("51st street").tokens == ["[cls]", "51", "st", "street", "[sep]"]
-    assert tok.encode("2000s music").tokens == ["[cls]", "2000", "s", "music", "[sep]"]
-    assert tok.encode("hello world").tokens == ["[cls]", "hello", "world", "[sep]"]
+    assert tok.encode("51st street").tokens == ["[CLS]", "51", "st", "street", "[SEP]"]
+    assert tok.encode("2000s music").tokens == ["[CLS]", "2000", "s", "music", "[SEP]"]
+    assert tok.encode("hello world").tokens == ["[CLS]", "hello", "world", "[SEP]"]
 
     call_tokenizer(model)
 
@@ -136,9 +136,9 @@ def test_add_digits_pretokenizer_individual() -> None:
     assert model.vocabulary_size == 28478
 
     tok = model.to_tokenizer()
-    assert tok.encode("in 2024").tokens == ["[cls]", "in", "2", "0", "2", "4", "[sep]"]
-    assert tok.encode("100 dollars").tokens == ["[cls]", "1", "0", "0", "dollars", "[sep]"]
-    assert tok.encode("hello world").tokens == ["[cls]", "hello", "world", "[sep]"]
+    assert tok.encode("in 2024").tokens == ["[CLS]", "in", "2", "0", "2", "4", "[SEP]"]
+    assert tok.encode("100 dollars").tokens == ["[CLS]", "1", "0", "0", "dollars", "[SEP]"]
+    assert tok.encode("hello world").tokens == ["[CLS]", "hello", "world", "[SEP]"]
 
     call_tokenizer(model)
 

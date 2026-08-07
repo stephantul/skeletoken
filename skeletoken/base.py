@@ -136,7 +136,7 @@ class TokenizerModel(BaseModel):
                 self._turn_into_addedtoken(
                     pad_token,
                     is_special=True,
-                    normalized=True,
+                    normalized=False,
                     single_word=True,
                     lstrip=True,
                     rstrip=True,
