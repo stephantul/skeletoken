@@ -192,6 +192,43 @@ class TokenizerModel(BaseModel):
         model._remap_added_token_ids()
         return model
 
+    def pad_vocabulary_to_multiple_of(self, token_prefix: str = "new_", n: int = 128) -> TokenizerModel:
+        """Pad the vocabulary with added tokens so its size becomes a multiple of `n`.
+
+        This is useful for GPU speedups, since embedding matrices are often more efficient
+        when their size is a multiple of a certain number (e.g. 64, 128). The padding tokens
+        are added as `AddedToken`s, so they don't become part of the merge table: they only
+        exist to resize the embedding table.
+
+        Parameters
+        ----------
+        token_prefix: str
+            The prefix used to generate padding token names: `f"{token_prefix}{i}"`.
+        n: int
+            The multiple the vocabulary size should be padded to.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the padding tokens added.
+
+        """
+        remainder = self.vocabulary_size % n
+        if remainder == 0:
+            return self.deep_copy()
+
+        num_to_add = n - remainder
+        vocabulary = self.vocabulary
+        new_tokens: list[str] = []
+        i = 0
+        while len(new_tokens) < num_to_add:
+            candidate = f"{token_prefix}{i}"
+            if candidate not in vocabulary:
+                new_tokens.append(candidate)
+            i += 1
+
+        return self.add_addedtokens(new_tokens, is_special=True)
+
     def _turn_into_addedtoken(
         self,
         token: str,
