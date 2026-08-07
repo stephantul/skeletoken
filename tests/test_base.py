@@ -546,6 +546,8 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
     model = model.decase_vocabulary(keep=True)
     # This tokenizer does not assign any special tokens, so this is true.
+    # Added tokens are matched against raw input before the normalizer/pretokenizer ever run,
+    # so their content stays unchanged regardless of `normalized`.
     assert model.model.vocab.sorted_vocabulary == [
         "[pad]",
         "[sep]",
@@ -559,7 +561,7 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
         " ",
         "F",
         "ADD",
-        "add_keep",
+        "ADD_KEEP",
     ]
 
     call_tokenizer(model)
@@ -584,7 +586,7 @@ def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
         " ",
         "F",
         "ADD",
-        "add_keep",
+        "ADD_KEEP",
     ]
 
     call_tokenizer(model)

@@ -17,29 +17,8 @@ def _process(
 ) -> str | None:
     if "�" in decoded:
         return original
-    elif added_token := added_token_dict.get(original):
-        # If we get here, the token is an added token.
-        if added_token.normalized:
-            # The added token is already normalized
-            return original
-        else:
-            preprocessed_tokens = preprocessor.preprocess(
-                decoded, word_prefix, subword_prefix, empty_sequence_is_token=True
-            )
-            if len(preprocessed_tokens) != 1:
-                # Check whether the join equals the normalizer-only result. A pure-splitting
-                # pretokenizer (e.g. BERT's punctuation splitter) still gives a correct join;
-                # a prefix-inserting pretokenizer (e.g. Metaspace) does not.
-                joined = "".join(preprocessed_tokens)
-                if preprocessor.normalizer is not None:
-                    normalized = preprocessor.normalizer.normalize_str(decoded)
-                else:
-                    normalized = decoded
-                if joined != normalized:
-                    return original if keep else None
-                reprocessed = joined
-            else:
-                reprocessed = preprocessed_tokens[0]
+    elif original in added_token_dict:
+        return original
     else:
         preprocessed_tokens = preprocessor.preprocess(
             decoded, word_prefix, subword_prefix, empty_sequence_is_token=True

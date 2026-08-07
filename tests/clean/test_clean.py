@@ -145,13 +145,8 @@ def test_process_added_token_pure_split_join() -> None:
     assert result == "a.b"
 
 
-def test_process_added_token_normalizer_and_prefix_split() -> None:
-    """Test _process for an added token (normalized=False) that splits into multiple parts with a normalizer.
-
-    With a Metaspace pretokenizer + Lowercase normalizer, "HELLO WORLD" (decoded from "▁HELLO WORLD")
-    becomes ["▁hello", "▁world"]. joined = "▁hello▁world" differs from
-    normalizer.normalize_str("HELLO WORLD") = "hello world", triggering the mismatch return.
-    """
+def test_process_added_token_returns_original_regardless_of_split() -> None:
+    """Added tokens are matched against input before the normalizer/pretokenizer ever runs."""
     p = Preprocessor(
         normalizer=Lowercase(),
         word_prefix="▁",
@@ -161,20 +156,18 @@ def test_process_added_token_normalizer_and_prefix_split() -> None:
         content="▁HELLO WORLD", single_word=False, normalized=False, special=False, lstrip=False, rstrip=False, id=0
     )
     added_token_dict = {"▁HELLO WORLD": at}
-    assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, False, False, True) is None
+    assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, False, False, True) == "▁HELLO WORLD"
     assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, True, False, True) == "▁HELLO WORLD"
 
 
 def test_process_added_token_empty_preprocess() -> None:
-    """normalized=False added token whose decoded form yields no pretokens."""
+    """Added token whose decoded form yields no pretokens still returns unchanged."""
     p = Preprocessor(pretokenizer=WhitespaceSplit())
     at = AddedToken(content="[WS]", single_word=True, normalized=False, special=True, lstrip=False, rstrip=False, id=0)
     added_token_dict = {"[WS]": at}
 
-    # " " is non-empty so the empty-string guard in preprocess doesn't fire,
-    # but WhitespaceSplit returns [] for whitespace-only input → hits line 28.
     x = _process(" ", "[WS]", added_token_dict, p, False, False, False)
-    assert x is None
+    assert x == "[WS]"
 
     x = _process(" ", "[WS]", added_token_dict, p, True, False, False)
     assert x == "[WS]"
