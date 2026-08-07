@@ -45,7 +45,7 @@ from skeletoken.pretokenizers import (
     WhitespacePreTokenizer,
 )
 from skeletoken.vocabulary import Vocabulary
-from tests.conftest import call_tokenizer
+from tests.conftest import assert_bpe_merges_consistent, assert_vocabulary_consistent, call_tokenizer
 
 
 def test_post_init(small_tokenizer_json: dict[str, Any]) -> None:
@@ -87,6 +87,83 @@ def test_turn_into_addedtoken(small_tokenizer: Tokenizer) -> None:
     # Should crash because it is not a regular token.
     with pytest.raises(ValueError):
         model._turn_into_addedtoken("bababbaa")
+
+
+def test_pad_vocabulary_to_multiple_of(small_tokenizer: Tokenizer) -> None:
+    """Test padding the vocabulary to a multiple of `n`."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    original_size = model.vocabulary_size
+    assert original_size % 8 != 0
+
+    padded = model.pad_vocabulary_to_multiple_of(n=8)
+    assert padded.vocabulary_size % 8 == 0
+    assert padded.vocabulary_size > original_size
+
+    # The original model is untouched.
+    assert model.vocabulary_size == original_size
+
+    new_tokens = [token for token in padded.added_tokens.root if token.content.startswith("new_")]
+    assert len(new_tokens) == padded.vocabulary_size - original_size
+    for token in new_tokens:
+        assert token.special
+        assert token.content in padded.vocabulary
+
+    assert_vocabulary_consistent(padded)
+    call_tokenizer(padded)
+
+
+def test_pad_vocabulary_to_multiple_of_noop(small_tokenizer: Tokenizer) -> None:
+    """Test that no tokens are added when the vocabulary is already a multiple of `n`."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    n = model.vocabulary_size
+
+    padded = model.pad_vocabulary_to_multiple_of(n=n)
+    assert padded.vocabulary_size == model.vocabulary_size
+    assert not [token for token in padded.added_tokens.root if token.content.startswith("new_")]
+
+
+def test_pad_vocabulary_to_multiple_of_skips_existing_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test that padding skips candidate names that already exist in the vocabulary."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("new_0", preprocess_token=False)
+    original_size = model.vocabulary_size
+
+    padded = model.pad_vocabulary_to_multiple_of(n=8)
+    new_tokens = sorted(token.content for token in padded.added_tokens.root if token.content.startswith("new_"))
+    assert "new_0" not in new_tokens
+    assert len(new_tokens) == padded.vocabulary_size - original_size
+
+    assert_vocabulary_consistent(padded)
+
+
+def test_pad_vocabulary_to_multiple_of_does_not_add_merges() -> None:
+    """Test that padding tokens are added as AddedTokens and never touch the BPE merge table."""
+    vocab_tokens = list("abcdefghijklmnop") + ["ab", "cd"]
+    bpe = BPE(
+        vocab=Vocabulary({c: i for i, c in enumerate(vocab_tokens)}),
+        merges=Merges([("a", "b"), ("c", "d")]),
+        dropout=None,
+        unk_token=None,
+        continuing_subword_prefix="",
+        end_of_word_suffix=None,
+        fuse_unk=False,
+        byte_fallback=False,
+        ignore_merges=False,
+    )
+    model = TokenizerModel(model=bpe)
+    assert isinstance(model.model, BPE)
+    original_merges = list(model.model.merges.root)
+    original_size = model.vocabulary_size
+
+    padded = model.pad_vocabulary_to_multiple_of(n=32)
+    assert padded.vocabulary_size == 32
+    assert padded.vocabulary_size > original_size
+    assert isinstance(padded.model, BPE)
+
+    assert list(padded.model.merges.root) == original_merges
+
+    assert_vocabulary_consistent(padded)
+    assert_bpe_merges_consistent(padded)
 
 
 def test_tokenizer_model_from_tokenizer(small_tokenizer: Tokenizer) -> None:
