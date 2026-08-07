@@ -27,16 +27,22 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
 
     """
     model = copy.deepcopy(model)
-    auto_model = cast(PreTrainedModel, model[0].auto_model)
+    transformer_module = model[0]
+    auto_model = cast(PreTrainedModel, transformer_module.auto_model)
     auto_model = _reshape_embeddings_transformers(auto_model, tokenizer_model)
-    model[0].auto_model = auto_model
+    # sentence-transformers >=5.4 made `auto_model` a read-only property aliasing `model`.
+    if isinstance(getattr(type(transformer_module), "auto_model", None), property):
+        transformer_module.model = auto_model
+    else:
+        transformer_module.auto_model = auto_model
 
     current_tokenizer = model.tokenizer
     new_tokenizer = tokenizer_model.to_transformers()
+    # Ignore both types so mypy passes independently of which version is installed.
     try:
-        model.tokenizer = new_tokenizer
+        model.tokenizer = new_tokenizer  # type: ignore
     except AttributeError:
-        model[0].processor = new_tokenizer
+        model[0].processor = new_tokenizer  # type: ignore
     model.tokenizer.model_max_length = current_tokenizer.model_max_length
     model.tokenizer.model_input_names = current_tokenizer.model_input_names
 
