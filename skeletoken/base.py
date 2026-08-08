@@ -43,6 +43,7 @@ from skeletoken.pretokenizers import (
     get_add_prefix_space,
     get_metaspace,
     get_pretokenizer_of_type,
+    remove_pretokenizer_of_type,
 )
 from skeletoken.truncation import Truncation
 from skeletoken.vocabulary import tokens_ordered_by_id
@@ -505,7 +506,6 @@ class TokenizerModel(BaseModel):
         self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor
     ) -> TokenizerModel:
         """Private method to prune the vocabulary."""
-        # Special tokens and unnormalized added tokens need to be skipped.
         # Use the gap-safe helper, not `self.sorted_vocabulary`: input tokenizers loaded
         # from disk aren't guaranteed to have contiguous vocabulary IDs.
         sorted_vocab = tokens_ordered_by_id(self.model.vocab.inverse_vocabulary)
@@ -766,7 +766,7 @@ class TokenizerModel(BaseModel):
         return get_metaspace(self.pre_tokenizer)
 
     @word_prefix.setter
-    def word_prefix(self, prefix: str) -> None:
+    def word_prefix(self, prefix: str | None) -> None:
         """Set the word prefix and re-encode the vocabulary."""
         if self.transforms_into_bytes:
             logger.warning(
@@ -774,8 +774,8 @@ class TokenizerModel(BaseModel):
                 "byte representation of ' ' and cannot be changed."
             )
             return
-        if len(prefix) != 1:
-            raise ValueError(f"The word prefix must be a single character, got '{prefix}'.")
+        if prefix is not None and len(prefix) != 1:
+            raise ValueError(f"The word prefix must be a single character or None, got '{prefix}'.")
 
         old_preprocessor = self.preprocessor
         self._preprocessor = None
@@ -786,8 +786,12 @@ class TokenizerModel(BaseModel):
             else None
         )
         if existing_metaspace is not None:
-            existing_metaspace.replacement = prefix
-        else:
+            if prefix is None:
+                assert self.pre_tokenizer is not None
+                self.pre_tokenizer = remove_pretokenizer_of_type(self.pre_tokenizer, MetaspacePreTokenizer)
+            else:
+                existing_metaspace.replacement = prefix
+        elif prefix is not None:
             self._add_pretokenizer_inplace(
                 MetaspacePreTokenizer(replacement=prefix, prepend_scheme=PrependScheme.ALWAYS, split=False),
                 prefix=False,
@@ -1063,3 +1067,15 @@ class TokenizerModel(BaseModel):
         model = self.remove_tokens_from_vocabulary(added_tokens_to_remove)
         model._remap_added_token_ids()
         return model
+
+    def to_normal_form(self) -> TokenizerModel:
+        """Convert the tokenizer model to a normal model."""
+        model = self.deep_copy()
+
+        if model.transforms_into_bytes:
+            return model
+        model.word_prefix = " "
+        if model.subword_prefix:
+            model.subword_prefix = ""
+
+        return model.consolidate_vocabulary()

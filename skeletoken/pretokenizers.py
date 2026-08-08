@@ -381,6 +381,26 @@ def get_pretokenizer_of_type(pre_tokenizer: PreTokenizerDiscriminator, pretokeni
     return None
 
 
+def remove_pretokenizer_of_type(
+    pre_tokenizer: PreTokenizerDiscriminator, pretokenizer_type: type[Any]
+) -> PreTokenizerDiscriminator | None:
+    """Return the pre-tokenizer tree with all instances of a given type removed."""
+    if isinstance(pre_tokenizer, pretokenizer_type):
+        return None
+    if isinstance(pre_tokenizer, PreTokenizerSequence):
+        remaining = [
+            result
+            for pt in pre_tokenizer.pretokenizers
+            if (result := remove_pretokenizer_of_type(pt, pretokenizer_type)) is not None
+        ]
+        if not remaining:
+            return None
+        if len(remaining) == 1:
+            return remaining[0]
+        return PreTokenizerSequence(pretokenizers=remaining)
+    return pre_tokenizer
+
+
 def to_tokenizers_pretokenizer(pre_tokenizer: PreTokenizerDiscriminator) -> TokenizersPreTokenizer:
     """Convert a skeletoken pretokenizer into a tokenizers pretokenizer."""
     if not isinstance(pre_tokenizer, BasePretokenizer | PreTokenizerSequence):
