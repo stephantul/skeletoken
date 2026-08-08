@@ -775,7 +775,7 @@ class TokenizerModel(BaseModel):
             )
             return
         if prefix is not None and len(prefix) != 1:
-            raise ValueError(f"The word prefix must be a single character or '', got '{prefix}'.")
+            raise ValueError(f"The word prefix must be a single character or None, got '{prefix}'.")
 
         old_preprocessor = self.preprocessor
         self._preprocessor = None
