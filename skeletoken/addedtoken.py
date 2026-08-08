@@ -24,9 +24,10 @@ class AddedToken(BaseModel):
     rstrip : bool
         If set, the token will be stripped from the right side.
     normalized : bool
-        If set, the token is already in its normalized form and will be kept as-is during
-        vocabulary consolidation. If False, the token will be re-preprocessed when the
-        tokenizer's normalization or pretokenization rules change.
+        Whether the token is matched against normalized input text at tokenization time.
+        Added tokens are always kept as-is during vocabulary consolidation, regardless of
+        this flag: matching is re-derived from the current normalizer/pretokenizer when a
+        tokenizer is loaded, so the stored content never needs to change.
     special : bool
         If set, the token is a special token.
         Special tokens are skipped during decoding, and are represented as single tokens in the vocabulary.

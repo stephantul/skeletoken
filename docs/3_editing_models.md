@@ -25,11 +25,11 @@ decased = decased.add_token_to_vocabulary("pikachu")
 delta = decased.model_delta
 # New tokens
 print(delta.new_tokens)
-# {..., 'pikachu': 229866}
+# {..., '▁pikachu': 229867}
 print(delta.token_mapping)
 # dict mapping from ints to ints (really long)
 print(delta.new_vocabulary_size)
-# 229867
+# 229868
 
 ```
 
@@ -65,7 +65,7 @@ print(token_ids)
 embeddings = decased_model[0].get_parameter("auto_model.embeddings.word_embeddings.weight")
 print(embeddings.shape)
 e2 = embeddings[token_ids].detach().cpu()
-# [229866, 384]
+# [229867, 384]
 x2 = decased_model.encode(test_string)
 
 # Despite the token indices being different, the result vector is the same

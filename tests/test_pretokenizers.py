@@ -22,6 +22,7 @@ from skeletoken.pretokenizers import (
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
     get_metaspace,
+    remove_pretokenizer_of_type,
     to_tokenizers_pretokenizer,
 )
 from tests.conftest import call_tokenizer
@@ -155,6 +156,33 @@ def test_to_tokenizers_pretokenizer(pretokenizer_type: PreTokenizerType, name: s
     tokenizers_pretokenizer = to_tokenizers_pretokenizer(pretokenizer)
     assert isinstance(tokenizers_pretokenizer, TokenizersPreTokenizer)
     assert tokenizers_pretokenizer.__class__.__name__ == name
+
+
+def test_remove_pretokenizer_of_type() -> None:
+    """Test removing pretokenizers of a given type from a pretokenizer tree."""
+    metaspace = _get_default_pretokenizer(PreTokenizerType.METASPACE)
+    bert = _get_default_pretokenizer(PreTokenizerType.BERT_PRETOKENIZER)
+    digits = _get_default_pretokenizer(PreTokenizerType.DIGITS)
+
+    # A standalone match is removed entirely.
+    assert remove_pretokenizer_of_type(metaspace, MetaspacePreTokenizer) is None
+
+    # A standalone non-match is returned unchanged.
+    assert remove_pretokenizer_of_type(bert, MetaspacePreTokenizer) is bert
+
+    # A sequence where every member matches collapses to None.
+    only_matches = PreTokenizerSequence(pretokenizers=[metaspace, metaspace])
+    assert remove_pretokenizer_of_type(only_matches, MetaspacePreTokenizer) is None
+
+    # A sequence with exactly one non-matching member collapses to that member.
+    one_remaining = PreTokenizerSequence(pretokenizers=[bert, metaspace])
+    assert remove_pretokenizer_of_type(one_remaining, MetaspacePreTokenizer) is bert
+
+    # A sequence with multiple non-matching members stays a sequence.
+    two_remaining = PreTokenizerSequence(pretokenizers=[bert, digits, metaspace])
+    result = remove_pretokenizer_of_type(two_remaining, MetaspacePreTokenizer)
+    assert isinstance(result, PreTokenizerSequence)
+    assert result.pretokenizers == [bert, digits]
 
 
 def test_to_tokenizers_pretokenizer_invalid() -> None:

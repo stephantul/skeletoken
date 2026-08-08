@@ -1493,6 +1493,45 @@ def test_set_word_prefix_replaces_existing_metaspace(small_tokenizer: Tokenizer)
     call_tokenizer(model)
 
 
+def test_set_word_prefix_none_removes_existing_metaspace(small_tokenizer: Tokenizer) -> None:
+    """Setting word_prefix to None removes a standalone Metaspace pretokenizer entirely."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
+    model = model.consolidate_vocabulary(keep=True)
+    assert model.word_prefix == "▁"
+
+    model.word_prefix = None
+    assert model.word_prefix is None
+    assert model.pre_tokenizer is None
+
+    call_tokenizer(model)
+
+
+def test_set_word_prefix_none_removes_metaspace_from_sequence(small_tokenizer: Tokenizer) -> None:
+    """Setting word_prefix to None removes Metaspace from a sequence, keeping the other pretokenizers."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pre_tokenizer = BertPreTokenizer()
+    model = model.add_token_to_vocabulary("ing", is_initial=False)
+    model = model.add_token_to_vocabulary("run", is_initial=True)
+    model.word_prefix = "▁"
+    assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
+
+    model.word_prefix = None
+    assert model.word_prefix is None
+    assert isinstance(model.pre_tokenizer, BertPreTokenizer)
+
+    call_tokenizer(model)
+
+
+def test_set_word_prefix_none_is_no_op_without_existing_pretokenizer(small_tokenizer: Tokenizer) -> None:
+    """Setting word_prefix to None when there's no pretokenizer at all is a no-op."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert model.word_prefix is None
+    model.word_prefix = None
+    assert model.word_prefix is None
+    assert model.pre_tokenizer is None
+
+
 def test_set_word_prefix_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
     """Setting word_prefix on a model that transforms into bytes is a no-op."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -1511,3 +1550,36 @@ def test_set_word_prefix_requires_single_character(small_tokenizer: Tokenizer) -
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     with pytest.raises(ValueError):
         model.word_prefix = "ab"
+
+
+def test_to_normal_form(small_tokenizer: Tokenizer) -> None:
+    """to_normal_form gives the vocabulary a space word prefix and drops the subword prefix."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert model.word_prefix is None
+    assert model.subword_prefix == "##"
+
+    normal = model.to_normal_form()
+
+    assert normal.word_prefix == " "
+    assert normal.subword_prefix == ""
+    # The original model is untouched.
+    assert model.word_prefix is None
+    assert model.subword_prefix == "##"
+
+    call_tokenizer(normal)
+
+
+def test_to_normal_form_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
+    """to_normal_form is a no-op for tokenizers that transform their input into bytes."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
+    assert model.transforms_into_bytes
+    before = model.vocabulary_size
+
+    normal = model.to_normal_form()
+
+    assert normal.word_prefix == "Ġ"
+    assert normal.vocabulary_size == before
+    assert normal is not model
+
+    call_tokenizer(normal)

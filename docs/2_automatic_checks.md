@@ -10,7 +10,7 @@ Here are the checks `skeletoken` performs:
     3. When added the `unk` token is added to the `model` of the tokenizer.
 2. For the pad token:
     1. Checks if the `pad` token is in vocabulary, if not, it adds it.
-    2. Checks if the `pad` token is marked as the unk token in the tokenizer. Hugging Face tokenizers can mark the `pad` token via `special_tokens_map.json`, which can remove alignment with the actual tokenizer.
+    2. Checks if the `pad` token is marked as the pad token in the tokenizer. Hugging Face tokenizers can mark the `pad` token via `special_tokens_map.json`, which can remove alignment with the actual tokenizer.
     3. When added, it is added as a `padding` module with a fixed length padding of 0. If a padding module already exists, the `pad` token in this module is verified or changed to the hugging face one.
     4. If you already define a padding token, we check whether it actually occurs in the vocabulary, and whether the current index you define actually points to that padding token.
 3. For all added tokens:
