@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Type
 
 from pydantic import BaseModel, Field, SerializationInfo, model_serializer, model_validator
 
@@ -143,6 +143,40 @@ class TemplatePostProcessor(BaseModel):
     single: TokenSequence
     pair: TokenSequence
     special_tokens: dict[str, SpecialTokenInfo]
+
+    @classmethod
+    def from_tokens(
+        cls: Type[TemplatePostProcessor],
+        start_of_sequence_token: tuple[str, int] | None,
+        continuation_token: tuple[str, int] | None,
+    ) -> TemplatePostProcessor:
+        """Constructs a standard TemplatePostProcessor."""
+        # Implicit overwriting: if both tokens have the same form, we still end up with one.
+        if start_of_sequence_token is None and continuation_token is None:
+            raise ValueError("At least one of start_of_sequence_token or continuation_token must be provided")
+        special_tokens = {
+            t[0]: SpecialTokenInfo(id=t[0], tokens=[t[0]], ids=[t[1]])
+            for t in [start_of_sequence_token, continuation_token]
+            if t
+        }
+        start_token_object = (
+            Token(id=start_of_sequence_token[0], type_id=0, type=TokenType.SPECIAL) if start_of_sequence_token else None
+        )
+        continuation_after_a = (
+            Token(id=continuation_token[0], type_id=0, type=TokenType.SPECIAL) if continuation_token else None
+        )
+        continuation_after_b = (
+            Token(id=continuation_token[0], type_id=1, type=TokenType.SPECIAL) if continuation_token else None
+        )
+        a_sequence = Token(id="A", type_id=0, type=TokenType.SEQUENCE)
+        b_sequence = Token(id="B", type_id=1, type=TokenType.SEQUENCE)
+        single_sequence = [x for x in [start_token_object, a_sequence, continuation_after_a] if x is not None]
+        pair_sequence = [
+            x
+            for x in [start_token_object, a_sequence, continuation_after_a, b_sequence, continuation_after_b]
+            if x is not None
+        ]
+        return cls(single=tuple(single_sequence), pair=tuple(pair_sequence), special_tokens=special_tokens)
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Validate that all special tokens in single and pair are defined in special_tokens."""

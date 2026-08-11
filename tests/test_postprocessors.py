@@ -345,3 +345,77 @@ def test_template_creation_failure(caplog: Any, single: TokenSequence, pair: Tok
 
     assert failure in caplog.text
     assert caplog.records[0].levelname == "WARNING"
+
+
+def test_template_post_processor_from_tokens() -> None:
+    """Test that from_tokens builds the standard BERT-style template."""
+    post_processor = TemplatePostProcessor.from_tokens(("[CLS]", 0), ("[SEP]", 1))
+
+    assert [(t.id, t.type_id, t.type) for t in post_processor.single] == [
+        ("[CLS]", 0, TokenType.SPECIAL),
+        ("A", 0, TokenType.SEQUENCE),
+        ("[SEP]", 0, TokenType.SPECIAL),
+    ]
+    assert [(t.id, t.type_id, t.type) for t in post_processor.pair] == [
+        ("[CLS]", 0, TokenType.SPECIAL),
+        ("A", 0, TokenType.SEQUENCE),
+        ("[SEP]", 0, TokenType.SPECIAL),
+        ("B", 1, TokenType.SEQUENCE),
+        ("[SEP]", 1, TokenType.SPECIAL),
+    ]
+    assert post_processor.special_tokens == {
+        "[CLS]": SpecialTokenInfo(id="[CLS]", ids=[0], tokens=["[CLS]"]),
+        "[SEP]": SpecialTokenInfo(id="[SEP]", ids=[1], tokens=["[SEP]"]),
+    }
+    assert get_bos_token_from_post_processor(post_processor) == ["[CLS]"]
+    assert get_eos_token_from_post_processor(post_processor) == ["[SEP]"]
+
+
+def test_template_post_processor_from_tokens_only_start() -> None:
+    """Test from_tokens with only a start-of-sequence token."""
+    post_processor = TemplatePostProcessor.from_tokens(("<s>", 0), None)
+
+    assert [(t.id, t.type_id, t.type) for t in post_processor.single] == [
+        ("<s>", 0, TokenType.SPECIAL),
+        ("A", 0, TokenType.SEQUENCE),
+    ]
+    assert [(t.id, t.type_id, t.type) for t in post_processor.pair] == [
+        ("<s>", 0, TokenType.SPECIAL),
+        ("A", 0, TokenType.SEQUENCE),
+        ("B", 1, TokenType.SEQUENCE),
+    ]
+    assert get_bos_token_from_post_processor(post_processor) == ["<s>"]
+    assert get_eos_token_from_post_processor(post_processor) is None
+
+
+def test_template_post_processor_from_tokens_only_continuation() -> None:
+    """Test from_tokens with only a continuation token."""
+    post_processor = TemplatePostProcessor.from_tokens(None, ("</s>", 1))
+
+    assert [(t.id, t.type_id, t.type) for t in post_processor.single] == [
+        ("A", 0, TokenType.SEQUENCE),
+        ("</s>", 0, TokenType.SPECIAL),
+    ]
+    assert [(t.id, t.type_id, t.type) for t in post_processor.pair] == [
+        ("A", 0, TokenType.SEQUENCE),
+        ("</s>", 0, TokenType.SPECIAL),
+        ("B", 1, TokenType.SEQUENCE),
+        ("</s>", 1, TokenType.SPECIAL),
+    ]
+    assert get_bos_token_from_post_processor(post_processor) is None
+    assert get_eos_token_from_post_processor(post_processor) == ["</s>"]
+
+
+def test_template_post_processor_from_tokens_requires_a_token() -> None:
+    """Test that from_tokens raises if neither token is provided."""
+    with pytest.raises(ValueError, match="At least one of"):
+        TemplatePostProcessor.from_tokens(None, None)
+
+
+def test_template_post_processor_from_tokens_tokenizer(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that a from_tokens template can be loaded and used by a real tokenizer."""
+    post_processor = TemplatePostProcessor.from_tokens(("[CLS]", 0), ("[SEP]", 1))
+    small_tokenizer_json["post_processor"] = post_processor.model_dump()
+    tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
+
+    call_tokenizer(tokenizer)
