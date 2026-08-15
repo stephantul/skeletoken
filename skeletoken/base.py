@@ -379,12 +379,13 @@ class TokenizerModel(BaseModel):
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
-        model_delta = self.model_delta
-        remapping = {old_id: new_id for new_id, old_id in model_delta.token_mapping.items()}
+        # Added tokens are ordinary vocabulary entries, so the vocabulary is the authoritative
+        # source for their ids. `model_delta` is not usable here: it is computed against
+        # `_original_tokenizer`, so its ids only line up with `token.id` for a model that is a
+        # single edit away from the original.
+        vocabulary = self.model.vocab.vocabulary
         for token in self.added_tokens.root:
-            remapped = model_delta.new_tokens.get(token.content)
-            if remapped is None:
-                remapped = remapping.get(token.id, token.id)
+            remapped = vocabulary[token.content]
             if token.id != remapped:
                 logger.info(f"Remapping ID of added token '{token.content}' from {token.id} to {remapped}.")
                 token.id = remapped
@@ -443,6 +444,9 @@ class TokenizerModel(BaseModel):
         for token in tokens:
             self.added_tokens.maybe_remove_token(token)
         self.model.remove_tokens(tokens)
+        # Removal compacts the vocabulary, so the ids hard-coded elsewhere (added tokens,
+        # `padding.pad_id`, the post-processor's special tokens) have to follow.
+        self._remap_added_token_ids()
 
         return self
 

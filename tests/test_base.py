@@ -1018,6 +1018,50 @@ def test_batch_remove_tokens(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
+def _model_with_hardcoded_ids(small_tokenizer_json: dict[str, Any]) -> TokenizerModel:
+    """Build a model that hard-codes token ids in its padding and post-processor."""
+    model = TokenizerModel.from_string(json.dumps(small_tokenizer_json))
+    model.pad_token = "[MASK]"
+    return model.add_post_processor(TemplatePostProcessor.from_tokens(None, ("F", model.vocabulary["F"])))
+
+
+def test_remove_tokens_remaps_hardcoded_ids(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that removing tokens moves the ids hard-coded outside the vocabulary."""
+    model = _model_with_hardcoded_ids(small_tokenizer_json)
+    assert model.vocabulary["F"] == 10
+    assert model.pad_token_id == 4
+
+    model = model.remove_tokens_from_vocabulary(["[PAD]", "[SEP]"])
+
+    # Both tokens sat below "[MASK]" and "F", so both ids shift down by two.
+    assert model.vocabulary["F"] == 8
+    assert model.pad_token_id == 2
+    assert isinstance(model.post_processor, TemplatePostProcessor)
+    assert model.post_processor.special_tokens["F"].ids == [8]
+    assert_vocabulary_consistent(model)
+
+    # The symptom this guards against: an id pointing past the end of the vocabulary.
+    assert max(model.to_tokenizer().encode("a b c").ids) < model.vocabulary_size
+
+    call_tokenizer(model)
+
+
+def test_remove_tokens_remaps_hardcoded_ids_when_chained(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that removing tokens one at a time gives the same ids as removing them at once."""
+    model = _model_with_hardcoded_ids(small_tokenizer_json)
+
+    at_once = model.remove_tokens_from_vocabulary(["[PAD]", "[SEP]"])
+    chained = model.remove_token_from_vocabulary("[PAD]").remove_token_from_vocabulary("[SEP]")
+
+    assert chained.vocabulary == at_once.vocabulary
+    assert chained.added_tokens.root == at_once.added_tokens.root
+    assert chained.pad_token_id == at_once.pad_token_id
+    assert chained.post_processor == at_once.post_processor
+    assert_vocabulary_consistent(chained)
+
+    call_tokenizer(chained)
+
+
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
