@@ -1447,6 +1447,32 @@ def test_remove_token_unk_token(small_tokenizer_json: dict[str, Any]) -> None:
     assert pad not in model.vocabulary
 
 
+def test_remove_token_referenced_by_post_processor(
+    small_tokenizer_json: dict[str, Any], template_post_processor: TemplatePostProcessor
+) -> None:
+    """Test that removing a token used by the post-processor raises instead of corrupting it."""
+    json_data = json.dumps(small_tokenizer_json)
+    model = TokenizerModel.from_string(json_data)
+
+    for token in template_post_processor.special_tokens.values():
+        for t in token.tokens:
+            if t in model.vocabulary:
+                model._turn_into_addedtoken(t)
+            else:
+                model.add_addedtoken(t)
+
+    model = model.add_post_processor(template_post_processor)
+
+    with pytest.raises(ValueError):
+        model.remove_token_from_vocabulary("[CLS]")
+    with pytest.raises(ValueError):
+        model.remove_token_from_vocabulary("[SEP]")
+
+    # [MASK] is in special_tokens but not referenced by single/pair, so it can be removed.
+    model = model.remove_token_from_vocabulary("[MASK]")
+    assert "[MASK]" not in model.vocabulary
+
+
 def test_consolidate_with_post_processor_and_none_token(small_tokenizer: Tokenizer) -> None:
     """Test _consolidate covers the post_processor update and None-token continue paths."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
