@@ -18,6 +18,7 @@ from skeletoken.post_processors import (
     TokenType,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
 )
 from tests.conftest import call_tokenizer
@@ -176,6 +177,31 @@ def test_maybe_replace_token_in_post_processor(post_processor: PostProcessor, ol
         assert result.sep == (new_token, 11)
     if isinstance(result, TemplatePostProcessor):
         assert result.special_tokens["special_end"].tokens == [new_token]
+
+
+@pytest.mark.parametrize(
+    "post_processor,result",
+    [
+        (_get_default_postprocessor(PostProcessorType.SEQUENCE), set()),
+        (_get_default_postprocessor(PostProcessorType.BYTE_LEVEL), set()),
+        (_get_default_postprocessor(PostProcessorType.BERT_PROCESSING), {"[CLS]", "[SEP]"}),
+        (_get_default_postprocessor(PostProcessorType.ROBERTA_PROCESSING), {"[CLS]", "[SEP]"}),
+        (_get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING), {"[BEGIN]", "[END]"}),
+        (
+            PostProcessorSequence(
+                processors=[
+                    ByteLevelPostProcessor(trim_offsets=True, add_prefix_space=False, use_regex=False),
+                    BertPostProcessor(sep=("[SEP]", 1), cls=("[CLS]", 0)),
+                ]
+            ),
+            {"[CLS]", "[SEP]"},
+        ),
+    ],
+)
+def test_get_tokens_from_post_processor(post_processor: PostProcessor, result: set[str]) -> None:
+    """Tests getting all token strings referenced by a post-processor."""
+    tokens = get_tokens_from_post_processor(post_processor)
+    assert tokens == result
 
 
 def test_parse_token() -> None:
