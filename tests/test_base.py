@@ -656,24 +656,24 @@ def test_split(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
-def test_subword_prefix(small_tokenizer: Tokenizer) -> None:
+def test_continuing_subword_prefix(small_tokenizer: Tokenizer) -> None:
     """Test getting the subword prefix token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.subword_prefix == "##"
+    assert model.continuing_subword_prefix == "##"
 
     call_tokenizer(model)
 
 
-def test_word_prefix(small_tokenizer: Tokenizer) -> None:
+def test_initial_subword_prefix(small_tokenizer: Tokenizer) -> None:
     """Test getting the word prefix token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.word_prefix is None
+    assert model.initial_subword_prefix is None
 
     model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
-    assert model.word_prefix == "Ġ"
+    assert model.initial_subword_prefix == "Ġ"
 
     model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
-    assert model.word_prefix == "▁"
+    assert model.initial_subword_prefix == "▁"
 
     call_tokenizer(model)
 
@@ -1265,7 +1265,7 @@ def test_preprocess_token(small_tokenizer_json: dict[str, Any]) -> None:
 def test_preprocess_token_is_initial(small_tokenizer_json: dict[str, Any]) -> None:
     """Test that is_initial=False produces a continuation-piece form (e.g. "##hello" for WordPiece)."""
     model = TokenizerModel.model_validate(small_tokenizer_json)
-    assert model.subword_prefix == "##"
+    assert model.continuing_subword_prefix == "##"
     # Default (is_initial=True): a plain, word-initial piece.
     assert model._preprocess_token("hello") == "hello"
     # is_initial=False: the continuation marker is added instead.
@@ -1475,21 +1475,21 @@ def test_consolidate_pad_token_update(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
-def test_set_subword_prefix(small_tokenizer: Tokenizer) -> None:
-    """Test that setting subword_prefix re-encodes the vocabulary."""
+def test_set_continuing_subword_prefix(small_tokenizer: Tokenizer) -> None:
+    """Test that setting continuing_subword_prefix re-encodes the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.subword_prefix == "##"
-    model.subword_prefix = "@@"
-    assert model.subword_prefix == "@@"
+    assert model.continuing_subword_prefix == "##"
+    model.continuing_subword_prefix = "@@"
+    assert model.continuing_subword_prefix == "@@"
     call_tokenizer(model)
 
 
-def test_set_word_prefix_no_existing_pretokenizer(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix with no pretokenizer inserts a non-splitting Metaspace."""
+def test_set_initial_subword_prefix_no_existing_pretokenizer(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix with no pretokenizer inserts a non-splitting Metaspace."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.word_prefix is None
-    model.word_prefix = "▁"
-    assert model.word_prefix == "▁"
+    assert model.initial_subword_prefix is None
+    model.initial_subword_prefix = "▁"
+    assert model.initial_subword_prefix == "▁"
     assert isinstance(model.pre_tokenizer, MetaspacePreTokenizer)
     assert model.pre_tokenizer.split is False
     # Bare (non-"##") vocabulary tokens are inferred to be word-initial and get the new prefix.
@@ -1499,15 +1499,15 @@ def test_set_word_prefix_no_existing_pretokenizer(small_tokenizer: Tokenizer) ->
     call_tokenizer(model)
 
 
-def test_set_word_prefix_appends_after_existing_splitter(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix when a splitting pretokenizer exists appends Metaspace after it."""
+def test_set_initial_subword_prefix_appends_after_existing_splitter(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix when a splitting pretokenizer exists appends Metaspace after it."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pre_tokenizer = BertPreTokenizer()
     model = model.add_token_to_vocabulary("ing", is_initial=False)
     model = model.add_token_to_vocabulary("run", is_initial=True)
 
-    model.word_prefix = "▁"
-    assert model.word_prefix == "▁"
+    model.initial_subword_prefix = "▁"
+    assert model.initial_subword_prefix == "▁"
     assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
     assert isinstance(model.pre_tokenizer.pretokenizers[0], BertPreTokenizer)
     assert isinstance(model.pre_tokenizer.pretokenizers[1], MetaspacePreTokenizer)
@@ -1522,14 +1522,14 @@ def test_set_word_prefix_appends_after_existing_splitter(small_tokenizer: Tokeni
     assert tokenizer.encode("runing").tokens == ["▁run", "##ing"]
 
 
-def test_set_word_prefix_replaces_existing_metaspace(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix when a Metaspace pretokenizer already exists replaces its character in place."""
+def test_set_initial_subword_prefix_replaces_existing_metaspace(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix when a Metaspace pretokenizer already exists replaces its character in place."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
     model = model.consolidate_vocabulary(keep=True)
 
-    model.word_prefix = "_"
-    assert model.word_prefix == "_"
+    model.initial_subword_prefix = "_"
+    assert model.initial_subword_prefix == "_"
     assert isinstance(model.pre_tokenizer, MetaspacePreTokenizer)
     assert model.pre_tokenizer.split is True
     assert model.pre_tokenizer.prepend_scheme == PrependScheme.ALWAYS
@@ -1537,78 +1537,78 @@ def test_set_word_prefix_replaces_existing_metaspace(small_tokenizer: Tokenizer)
     call_tokenizer(model)
 
 
-def test_set_word_prefix_none_removes_existing_metaspace(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix to None removes a standalone Metaspace pretokenizer entirely."""
+def test_set_initial_subword_prefix_none_removes_existing_metaspace(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix to None removes a standalone Metaspace pretokenizer entirely."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pre_tokenizer = MetaspacePreTokenizer(replacement="▁", split=True, prepend_scheme=PrependScheme.ALWAYS)
     model = model.consolidate_vocabulary(keep=True)
-    assert model.word_prefix == "▁"
+    assert model.initial_subword_prefix == "▁"
 
-    model.word_prefix = None
-    assert model.word_prefix is None
+    model.initial_subword_prefix = None
+    assert model.initial_subword_prefix is None
     assert model.pre_tokenizer is None
 
     call_tokenizer(model)
 
 
-def test_set_word_prefix_none_removes_metaspace_from_sequence(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix to None removes Metaspace from a sequence, keeping the other pretokenizers."""
+def test_set_initial_subword_prefix_none_removes_metaspace_from_sequence(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix to None removes Metaspace from a sequence, keeping the other pretokenizers."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pre_tokenizer = BertPreTokenizer()
     model = model.add_token_to_vocabulary("ing", is_initial=False)
     model = model.add_token_to_vocabulary("run", is_initial=True)
-    model.word_prefix = "▁"
+    model.initial_subword_prefix = "▁"
     assert isinstance(model.pre_tokenizer, PreTokenizerSequence)
 
-    model.word_prefix = None
-    assert model.word_prefix is None
+    model.initial_subword_prefix = None
+    assert model.initial_subword_prefix is None
     assert isinstance(model.pre_tokenizer, BertPreTokenizer)
 
     call_tokenizer(model)
 
 
-def test_set_word_prefix_none_is_no_op_without_existing_pretokenizer(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix to None when there's no pretokenizer at all is a no-op."""
+def test_set_initial_subword_prefix_none_is_no_op_without_existing_pretokenizer(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix to None when there's no pretokenizer at all is a no-op."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.word_prefix is None
-    model.word_prefix = None
-    assert model.word_prefix is None
+    assert model.initial_subword_prefix is None
+    model.initial_subword_prefix = None
+    assert model.initial_subword_prefix is None
     assert model.pre_tokenizer is None
 
 
-def test_set_word_prefix_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix on a model that transforms into bytes is a no-op."""
+def test_set_initial_subword_prefix_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix on a model that transforms into bytes is a no-op."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     model.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=True)
-    assert model.word_prefix == "Ġ"
+    assert model.initial_subword_prefix == "Ġ"
     before = model.vocabulary_size
 
-    model.word_prefix = "X"
+    model.initial_subword_prefix = "X"
 
-    assert model.word_prefix == "Ġ"
+    assert model.initial_subword_prefix == "Ġ"
     assert model.vocabulary_size == before
 
 
-def test_set_word_prefix_requires_single_character(small_tokenizer: Tokenizer) -> None:
-    """Setting word_prefix to a string that isn't a single character raises."""
+def test_set_initial_subword_prefix_requires_single_character(small_tokenizer: Tokenizer) -> None:
+    """Setting initial_subword_prefix to a string that isn't a single character raises."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
     with pytest.raises(ValueError):
-        model.word_prefix = "ab"
+        model.initial_subword_prefix = "ab"
 
 
 def test_to_normal_form(small_tokenizer: Tokenizer) -> None:
     """to_normal_form gives the vocabulary a space word prefix and drops the subword prefix."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
-    assert model.word_prefix is None
-    assert model.subword_prefix == "##"
+    assert model.initial_subword_prefix is None
+    assert model.continuing_subword_prefix == "##"
 
     normal = model.to_normal_form()
 
-    assert normal.word_prefix == " "
-    assert normal.subword_prefix == ""
+    assert normal.initial_subword_prefix == " "
+    assert normal.continuing_subword_prefix == ""
     # The original model is untouched.
-    assert model.word_prefix is None
-    assert model.subword_prefix == "##"
+    assert model.initial_subword_prefix is None
+    assert model.continuing_subword_prefix == "##"
 
     call_tokenizer(normal)
 
@@ -1622,7 +1622,7 @@ def test_to_normal_form_no_op_for_byte_transforming_model(small_tokenizer: Token
 
     normal = model.to_normal_form()
 
-    assert normal.word_prefix == "Ġ"
+    assert normal.initial_subword_prefix == "Ġ"
     assert normal.vocabulary_size == before
     assert normal is not model
 
