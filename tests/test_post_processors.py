@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from skeletoken.base import TokenizerModel
-from skeletoken.postprocessors import (
+from skeletoken.post_processors import (
     BertPostProcessor,
     ByteLevelPostProcessor,
     PostProcessor,

@@ -1,6 +1,6 @@
 from skeletoken import TokenizerModel
-from skeletoken.postprocessors import TemplatePostProcessor
-from skeletoken.pretokenizers import DigitsPreTokenizer
+from skeletoken.post_processors import TemplatePostProcessor
+from skeletoken.pre_tokenizers import DigitsPreTokenizer
 from tests.conftest import assert_vocabulary_consistent, call_tokenizer
 
 _PATH = "tests/data/bert-base-cased"

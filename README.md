@@ -105,7 +105,7 @@ We can then add a digit splitter to the tokenizer.
 
 ```python
 from skeletoken import TokenizerModel
-from skeletoken.pretokenizers import DigitsPreTokenizer
+from skeletoken.pre_tokenizers import DigitsPreTokenizer
 
 model = TokenizerModel.from_pretrained("gpt2")
 tok = model.to_tokenizer()

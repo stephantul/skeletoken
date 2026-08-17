@@ -26,7 +26,7 @@ from skeletoken.normalizers import (
     NormalizerSequence,
 )
 from skeletoken.padding import Padding
-from skeletoken.postprocessors import (
+from skeletoken.post_processors import (
     PostProcessorDiscriminator,
     PostProcessorSequence,
     TemplatePostProcessor,
@@ -34,7 +34,7 @@ from skeletoken.postprocessors import (
     get_eos_token_from_post_processor,
     maybe_replace_token_in_post_processor,
 )
-from skeletoken.pretokenizers import (
+from skeletoken.pre_tokenizers import (
     ByteLevelPreTokenizer,
     FixedLengthPreTokenizer,
     MetaspacePreTokenizer,
@@ -379,10 +379,6 @@ class TokenizerModel(BaseModel):
 
     def _remap_added_token_ids(self) -> None:
         """Remap the IDs of added tokens to match the vocabulary."""
-        # Added tokens are ordinary vocabulary entries, so the vocabulary is the authoritative
-        # source for their ids. `model_delta` is not usable here: it is computed against
-        # `_original_tokenizer`, so its ids only line up with `token.id` for a model that is a
-        # single edit away from the original.
         vocabulary = self.model.vocab.vocabulary
         for token in self.added_tokens.root:
             remapped = vocabulary[token.content]
@@ -444,8 +440,6 @@ class TokenizerModel(BaseModel):
         for token in tokens:
             self.added_tokens.maybe_remove_token(token)
         self.model.remove_tokens(tokens)
-        # Removal compacts the vocabulary, so the ids hard-coded elsewhere (added tokens,
-        # `padding.pad_id`, the post-processor's special tokens) have to follow.
         self._remap_added_token_ids()
 
         return self
@@ -906,11 +900,6 @@ class TokenizerModel(BaseModel):
 
         model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer)
 
-        # transformers>=5 unconditionally synthesizes a post-processor for any fast tokenizer whose
-        # underlying tokenizer.json had none (see TokensBackend.update_post_processor), without logging
-        # that it did so. When it has no bos/eos tokens to add, the result is a no-op template
-        # (single="$A:0", pair="$A:0 $B:1", no special tokens) that doesn't reflect the source tokenizer.
-        # Detect and undo that specific synthesis so round-tripping stays faithful to the original file.
         if getattr(hf_tokenizer, "_should_update_post_processor", False):
             post_processor = model.post_processor
             if isinstance(post_processor, TemplatePostProcessor) and not post_processor.special_tokens:
