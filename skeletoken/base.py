@@ -32,6 +32,7 @@ from skeletoken.post_processors import (
     TemplatePostProcessor,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
 )
 from skeletoken.pre_tokenizers import (
@@ -423,6 +424,13 @@ class TokenizerModel(BaseModel):
 
     def _remove_tokens_from_vocabulary(self, tokens: Sequence[str]) -> TokenizerModel:
         """In-place version of `remove_tokens_from_vocabulary`."""
+        if self.post_processor is not None:
+            referenced = get_tokens_from_post_processor(self.post_processor) & set(tokens)
+            if referenced:
+                raise ValueError(
+                    f"Cannot remove tokens {sorted(referenced)}: they are referenced by the post-processor. "
+                    "Update or remove the post-processor before removing these tokens."
+                )
         unk_token = self.unk_token
         if unk_token is not None and unk_token in tokens:
             try:
@@ -1066,9 +1074,10 @@ class TokenizerModel(BaseModel):
         model = self.deep_copy()
 
         if model.transforms_into_bytes:
+            model.adds_prefix_space = True
             return model
         model.initial_subword_prefix = " "
         if model.continuing_subword_prefix:
             model.continuing_subword_prefix = ""
 
-        return model.consolidate_vocabulary()
+        return model

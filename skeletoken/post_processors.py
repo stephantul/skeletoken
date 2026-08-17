@@ -249,6 +249,32 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         return info.tokens if info is not None else None
 
 
+def get_tokens_from_post_processor(post_processor: PostProcessor) -> set[str]:
+    """Get all token strings referenced by a post-processor."""
+    if isinstance(post_processor, PostProcessorSequence):
+        tokens: set[str] = set()
+        for p in post_processor.processors:
+            tokens |= get_tokens_from_post_processor(p)
+        return tokens
+    if isinstance(post_processor, ByteLevelPostProcessor):
+        return set()
+    if isinstance(post_processor, RobertaPostProcessor | BertPostProcessor):
+        return {post_processor.cls[0], post_processor.sep[0]}
+    if isinstance(post_processor, TemplatePostProcessor):  # type: ignore
+        identifiers = {
+            token.id
+            for sequence in (post_processor.single, post_processor.pair)
+            for token in sequence
+            if token.type == TokenType.SPECIAL
+        }
+        return {
+            token
+            for identifier in identifiers
+            if (info := post_processor.special_tokens.get(identifier)) is not None
+            for token in info.tokens
+        }
+
+
 def maybe_replace_token_in_post_processor(
     old_token: str, new_token: str, index: int, post_processor: PostProcessorDiscriminator
 ) -> PostProcessor:
