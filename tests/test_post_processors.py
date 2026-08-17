@@ -445,3 +445,12 @@ def test_template_post_processor_from_tokens_tokenizer(small_tokenizer_json: dic
     tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
 
     call_tokenizer(tokenizer)
+
+
+def test_template_post_processor_from_sequence_tokens_tokenizer(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that a from_tokens template can be loaded and used by a real tokenizer."""
+    post_processor = TemplatePostProcessor.from_tokens((["[CLS]", "[CLS]"], [0, 0]), (["[SEP]", "[SEP]"], [1, 1]))
+    small_tokenizer_json["post_processor"] = post_processor.model_dump()
+    tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
+
+    call_tokenizer(tokenizer)

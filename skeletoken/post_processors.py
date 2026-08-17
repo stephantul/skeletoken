@@ -137,6 +137,18 @@ class SpecialTokenInfo(BaseModel):
 # Simple type alias for a sequence of tokens for a template post-processor.
 TokenSequence = tuple[Token, ...]
 
+# Special tokens can be sequences or single strings
+SpecialTokenTuple = tuple[list[str], list[int]] | tuple[str, int]
+
+
+def _special_token_info(fallback_id: str, t: SpecialTokenTuple) -> SpecialTokenInfo:
+    """Helper to create a SpecialTokenInfo object."""
+    match t:
+        case str() as token, int() as token_id:
+            return SpecialTokenInfo(id=token, ids=[token_id], tokens=[token])
+        case tokens, ids:
+            return SpecialTokenInfo(id=fallback_id, ids=list(ids), tokens=list(tokens))
+
 
 class TemplatePostProcessor(BaseModel):
     type: Literal[PostProcessorType.TEMPLATE_PROCESSING] = PostProcessorType.TEMPLATE_PROCESSING
@@ -147,26 +159,24 @@ class TemplatePostProcessor(BaseModel):
     @classmethod
     def from_tokens(
         cls: Type[TemplatePostProcessor],
-        start_of_sequence_token: tuple[str, int] | None,
-        continuation_token: tuple[str, int] | None,
+        start_of_sequence_token: SpecialTokenTuple | None,
+        continuation_token: SpecialTokenTuple | None,
     ) -> TemplatePostProcessor:
         """Constructs a standard TemplatePostProcessor."""
         # Implicit overwriting: if both tokens have the same form, we still end up with one.
         if start_of_sequence_token is None and continuation_token is None:
             raise ValueError("At least one of start_of_sequence_token or continuation_token must be provided")
-        special_tokens = {
-            t[0]: SpecialTokenInfo(id=t[0], tokens=[t[0]], ids=[t[1]])
-            for t in [start_of_sequence_token, continuation_token]
-            if t
-        }
-        start_token_object = (
-            Token(id=start_of_sequence_token[0], type_id=0, type=TokenType.SPECIAL) if start_of_sequence_token else None
-        )
+
+        start_info = _special_token_info("START", start_of_sequence_token) if start_of_sequence_token else None
+        continuation_info = _special_token_info("CONTINUATION", continuation_token) if continuation_token else None
+        special_tokens = {info.id: info for info in (start_info, continuation_info) if info is not None}
+
+        start_token_object = Token(id=start_info.id, type_id=0, type=TokenType.SPECIAL) if start_info else None
         continuation_after_a = (
-            Token(id=continuation_token[0], type_id=0, type=TokenType.SPECIAL) if continuation_token else None
+            Token(id=continuation_info.id, type_id=0, type=TokenType.SPECIAL) if continuation_info else None
         )
         continuation_after_b = (
-            Token(id=continuation_token[0], type_id=1, type=TokenType.SPECIAL) if continuation_token else None
+            Token(id=continuation_info.id, type_id=1, type=TokenType.SPECIAL) if continuation_info else None
         )
         a_sequence = Token(id="A", type_id=0, type=TokenType.SEQUENCE)
         b_sequence = Token(id="B", type_id=1, type=TokenType.SEQUENCE)
