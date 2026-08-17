@@ -22,7 +22,7 @@ from skeletoken.normalizers import (
     ReplaceNormalizer,
 )
 from skeletoken.padding import Padding
-from skeletoken.postprocessors import (
+from skeletoken.post_processors import (
     BertPostProcessor,
     ByteLevelPostProcessor,
     PostProcessorSequence,
@@ -33,7 +33,7 @@ from skeletoken.postprocessors import (
     TokenSequence,
     TokenType,
 )
-from skeletoken.pretokenizers import (
+from skeletoken.pre_tokenizers import (
     Behavior,
     BertPreTokenizer,
     ByteLevelPreTokenizer,

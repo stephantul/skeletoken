@@ -9,8 +9,8 @@ from tokenizers.pre_tokenizers import Whitespace
 
 from skeletoken import TokenizerModel
 from skeletoken.normalizers import LowercaseNormalizer
+from skeletoken.pre_tokenizers import ByteLevelPreTokenizer, WhitespacePreTokenizer
 from skeletoken.preprocessor.preprocessor import Preprocessor, decoder_from_model
-from skeletoken.pretokenizers import ByteLevelPreTokenizer, WhitespacePreTokenizer
 
 
 def test_preprocessor_none() -> None:

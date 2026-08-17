@@ -9,7 +9,7 @@ from transformers import PreTrainedTokenizerFast
 from skeletoken.base import TokenizerModel
 from skeletoken.merges import Merges
 from skeletoken.models import BPE
-from skeletoken.postprocessors import TemplatePostProcessor
+from skeletoken.post_processors import TemplatePostProcessor
 
 
 def call_tokenizer(model: TokenizerModel) -> None:

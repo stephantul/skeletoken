@@ -5,7 +5,7 @@ from tokenizers.pre_tokenizers import PreTokenizer as TokenizersPreTokenizer
 
 from skeletoken.base import TokenizerModel
 from skeletoken.common import PrependScheme, StringPattern
-from skeletoken.pretokenizers import (
+from skeletoken.pre_tokenizers import (
     Behavior,
     BertPreTokenizer,
     ByteLevelPreTokenizer,
