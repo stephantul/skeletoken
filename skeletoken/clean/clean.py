@@ -12,8 +12,8 @@ def _process(
     added_token_dict: dict[str, AddedToken],
     preprocessor: "Preprocessor",
     keep: bool,
-    subword_prefix: bool,
-    word_prefix: bool,
+    continuing_subword_prefix: bool,
+    initial_subword_prefix: bool,
 ) -> str | None:
     if "�" in decoded:
         return original
@@ -21,7 +21,7 @@ def _process(
         return original
     else:
         preprocessed_tokens = preprocessor.preprocess(
-            decoded, word_prefix, subword_prefix, empty_sequence_is_token=True
+            decoded, initial_subword_prefix, continuing_subword_prefix, empty_sequence_is_token=True
         )
         if len(preprocessed_tokens) != 1:
             return original if keep else None
@@ -42,13 +42,14 @@ def clean_vocabulary(
     decoded_sequences = old_preprocessor.decode_sequences(vocabulary)
     added_token_dict = {at.content: at for at in added_tokens}
 
-    # A word prefix is being introduced where none existed before. If the model already distinguishes
-    # continuation pieces via a subword prefix (e.g. WordPiece's "##"), the absence of that marker
-    # reliably means the token was word-initial, so it should now receive the new word prefix too.
+    # An initial subword prefix is being introduced where none existed before. If the model already
+    # distinguishes continuation pieces via a continuing subword prefix (e.g. WordPiece's "##"), the
+    # absence of that marker reliably means the token was word-initial, so it should now receive the
+    # new initial subword prefix too.
     can_infer_word_initial = (
-        old_preprocessor.word_prefix is None
-        and new_preprocessor.word_prefix is not None
-        and old_preprocessor.subword_prefix is not None
+        old_preprocessor.initial_subword_prefix is None
+        and new_preprocessor.initial_subword_prefix is not None
+        and old_preprocessor.continuing_subword_prefix is not None
     )
 
     processed_results = [
@@ -58,8 +59,8 @@ def clean_vocabulary(
             added_token_dict,
             new_preprocessor,
             keep,
-            dt.had_subword_prefix,
-            not dt.had_subword_prefix if can_infer_word_initial else dt.had_word_prefix,
+            dt.had_continuing_subword_prefix,
+            not dt.had_continuing_subword_prefix if can_infer_word_initial else dt.had_initial_subword_prefix,
         )
         for dt in decoded_sequences
     ]

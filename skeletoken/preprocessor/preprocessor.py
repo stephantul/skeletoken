@@ -15,10 +15,10 @@ class Decoded:
     original: str
     # The base string form
     decoded: str
-    # Whether the token had a subword prefix
-    had_subword_prefix: bool
-    # Whether the token had a word prefix
-    had_word_prefix: bool
+    # Whether the token had a continuing subword prefix
+    had_continuing_subword_prefix: bool
+    # Whether the token had an initial subword prefix
+    had_initial_subword_prefix: bool
 
 
 def _remove_prefix(sequence: str, prefix: str | None) -> tuple[str, bool]:
@@ -42,28 +42,28 @@ class Preprocessor:
         byte_transformer: TokenizersByteLevelDecoder | None = None,
         normalizer: BaseNormalizer | None = None,
         pretokenizer: BasePretokenizer | None = None,
-        subword_prefix: str | None = None,
-        word_prefix: str | None = None,
+        continuing_subword_prefix: str | None = None,
+        initial_subword_prefix: str | None = None,
     ) -> None:
         """Initialize the Preprocessor with optional normalizer and pretokenizer."""
         self.normalizer = normalizer
         self.pretokenizer = pretokenizer
         self.byte_transformer = byte_transformer
-        self.subword_prefix = subword_prefix
-        self.word_prefix = word_prefix
+        self.continuing_subword_prefix = continuing_subword_prefix
+        self.initial_subword_prefix = initial_subword_prefix
 
     def decode(self, sequence: str) -> Decoded:
         """Preprocess a single sequence."""
-        decoded, has_subword = _remove_prefix(sequence, self.subword_prefix)
-        decoded, has_word = _remove_prefix(decoded, self.word_prefix)
+        decoded, has_subword = _remove_prefix(sequence, self.continuing_subword_prefix)
+        decoded, has_word = _remove_prefix(decoded, self.initial_subword_prefix)
 
         if self.byte_transformer:
             decoded = self.byte_transformer.decode([decoded])
         return Decoded(
             original=sequence,
             decoded=decoded,
-            had_subword_prefix=has_subword,
-            had_word_prefix=has_word,
+            had_continuing_subword_prefix=has_subword,
+            had_initial_subword_prefix=has_word,
         )
 
     def decode_sequences(self, sequences: list[str]) -> list[Decoded]:
@@ -73,19 +73,19 @@ class Preprocessor:
     def preprocess(
         self,
         sequence: str,
-        had_word_prefix: bool = False,
-        had_subword_prefix: bool = False,
+        had_initial_subword_prefix: bool = False,
+        had_continuing_subword_prefix: bool = False,
         empty_sequence_is_token: bool = False,
     ) -> list[str]:
         """Preprocess a single sequence.
 
-        Note that word prefix and subword prefix tokens like '##' and `_` are
+        Note that initial subword prefix and continuing subword prefix tokens like '##' and `_` are
         treated as regular characters here. So any tokens you input here should be
         decoded using `decode`. This removes these tokens and stores whether they had
         such a prefix.
 
         If `sequence` is empty, returns `[]` unless `empty_sequence_is_token` is set,
-        in which case it returns the word or subword prefix if present, or `[""]`
+        in which case it returns the initial or continuing subword prefix if present, or `[""]`
         otherwise.
         """
         if self.normalizer is not None:
@@ -94,12 +94,12 @@ class Preprocessor:
             # If the empty sequence is not supposed to be a token, return an empty list
             if not empty_sequence_is_token:
                 return []
-            # If it was a token, and we have word prefix, return the word prefix
-            if had_word_prefix and self.word_prefix:
-                return [self.word_prefix]
-            # If it was a subword, and we have a subword prefix, return the subword prefix
-            if had_subword_prefix and self.subword_prefix:
-                return [self.subword_prefix]
+            # If it was a token, and we have an initial subword prefix, return it
+            if had_initial_subword_prefix and self.initial_subword_prefix:
+                return [self.initial_subword_prefix]
+            # If it was a subword, and we have a continuing subword prefix, return it
+            if had_continuing_subword_prefix and self.continuing_subword_prefix:
+                return [self.continuing_subword_prefix]
             # Return an empty string to still correctly roundtrip the token.
             return [""]
         if self.pretokenizer is not None:
@@ -108,12 +108,12 @@ class Preprocessor:
             processed = [sequence]
         if processed:
             first_token = processed[0]
-            if not had_word_prefix and self.word_prefix:
-                first_token = first_token.removeprefix(self.word_prefix)
-            if had_subword_prefix:
+            if not had_initial_subword_prefix and self.initial_subword_prefix:
+                first_token = first_token.removeprefix(self.initial_subword_prefix)
+            if had_continuing_subword_prefix:
                 # This should not happen.
-                assert self.subword_prefix is not None
-                first_token = f"{self.subword_prefix}{first_token}"
+                assert self.continuing_subword_prefix is not None
+                first_token = f"{self.continuing_subword_prefix}{first_token}"
             processed[0] = first_token
 
         return processed
@@ -122,15 +122,15 @@ class Preprocessor:
     def from_tokenizer_model(cls, model: TokenizerModel) -> Preprocessor:
         """Set the normalizer and pretokenizer from a TokenizerModel."""
         tokenizer = model.to_tokenizer()
-        word_prefix = model.word_prefix
+        initial_subword_prefix = model.initial_subword_prefix
         if model.transforms_into_bytes and not model.adds_prefix_space:
-            word_prefix = None
+            initial_subword_prefix = None
         return cls(
             normalizer=tokenizer.normalizer,
             pretokenizer=tokenizer.pre_tokenizer,
             byte_transformer=decoder_from_model(model),
-            subword_prefix=model.subword_prefix,
-            word_prefix=word_prefix,
+            continuing_subword_prefix=model.continuing_subword_prefix,
+            initial_subword_prefix=initial_subword_prefix,
         )
 
     @classmethod

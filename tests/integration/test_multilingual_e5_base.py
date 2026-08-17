@@ -14,7 +14,7 @@ def test_load() -> None:
     assert model.pad_token_id == 1
     assert model.unk_token == "<unk>"
     assert model.unk_token_id == 3
-    assert model.subword_prefix is None
+    assert model.continuing_subword_prefix is None
     assert model.adds_prefix_space is None
     assert not model.transforms_into_bytes
     assert isinstance(model.post_processor, TemplatePostProcessor)

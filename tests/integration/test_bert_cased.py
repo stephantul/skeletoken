@@ -14,7 +14,7 @@ def test_load() -> None:
     assert model.pad_token_id == 0
     assert model.unk_token == "[UNK]"
     assert model.unk_token_id == 100
-    assert model.subword_prefix == "##"
+    assert model.continuing_subword_prefix == "##"
     assert not model.adds_prefix_space
     assert isinstance(model.post_processor, TemplatePostProcessor)
     assert model.vocabulary["[CLS]"] == 101
@@ -52,7 +52,7 @@ def test_basic_collapse() -> None:
 def test_set_prefix() -> None:
     """Test whether setting the subword prefix removes all useless tokens."""
     model = TokenizerModel.from_pretrained(_PATH)
-    model.subword_prefix = ""
+    model.continuing_subword_prefix = ""
 
     new_tokens = set(model.model_delta.new_tokens)
     for token in model.model_delta.removed_tokens:

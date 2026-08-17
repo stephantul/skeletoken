@@ -35,7 +35,7 @@ def test_clean() -> None:
 
 def test_maintain_subwords() -> None:
     """Test whether an subwords are maintained."""
-    p = Preprocessor(subword_prefix="##")
+    p = Preprocessor(continuing_subword_prefix="##")
     vocabulary = ["dog", "##cat", "cat"]
     decased = clean_vocabulary(
         vocabulary,
@@ -49,7 +49,7 @@ def test_maintain_subwords() -> None:
 
 def test_remove_multiword() -> None:
     """Test whether an subwords are maintained."""
-    p = Preprocessor(word_prefix="_", pretokenizer=Metaspace(replacement="_"))
+    p = Preprocessor(initial_subword_prefix="_", pretokenizer=Metaspace(replacement="_"))
     vocabulary = ["_dog", "_cat", "_cat hat"]
     decased = clean_vocabulary(
         vocabulary,
@@ -61,10 +61,12 @@ def test_remove_multiword() -> None:
     assert decased == ["_dog", "_cat", None]
 
 
-def test_infer_word_initial_when_introducing_word_prefix() -> None:
+def test_infer_word_initial_when_introducing_initial_subword_prefix() -> None:
     """When a word prefix is newly introduced, bare (non-subword-prefixed) tokens are word-initial."""
-    old = Preprocessor(subword_prefix="##")
-    new = Preprocessor(subword_prefix="##", word_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False))
+    old = Preprocessor(continuing_subword_prefix="##")
+    new = Preprocessor(
+        continuing_subword_prefix="##", initial_subword_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False)
+    )
     vocabulary = ["dog", "##cat", "cat"]
     result = clean_vocabulary(
         vocabulary,
@@ -76,10 +78,10 @@ def test_infer_word_initial_when_introducing_word_prefix() -> None:
     assert result == ["▁dog", "##cat", "▁cat"]
 
 
-def test_no_infer_word_initial_without_subword_prefix_scheme() -> None:
+def test_no_infer_word_initial_without_continuing_subword_prefix_scheme() -> None:
     """Without an old subword prefix scheme, there's no signal to infer word-initial-ness from."""
     old = Preprocessor()
-    new = Preprocessor(word_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False))
+    new = Preprocessor(initial_subword_prefix="▁", pretokenizer=Metaspace(replacement="▁", split=False))
     vocabulary = ["dog", "cat"]
     result = clean_vocabulary(
         vocabulary,
@@ -93,7 +95,9 @@ def test_no_infer_word_initial_without_subword_prefix_scheme() -> None:
 
 def test_process() -> None:
     """Test the process function with a lot of inputs."""
-    p = Preprocessor(subword_prefix="##", word_prefix="P", pretokenizer=Metaspace(replacement="P"))
+    p = Preprocessor(
+        continuing_subword_prefix="##", initial_subword_prefix="P", pretokenizer=Metaspace(replacement="P")
+    )
     x = _process("a", "Z", {}, p, False, False, False)
     assert x == "a"
     x = _process("a", "Z", {}, p, False, True, False)
@@ -149,7 +153,7 @@ def test_process_added_token_returns_original_regardless_of_split() -> None:
     """Added tokens are matched against input before the normalizer/pretokenizer ever runs."""
     p = Preprocessor(
         normalizer=Lowercase(),
-        word_prefix="▁",
+        initial_subword_prefix="▁",
         pretokenizer=Metaspace(replacement="▁"),
     )
     at = AddedToken(

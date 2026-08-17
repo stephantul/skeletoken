@@ -14,7 +14,7 @@ def test_load() -> None:
     assert model.pad_token_id == None
     assert model.unk_token == "<|endoftext|>"
     assert model.unk_token_id == 50256
-    assert model.subword_prefix == ""
+    assert model.continuing_subword_prefix == ""
     assert not model.adds_prefix_space
     assert isinstance(model.post_processor, ByteLevelPostProcessor)
     assert model.post_processor.add_prefix_space

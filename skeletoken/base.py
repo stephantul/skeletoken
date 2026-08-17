@@ -17,8 +17,8 @@ from skeletoken.models import (
     MODELS_THAT_NEED_UNK,
     ModelDiscriminator,
     WordPiece,
-    get_subword_prefix_token,
-    set_subword_prefix_token,
+    get_continuing_subword_prefix_token,
+    set_continuing_subword_prefix_token,
 )
 from skeletoken.normalizers import (
     LowercaseNormalizer,
@@ -301,9 +301,9 @@ class TokenizerModel(BaseModel):
 
     def _preprocess_token(self, token: str, is_initial: bool = True) -> str:
         """Preprocesses a token."""
-        had_subword_prefix = not is_initial and self.preprocessor.subword_prefix is not None
+        had_continuing_subword_prefix = not is_initial and self.preprocessor.continuing_subword_prefix is not None
         token_list = self.preprocessor.preprocess(
-            token, had_word_prefix=is_initial, had_subword_prefix=had_subword_prefix
+            token, had_initial_subword_prefix=is_initial, had_continuing_subword_prefix=had_continuing_subword_prefix
         )
         if len(token_list) > 1:
             tokens_formatted = [f" '{token}'" for token in token_list]
@@ -735,16 +735,16 @@ class TokenizerModel(BaseModel):
         return self.pre_tokenizer._splits
 
     @property
-    def subword_prefix(self) -> str | None:
+    def continuing_subword_prefix(self) -> str | None:
         """Get the prefix token, if any."""
-        return get_subword_prefix_token(self.model)
+        return get_continuing_subword_prefix_token(self.model)
 
-    @subword_prefix.setter
-    def subword_prefix(self, prefix: str) -> None:
-        """Set the subword prefix and re-encode the vocabulary."""
+    @continuing_subword_prefix.setter
+    def continuing_subword_prefix(self, prefix: str) -> None:
+        """Set the continuing subword prefix and re-encode the vocabulary."""
         old_preprocessor = self.preprocessor
         self._preprocessor = None
-        set_subword_prefix_token(self.model, prefix)
+        set_continuing_subword_prefix_token(self.model, prefix)
         new_preprocessor = self.preprocessor
         self._consolidate(
             keep=True,
@@ -753,9 +753,9 @@ class TokenizerModel(BaseModel):
         )
 
     @property
-    def word_prefix(self) -> str | None:
-        """Get the word prefix token, if any."""
-        # Word prefixes are not handled by the model, but added
+    def initial_subword_prefix(self) -> str | None:
+        """Get the initial subword prefix token, if any."""
+        # Initial subword prefixes are not handled by the model, but added
         # by pretokenizers
         if self.transforms_into_bytes:
             return "Ġ"
@@ -763,17 +763,17 @@ class TokenizerModel(BaseModel):
             return None
         return get_metaspace(self.pre_tokenizer)
 
-    @word_prefix.setter
-    def word_prefix(self, prefix: str | None) -> None:
-        """Set the word prefix and re-encode the vocabulary."""
+    @initial_subword_prefix.setter
+    def initial_subword_prefix(self, prefix: str | None) -> None:
+        """Set the initial subword prefix and re-encode the vocabulary."""
         if self.transforms_into_bytes:
             logger.warning(
-                "This tokenizer transforms its input into bytes, so the word prefix is fixed to the "
+                "This tokenizer transforms its input into bytes, so the initial subword prefix is fixed to the "
                 "byte representation of ' ' and cannot be changed."
             )
             return
         if prefix is not None and len(prefix) != 1:
-            raise ValueError(f"The word prefix must be a single character or None, got '{prefix}'.")
+            raise ValueError(f"The initial subword prefix must be a single character or None, got '{prefix}'.")
 
         old_preprocessor = self.preprocessor
         self._preprocessor = None
@@ -1067,8 +1067,8 @@ class TokenizerModel(BaseModel):
 
         if model.transforms_into_bytes:
             return model
-        model.word_prefix = " "
-        if model.subword_prefix:
-            model.subword_prefix = ""
+        model.initial_subword_prefix = " "
+        if model.continuing_subword_prefix:
+            model.continuing_subword_prefix = ""
 
         return model.consolidate_vocabulary()

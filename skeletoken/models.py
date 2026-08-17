@@ -196,7 +196,7 @@ Model = WordPiece | BPE | Unigram | WordLevel
 ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
 
 
-def get_subword_prefix_token(model: Model) -> str | None:
+def get_continuing_subword_prefix_token(model: Model) -> str | None:
     """Get the prefix token from the model, if any."""
     # Only WordPiece and BPE models have these.
     if isinstance(model, (WordPiece, BPE)):
@@ -204,7 +204,7 @@ def get_subword_prefix_token(model: Model) -> str | None:
     return None
 
 
-def set_subword_prefix_token(model: Model, prefix: str) -> None:
+def set_continuing_subword_prefix_token(model: Model, prefix: str) -> None:
     """Set the subword prefix. This will raise a ValueError if the model does not support one.
 
     Only WordPiece is supported here, even though BPE also has a `continuing_subword_prefix` field.

@@ -12,8 +12,8 @@ from skeletoken.models import (
     Unigram,
     WordLevel,
     WordPiece,
-    get_subword_prefix_token,
-    set_subword_prefix_token,
+    get_continuing_subword_prefix_token,
+    set_continuing_subword_prefix_token,
 )
 from skeletoken.vocabulary import UnigramVocabulary, Vocabulary
 from tests.conftest import call_tokenizer
@@ -127,29 +127,29 @@ def test_greedy(model: Model) -> None:
     assert tokenizer.encode("a b c d e").tokens == ["a", " ", "b", " ", "c", " ", "d", " ", "e"]
 
 
-def test_get_subword_prefix_token() -> None:
+def test_get_continuing_subword_prefix_token() -> None:
     """Tests the continuing subword prefix behavior."""
     wordpiece = _get_default_model(ModelType.WORDPIECE)
     wordpiece.continuing_subword_prefix = "##"
 
-    assert get_subword_prefix_token(wordpiece) == "##"
+    assert get_continuing_subword_prefix_token(wordpiece) == "##"
 
     wordpiece.continuing_subword_prefix = ""
-    assert get_subword_prefix_token(wordpiece) == ""
+    assert get_continuing_subword_prefix_token(wordpiece) == ""
 
     bpe = _get_default_model(ModelType.BPE)
     bpe.continuing_subword_prefix = "##"
 
-    assert get_subword_prefix_token(bpe) == "##"
+    assert get_continuing_subword_prefix_token(bpe) == "##"
 
     bpe.continuing_subword_prefix = ""
-    assert get_subword_prefix_token(bpe) == ""
+    assert get_continuing_subword_prefix_token(bpe) == ""
 
     unigram = _get_default_model(ModelType.UNIGRAM)
-    assert get_subword_prefix_token(unigram) is None
+    assert get_continuing_subword_prefix_token(unigram) is None
 
     wordlevel = _get_default_model(ModelType.WORDLEVEL)
-    assert get_subword_prefix_token(wordlevel) is None
+    assert get_continuing_subword_prefix_token(wordlevel) is None
 
 
 def test_unk_token_unigram() -> None:
@@ -461,7 +461,7 @@ def test_bpe_replace_vocabulary_concat_present() -> None:
 
 
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
-def test_set_subword_prefix_token(model: Model) -> None:
+def test_set_continuing_subword_prefix_token(model: Model) -> None:
     """Test whether setting the subword prefix token works.
 
     Only WordPiece is supported: BPE also has a `continuing_subword_prefix` field, but setting it
@@ -469,8 +469,8 @@ def test_set_subword_prefix_token(model: Model) -> None:
     doesn't implement that convention, and `tokenizers` doesn't validate it, so it can even panic).
     """
     if isinstance(model, WordPiece):
-        set_subword_prefix_token(model, "haha")
+        set_continuing_subword_prefix_token(model, "haha")
         assert model.continuing_subword_prefix == "haha"
     else:
         with pytest.raises(ValueError):
-            set_subword_prefix_token(model, "haha")
+            set_continuing_subword_prefix_token(model, "haha")
