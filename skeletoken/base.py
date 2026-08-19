@@ -34,6 +34,7 @@ from skeletoken.post_processors import (
     get_eos_token_from_post_processor,
     get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
+    resync_post_processor_ids,
 )
 from skeletoken.pre_tokenizers import (
     ByteLevelPreTokenizer,
@@ -391,13 +392,7 @@ class TokenizerModel(BaseModel):
                 token.id = remapped
         self.pad_token = self.pad_token  # Trigger pad_token remapping
         if self.post_processor is not None:
-            for added_token in self.added_tokens.root:
-                self.post_processor = maybe_replace_token_in_post_processor(
-                    added_token.content,
-                    added_token.content,
-                    added_token.id,
-                    self.post_processor,
-                )
+            self.post_processor = resync_post_processor_ids(self.post_processor, vocabulary)
 
     def remove_token_from_vocabulary(self, token: str) -> TokenizerModel:
         """Remove a token from the vocabulary."""
