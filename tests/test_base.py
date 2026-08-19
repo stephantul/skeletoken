@@ -1090,6 +1090,39 @@ def test_remove_tokens_remaps_hardcoded_ids_when_chained(small_tokenizer_json: d
     call_tokenizer(chained)
 
 
+def test_remove_tokens_remaps_non_added_special_tokens(small_tokenizer_json: dict[str, Any]) -> None:
+    """Test that removal remaps post-processor ids for special tokens that are plain vocab entries.
+
+    `[CLS]` here is a regular vocabulary token, not a registered added token, so this exercises
+    the path that `_remap_added_token_ids` used to skip entirely.
+    """
+    model = TokenizerModel.from_string(json.dumps(small_tokenizer_json))
+    assert "[CLS]" not in {token.content for token in model.added_tokens.root}
+    model = model.add_post_processor(
+        TemplatePostProcessor(
+            single=(
+                Token(id="[CLS]", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+            ),
+            pair=(
+                Token(id="[CLS]", type_id=0, type=TokenType.SPECIAL),
+                Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+                Token(id="B", type_id=1, type=TokenType.SEQUENCE),
+            ),
+            special_tokens={
+                "[CLS]": SpecialTokenInfo(id="[CLS]", ids=[model.vocabulary["[CLS]"]], tokens=["[CLS]"]),
+            },
+        )
+    )
+
+    model = model.remove_token_from_vocabulary("[PAD]")
+
+    assert isinstance(model.post_processor, TemplatePostProcessor)
+    assert model.post_processor.special_tokens["[CLS]"].ids == [model.vocabulary["[CLS]"]]
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
 def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -1511,6 +1544,36 @@ def test_consolidate_with_post_processor_and_none_token(small_tokenizer: Tokeniz
     assert "A" not in model.sorted_vocabulary
     assert "a" in model.sorted_vocabulary
     assert model.post_processor is not None
+    call_tokenizer(model)
+
+
+def test_consolidate_remaps_post_processor_id_after_compaction(small_tokenizer: Tokenizer) -> None:
+    """Test that consolidation resyncs a post-processor id after vocabulary compaction shifts it.
+
+    A normalizer that folds "b" onto the existing "a" drops "b"'s vocabulary slot (index 6, before
+    "D" at index 8), so every later token's id shifts down by one. "D" is a plain vocab token, not
+    a registered added token, so its post-processor id must track that shift rather than staying
+    at its pre-compaction value.
+    """
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert "D" not in {token.content for token in model.added_tokens.root}
+    model.post_processor = TemplatePostProcessor(
+        single=(Token(id="D", type_id=0, type=TokenType.SPECIAL), Token(id="A", type_id=0, type=TokenType.SEQUENCE)),
+        pair=(
+            Token(id="D", type_id=0, type=TokenType.SPECIAL),
+            Token(id="A", type_id=0, type=TokenType.SEQUENCE),
+            Token(id="B", type_id=1, type=TokenType.SEQUENCE),
+        ),
+        special_tokens={"D": SpecialTokenInfo(id="D", ids=[model.vocabulary["D"]], tokens=["D"])},
+    )
+    model = model.add_normalizer(ReplaceNormalizer(pattern="b", content="a"))
+
+    model = model.consolidate_vocabulary(keep=False)
+
+    assert "b" not in model.sorted_vocabulary
+    assert isinstance(model.post_processor, TemplatePostProcessor)
+    assert model.post_processor.special_tokens["D"].ids == [model.vocabulary["D"]]
+    assert_vocabulary_consistent(model)
     call_tokenizer(model)
 
 

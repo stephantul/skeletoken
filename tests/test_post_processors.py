@@ -20,6 +20,7 @@ from skeletoken.post_processors import (
     get_eos_token_from_post_processor,
     get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
+    resync_post_processor_ids,
 )
 from tests.conftest import call_tokenizer
 
@@ -177,6 +178,43 @@ def test_maybe_replace_token_in_post_processor(post_processor: PostProcessor, ol
         assert result.sep == (new_token, 11)
     if isinstance(result, TemplatePostProcessor):
         assert result.special_tokens["special_end"].tokens == [new_token]
+
+
+def test_resync_post_processor_ids_bert_roberta_raises_for_missing_token() -> None:
+    """A cls/sep token missing from the vocabulary is a caller bug, not a value to guess at."""
+    post_processor = _get_default_postprocessor(PostProcessorType.BERT_PROCESSING)
+    with pytest.raises(ValueError, match="\\[CLS\\]"):
+        resync_post_processor_ids(post_processor, {"[SEP]": 1})
+
+
+def test_resync_post_processor_ids_template_raises_for_missing_token() -> None:
+    """A referenced template special token missing from the vocabulary is a caller bug."""
+    post_processor = _get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING)
+    with pytest.raises(ValueError, match="\\[BEGIN\\]"):
+        resync_post_processor_ids(post_processor, {"[END]": 1, "[SEQ]": 2})
+
+
+def test_resync_post_processor_ids_template_ignores_unmatched_identifier() -> None:
+    """A SPECIAL token id in single/pair with no matching special_tokens entry is skipped, not an error."""
+    post_processor = TemplatePostProcessor(
+        single=(Token(id="ghost", type_id=0, type=TokenType.SPECIAL),),
+        pair=(Token(id="ghost", type_id=0, type=TokenType.SPECIAL),),
+        special_tokens={},
+    )
+    result = resync_post_processor_ids(post_processor, {})
+    assert isinstance(result, TemplatePostProcessor)
+    assert result.special_tokens == {}
+
+
+def test_resync_post_processor_ids_template_ignores_unreferenced_special_token() -> None:
+    """An unreferenced special_tokens entry ("sequence" keys a SEQUENCE-type token) is left alone."""
+    post_processor = _get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING)
+    vocabulary = {"[BEGIN]": 5, "[END]": 6}
+    result = resync_post_processor_ids(post_processor, vocabulary)
+    assert isinstance(result, TemplatePostProcessor)
+    assert result.special_tokens["special_begin"].ids == [5]
+    assert result.special_tokens["special_end"].ids == [6]
+    assert result.special_tokens["sequence"].ids == [2]
 
 
 @pytest.mark.parametrize(

@@ -338,3 +338,60 @@ def maybe_replace_token_in_post_processor(
             special_token.ids = new_ids
 
     return post_processor
+
+
+def resync_post_processor_ids(post_processor: PostProcessorDiscriminator, vocabulary: dict[str, int]) -> PostProcessor:
+    """Rewrite every id in a post-processor's special tokens to match the current vocabulary.
+
+    Unlike `maybe_replace_token_in_post_processor`, this does not rename any tokens: for each
+    token string already stored in the post-processor, it looks up that token's current id in
+    `vocabulary` and overwrites the stored id with it. This repairs ids left stale by vocabulary
+    compaction (removal or consolidation), regardless of whether the token is a registered added
+    token.
+
+    Parameters
+    ----------
+    post_processor : PostProcessorDiscriminator
+        The post-processor to resync.
+    vocabulary : dict[str, int]
+        The current token -> id mapping to resync against.
+
+    Returns
+    -------
+    PostProcessor
+        The post-processor with all special token ids matching `vocabulary`.
+
+    Raises
+    ------
+    ValueError
+        If a token the post-processor references is not in `vocabulary`.
+
+    """
+    if isinstance(post_processor, PostProcessorSequence):
+        return PostProcessorSequence(
+            processors=[resync_post_processor_ids(p, vocabulary) for p in post_processor.processors]
+        )
+    post_processor = post_processor.model_copy(deep=True)
+    if isinstance(post_processor, RobertaPostProcessor | BertPostProcessor):
+        for token in (post_processor.cls[0], post_processor.sep[0]):
+            if token not in vocabulary:
+                raise ValueError(f"Post-processor token '{token}' is no longer in the vocabulary.")
+        post_processor.cls = (post_processor.cls[0], vocabulary[post_processor.cls[0]])
+        post_processor.sep = (post_processor.sep[0], vocabulary[post_processor.sep[0]])
+    if isinstance(post_processor, TemplatePostProcessor):
+        identifiers = {
+            token.id
+            for sequence in (post_processor.single, post_processor.pair)
+            for token in sequence
+            if token.type == TokenType.SPECIAL
+        }
+        for identifier in identifiers:
+            special_token = post_processor.special_tokens.get(identifier)
+            if special_token is None:
+                continue
+            for token in special_token.tokens:
+                if token not in vocabulary:
+                    raise ValueError(f"Post-processor token '{token}' is no longer in the vocabulary.")
+            special_token.ids = [vocabulary[token] for token in special_token.tokens]
+
+    return post_processor
