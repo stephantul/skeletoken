@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, RootModel
+from tokenizers.pre_tokenizers import FixedLength
 
 
 class BatchLongestStrategy(RootModel[Literal["BatchLongest"]]):
@@ -55,3 +56,10 @@ class Padding(BaseModel):
     pad_id: int
     pad_type_id: int
     pad_token: str
+
+
+def is_basic_padding(padding: Padding | None) -> bool:
+    """Return whether the padding is the most basic padding."""
+    if padding is None:
+        return False
+    return padding.strategy != FixedLength(length=0)
