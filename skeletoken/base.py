@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from tokenizers import Tokenizer
@@ -32,9 +32,12 @@ from skeletoken.post_processors import (
     TemplatePostProcessor,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    get_prompt_from_post_processor,
     get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
     resync_post_processor_ids,
+    set_prompt_in_post_processor,
+    unset_prompt_in_post_processor,
 )
 from skeletoken.pre_tokenizers import (
     ByteLevelPreTokenizer,
@@ -75,10 +78,12 @@ class TokenizerModel(BaseModel):
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
+    _tokenizer: Tokenizer | None = None
 
     def deep_copy(self) -> TokenizerModel:
         """Return a deep copy of this TokenizerModel."""
         self._preprocessor = None
+        self._tokenizer = None
         return self.model_copy(deep=True)
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:  # noqa: C901
@@ -150,6 +155,13 @@ class TokenizerModel(BaseModel):
             self.pad_token = pad_token
 
         self._original_tokenizer = self.deep_copy()
+
+    @property
+    def tokenizer(self) -> Tokenizer:
+        """Return the actual tokenizer."""
+        if self._tokenizer is None:
+            self._tokenizer = self.to_tokenizer()
+        return self._tokenizer
 
     @property
     def preprocessor(self) -> Preprocessor:
@@ -553,6 +565,7 @@ class TokenizerModel(BaseModel):
     def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool) -> None:
         """Add a pre-tokenizer to the tokenizer model in place."""
         self._preprocessor = None
+        self._tokenizer = None
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
@@ -615,6 +628,7 @@ class TokenizerModel(BaseModel):
 
     def _add_normalizer_inplace(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
         self._preprocessor = None
+        self._tokenizer = None
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):
@@ -750,6 +764,7 @@ class TokenizerModel(BaseModel):
         """Set the continuing subword prefix and re-encode the vocabulary."""
         old_preprocessor = self.preprocessor
         self._preprocessor = None
+        self._tokenizer = None
         set_continuing_subword_prefix_token(self.model, prefix)
         new_preprocessor = self.preprocessor
         self._consolidate(
@@ -783,6 +798,7 @@ class TokenizerModel(BaseModel):
 
         old_preprocessor = self.preprocessor
         self._preprocessor = None
+        self._tokenizer = None
 
         existing_metaspace = (
             get_pretokenizer_of_type(self.pre_tokenizer, MetaspacePreTokenizer)
@@ -1093,3 +1109,27 @@ class TokenizerModel(BaseModel):
             model.continuing_subword_prefix = ""
 
         return model
+
+    @property
+    def prompt(self) -> list[str] | None:
+        """Return the currently set prompt tokens, inserted right before every sequence, if any."""
+        return get_prompt_from_post_processor(self.post_processor)
+
+    @prompt.setter
+    def prompt(self, prompt: str | None) -> None:
+        """Set or unset a prompt inserted right before every sequence.
+
+        If the post-processor already inserts a beginning-of-sequence token (e.g. `[CLS]`), the
+        prompt is inserted right after it, so every sequence starts with e.g. `[CLS] search query:`
+        instead of just `[CLS]`. If there is no such token, a BOS slot holding just the prompt is
+        created (added to an existing TemplatePostProcessor, or a new one if there is none). Set to
+        `None` to remove a previously set prompt.
+        """
+        if prompt is None:
+            self.post_processor = unset_prompt_in_post_processor(self.post_processor)
+        else:
+            encoding = self.tokenizer.encode(prompt, add_special_tokens=False)
+            self.post_processor = set_prompt_in_post_processor(
+                self.post_processor, cast(list[str], encoding.tokens), cast(list[int], encoding.ids)
+            )
+        self._tokenizer = None

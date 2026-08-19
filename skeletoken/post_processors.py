@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, SerializationInfo, model_serializer, mode
 
 logger = logging.getLogger(__name__)
 
+_PROMPT_SPECIAL_TOKEN_ID = "PROMPT"
+
 
 class PostProcessorType(str, Enum):
     SEQUENCE = "Sequence"
@@ -161,14 +163,16 @@ class TemplatePostProcessor(BaseModel):
         cls: Type[TemplatePostProcessor],
         start_of_sequence_token: SpecialTokenTuple | None,
         continuation_token: SpecialTokenTuple | None,
+        start_name: str = "START",
+        continuation_name: str = "CONTINUATION",
     ) -> TemplatePostProcessor:
         """Constructs a standard TemplatePostProcessor."""
         # Implicit overwriting: if both tokens have the same form, we still end up with one.
         if start_of_sequence_token is None and continuation_token is None:
             raise ValueError("At least one of start_of_sequence_token or continuation_token must be provided")
 
-        start_info = _special_token_info("START", start_of_sequence_token) if start_of_sequence_token else None
-        continuation_info = _special_token_info("CONTINUATION", continuation_token) if continuation_token else None
+        start_info = _special_token_info(start_name, start_of_sequence_token) if start_of_sequence_token else None
+        continuation_info = _special_token_info(continuation_name, continuation_token) if continuation_token else None
         special_tokens = {info.id: info for info in (start_info, continuation_info) if info is not None}
 
         start_token_object = Token(id=start_info.id, type_id=0, type=TokenType.SPECIAL) if start_info else None
@@ -257,6 +261,96 @@ def get_eos_token_from_post_processor(post_processor: PostProcessor) -> list[str
         identifier = single_encoding[-1].id
         info = post_processor.special_tokens.get(identifier)
         return info.tokens if info is not None else None
+
+
+def get_prompt_from_post_processor(post_processor: PostProcessor | None) -> list[str] | None:
+    """Get the prompt tokens inserted right before every sequence, if any."""
+    if not isinstance(post_processor, TemplatePostProcessor):
+        return None
+    info = post_processor.special_tokens.get(_PROMPT_SPECIAL_TOKEN_ID)
+    if info is None or not info.tokens:
+        return None
+    return info.tokens
+
+
+def _prompt_insertion_index(tokens: TokenSequence) -> int:
+    """Index of a prompt: right after an initial special token, else the front."""
+    if not tokens:
+        return 0
+    return tokens[0].type == TokenType.SPECIAL
+
+
+def set_prompt_in_post_processor(
+    post_processor: PostProcessor | None, tokens: list[str], ids: list[int]
+) -> PostProcessor:
+    """Set (or replace) the prompt inserted right before every sequence.
+
+    The prompt gets a special-token slot, inserted right after a real beginning-of-
+    sequence token if the post-processor has one (e.g. `[CLS]`), or at the front otherwise.
+
+    Parameters
+    ----------
+    post_processor : PostProcessor | None
+        The post-processor to set the prompt on, or `None` if the tokenizer has none yet.
+    tokens : list[str]
+        The prompt's tokens.
+    ids : list[int]
+        The prompt tokens' vocabulary ids, matched by position to `tokens`.
+
+    Returns
+    -------
+    PostProcessor
+        The post-processor with the prompt set.
+
+    Raises
+    ------
+    ValueError
+        If `post_processor` is a type that cannot hold a prompt (anything other than `None` or a
+        `TemplatePostProcessor`).
+
+    """
+    if post_processor is not None and not isinstance(post_processor, TemplatePostProcessor):
+        raise ValueError(
+            f"Cannot set a prompt: the tokenizer has a {type(post_processor).__name__} post-processor, "
+            "which cannot hold a prompt. Convert it to a TemplatePostProcessor first."
+        )
+
+    prompt_info = SpecialTokenInfo(id=_PROMPT_SPECIAL_TOKEN_ID, tokens=list(tokens), ids=list(ids))
+    prompt_token = Token(id=_PROMPT_SPECIAL_TOKEN_ID, type_id=0, type=TokenType.SPECIAL)
+
+    if post_processor is None:
+        return TemplatePostProcessor.from_tokens((tokens, ids), None, _PROMPT_SPECIAL_TOKEN_ID)
+
+    # The postprocessor already has a prompt. Overwrite it.
+    if _PROMPT_SPECIAL_TOKEN_ID in post_processor.special_tokens:
+        post_processor.special_tokens[_PROMPT_SPECIAL_TOKEN_ID] = prompt_info
+        return post_processor
+
+    # It doesn't have one: insert it after BOS.
+    single_index = _prompt_insertion_index(post_processor.single)
+    pair_index = _prompt_insertion_index(post_processor.pair)
+    post_processor.special_tokens[_PROMPT_SPECIAL_TOKEN_ID] = prompt_info
+    post_processor.single = (*post_processor.single[:single_index], prompt_token, *post_processor.single[single_index:])
+    post_processor.pair = (*post_processor.pair[:pair_index], prompt_token, *post_processor.pair[pair_index:])
+    return post_processor
+
+
+def unset_prompt_in_post_processor(post_processor: PostProcessor | None) -> PostProcessor | None:
+    """Remove a previously set prompt, if any, leaving any other special tokens."""
+    if not isinstance(post_processor, TemplatePostProcessor):
+        return post_processor
+    if _PROMPT_SPECIAL_TOKEN_ID not in post_processor.special_tokens:
+        return post_processor
+
+    def _is_prompt_slot(t: Token) -> bool:
+        return t.type == TokenType.SPECIAL and t.id == _PROMPT_SPECIAL_TOKEN_ID
+
+    post_processor.single = tuple(t for t in post_processor.single if not _is_prompt_slot(t))
+    post_processor.pair = tuple(t for t in post_processor.pair if not _is_prompt_slot(t))
+    post_processor.special_tokens.pop(_PROMPT_SPECIAL_TOKEN_ID, None)
+    if not post_processor.special_tokens:
+        return None
+    return post_processor
 
 
 def get_tokens_from_post_processor(post_processor: PostProcessor) -> set[str]:

@@ -43,6 +43,7 @@ from skeletoken.pre_tokenizers import (
     SplitPreTokenizer,
     StringPattern,
     WhitespacePreTokenizer,
+    WhitespaceSplitPreTokenizer,
 )
 from skeletoken.truncation import Truncation, TruncationDirection, TruncationStrategy
 from skeletoken.vocabulary import Vocabulary
@@ -639,6 +640,115 @@ def test_bos(small_tokenizer: Tokenizer) -> None:
         ]
     )
     assert model.bos is None
+
+    call_tokenizer(model)
+
+
+def test_prompt_incompatible_post_processor(small_tokenizer: Tokenizer) -> None:
+    """Test that setting a prompt raises for post-processor types that cannot hold one."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.post_processor = RobertaPostProcessor(
+        sep=("[SEP]", 1), cls=("[CLS]", 3), trim_offsets=True, add_prefix_space=False
+    )
+    assert model.prompt is None
+
+    with pytest.raises(ValueError):
+        model.prompt = "search query:"
+
+
+def test_set_prompt_inserts_slot_when_no_post_processor(small_tokenizer: Tokenizer) -> None:
+    """Test that setting a prompt with no post-processor at all creates one, and unsetting reverts it."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+    assert model.post_processor is None
+    assert model.prompt is None
+
+    # Unsetting when nothing was ever set is a no-op.
+    model.prompt = None
+    assert model.post_processor is None
+
+    model.prompt = "a b c"
+    assert model.prompt == ["a", "b", "c"]
+    assert model.bos == ["a", "b", "c"]
+    assert model.bos_ids == [5, 6, 7]
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["a", "b", "c", "a"]
+
+    # Re-setting an already-synthetic prompt-only slot replaces it outright.
+    model.prompt = "b"
+    assert model.prompt == ["b"]
+    assert model.bos == ["b"]
+
+    # Unsetting fully reverts to having no post-processor at all.
+    model.prompt = None
+    assert model.prompt is None
+    assert model.post_processor is None
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["a"]
+
+    call_tokenizer(model)
+
+
+def test_set_prompt_inserts_slot_when_template_has_no_bos(small_tokenizer: Tokenizer) -> None:
+    """Test that setting a prompt on a TemplatePostProcessor without a BOS slot inserts one, keeping EOS intact."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+    model.post_processor = TemplatePostProcessor.from_tokens(None, ("[SEP]", model.vocabulary["[SEP]"]))
+    assert model.eos == ["[SEP]"]
+    assert model.prompt is None
+
+    # Unsetting when there is a TemplatePostProcessor but no BOS slot at all is a no-op.
+    model.prompt = None
+    assert model.eos == ["[SEP]"]
+
+    model.prompt = "a b"
+    assert model.prompt == ["a", "b"]
+    assert model.bos == ["a", "b"]
+    assert model.eos == ["[SEP]"]
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["a", "b", "a", "[SEP]"]
+
+    # Unsetting drops only the synthesized BOS slot, keeping the pre-existing EOS.
+    model.prompt = None
+    assert model.prompt is None
+    assert model.bos is None
+    assert model.eos == ["[SEP]"]
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["a", "[SEP]"]
+
+    call_tokenizer(model)
+
+
+def test_set_prompt_with_existing_bos(small_tokenizer: Tokenizer) -> None:
+    """Test setting and unsetting a prompt on a TemplatePostProcessor that already has a BOS token."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+    model.post_processor = TemplatePostProcessor.from_tokens(
+        ("[CLS]", model.vocabulary["[CLS]"]), ("[SEP]", model.vocabulary["[SEP]"])
+    )
+    assert model.bos == ["[CLS]"]
+    assert model.prompt is None
+
+    model.prompt = "a b c"
+    assert model.prompt == ["a", "b", "c"]
+    # The prompt is its own slot, right after the real BOS token; .bos itself is unaffected.
+    assert model.bos == ["[CLS]"]
+
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["[CLS]", "a", "b", "c", "a", "[SEP]"]
+    assert encoding.ids == [model.vocabulary["[CLS]"], 5, 6, 7, 5, model.vocabulary["[SEP]"]]
+
+    # Re-setting the prompt replaces it, and keeps the real BOS token untouched.
+    model.prompt = "b"
+    assert model.prompt == ["b"]
+    assert model.bos == ["[CLS]"]
+
+    # Unsetting removes the prompt but keeps the BOS token.
+    model.prompt = None
+    assert model.prompt is None
+    assert model.bos == ["[CLS]"]
+    encoding = model.tokenizer.encode("a")
+    assert encoding.tokens == ["[CLS]", "a", "[SEP]"]
 
     call_tokenizer(model)
 
