@@ -46,7 +46,7 @@ from skeletoken.pre_tokenizers import (
     get_pretokenizer_of_type,
     remove_pretokenizer_of_type,
 )
-from skeletoken.truncation import Truncation
+from skeletoken.truncation import Truncation, TruncationDirection, TruncationStrategy
 from skeletoken.vocabulary import tokens_ordered_by_id
 
 if TYPE_CHECKING:
@@ -54,6 +54,9 @@ if TYPE_CHECKING:
     from skeletoken.preprocessor import Preprocessor  # pragma: nocover
 
 logger = logging.getLogger(__name__)
+
+# transformers uses this as the sentinel for "model_max_length was never set".
+_UNSET_MODEL_MAX_LENGTH = int(1e15)
 
 
 class TokenizerModel(BaseModel):
@@ -900,7 +903,7 @@ class TokenizerModel(BaseModel):
         )
 
     @classmethod
-    def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:
+    def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:  # noqa: C901  # Just complicated.
         """Load a HuggingFace tokenizer from a local path or a model repo."""
         special_tokens = hf_tokenizer.special_tokens_map
         unk_token = special_tokens.get("unk_token", None)
@@ -943,6 +946,18 @@ class TokenizerModel(BaseModel):
                 )
             model.pad_token = pad_token
 
+        model_max_length = hf_tokenizer.model_max_length
+        if model_max_length < _UNSET_MODEL_MAX_LENGTH:
+            if model.truncation is None:
+                model.truncation = Truncation(
+                    direction=TruncationDirection.RIGHT,
+                    max_length=model_max_length,
+                    strategy=TruncationStrategy.LONGEST_FIRST,
+                    stride=0,
+                )
+            else:
+                model.truncation.max_length = model_max_length
+
         model._original_class = type(hf_tokenizer)
         return model
 
@@ -964,6 +979,8 @@ class TokenizerModel(BaseModel):
             else:
                 tokenizer_class = PreTrainedTokenizerFast
         tok = tokenizer_class(tokenizer_object=self.to_tokenizer())
+        if self.truncation is not None:
+            tok.model_max_length = self.truncation.max_length
         tok.pad_token = self.pad_token
         tok.unk_token = self.unk_token
         if self.bos:
