@@ -18,9 +18,11 @@ from skeletoken.post_processors import (
     TokenType,
     get_bos_token_from_post_processor,
     get_eos_token_from_post_processor,
+    get_prompt_from_post_processor,
     get_tokens_from_post_processor,
     maybe_replace_token_in_post_processor,
     resync_post_processor_ids,
+    set_prompt_in_post_processor,
 )
 from tests.conftest import call_tokenizer
 
@@ -492,3 +494,17 @@ def test_template_post_processor_from_sequence_tokens_tokenizer(small_tokenizer_
     tokenizer = TokenizerModel.model_validate(small_tokenizer_json)
 
     call_tokenizer(tokenizer)
+
+
+def test_set_prompt_in_post_processor_empty_sequences(caplog: Any) -> None:
+    """Test that the prompt slot is inserted at the front when single/pair have no tokens at all."""
+    with caplog.at_level(logging.WARNING):
+        post_processor = TemplatePostProcessor(single=(), pair=(), special_tokens={})
+
+    result = set_prompt_in_post_processor(post_processor, ["a", "b"], [1, 2])
+
+    assert isinstance(result, TemplatePostProcessor)
+    prompt_token = Token(id="PROMPT", type_id=0, type=TokenType.SPECIAL)
+    assert result.single == (prompt_token,)
+    assert result.pair == (prompt_token,)
+    assert get_prompt_from_post_processor(result) == ["a", "b"]
