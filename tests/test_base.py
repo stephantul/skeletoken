@@ -44,6 +44,7 @@ from skeletoken.pre_tokenizers import (
     StringPattern,
     WhitespacePreTokenizer,
 )
+from skeletoken.truncation import Truncation, TruncationDirection, TruncationStrategy
 from skeletoken.vocabulary import Vocabulary
 from tests.conftest import assert_bpe_merges_consistent, assert_vocabulary_consistent, call_tokenizer
 
@@ -794,6 +795,20 @@ def test_from_transformers(transformers_tokenizer: PreTrainedTokenizerFast) -> N
     call_tokenizer(model)
 
 
+def test_from_transformers_model_max_length_updates_existing_truncation(
+    transformers_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """model_max_length should override the max_length of a truncation config already present on the backend."""
+    transformers_tokenizer.backend_tokenizer.enable_truncation(max_length=100)
+    assert transformers_tokenizer.model_max_length == 8192
+
+    model = TokenizerModel.from_transformers_tokenizer(transformers_tokenizer)
+    assert model.truncation is not None
+    assert model.truncation.max_length == 8192
+
+    call_tokenizer(model)
+
+
 def test_from_transformers_missing_unk(transformers_tokenizer: PreTrainedTokenizerFast) -> None:
     """Test creating a TokenizerModel from a transformers tokenizer."""
     transformers_tokenizer.SPECIAL_TOKENS_ATTRIBUTES.remove("unk_token")
@@ -976,6 +991,19 @@ def test_to_transformers(small_tokenizer: Tokenizer) -> None:
     transformers_tokenizer = model.to_transformers()
     assert transformers_tokenizer.eos_token is None
     assert transformers_tokenizer.bos_token is None
+
+
+def test_to_transformers_model_max_length(small_tokenizer: Tokenizer) -> None:
+    """Test that the truncation max_length is propagated to model_max_length."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model.truncation = Truncation(
+        direction=TruncationDirection.RIGHT,
+        max_length=50,
+        strategy=TruncationStrategy.LONGEST_FIRST,
+        stride=0,
+    )
+    transformers_tokenizer = model.to_transformers()
+    assert transformers_tokenizer.model_max_length == 50
 
 
 def test_to_transformers_to_class(small_tokenizer: Tokenizer) -> None:
