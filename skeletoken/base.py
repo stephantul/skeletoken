@@ -25,7 +25,7 @@ from skeletoken.normalizers import (
     NormalizerDiscriminator,
     NormalizerSequence,
 )
-from skeletoken.padding import Padding
+from skeletoken.padding import Padding, is_basic_padding
 from skeletoken.post_processors import (
     PostProcessorDiscriminator,
     PostProcessorSequence,
@@ -984,6 +984,9 @@ class TokenizerModel(BaseModel):
 
     def to_transformers(self, tokenizer_class: type[PreTrainedTokenizerFast] | None = None) -> PreTrainedTokenizerFast:
         """Convert the TokenizerModel to a HuggingFace tokenizer."""
+        stored_pad_token = self.pad_token
+        if is_basic_padding(self.padding):
+            self.padding = None
         if tokenizer_class is None:
             if self._original_class is not None:
                 tokenizer_class = self._original_class
@@ -992,7 +995,7 @@ class TokenizerModel(BaseModel):
         tok = tokenizer_class(tokenizer_object=self.to_tokenizer())
         if self.truncation is not None:
             tok.model_max_length = self.truncation.max_length
-        tok.pad_token = self.pad_token
+        tok.pad_token = stored_pad_token
         tok.unk_token = self.unk_token
         if self.bos:
             if len(self.bos) > 1:
