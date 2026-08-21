@@ -19,6 +19,7 @@ from skeletoken.normalizers import (
     NFKCNormalizer,
     Normalizer,
     NormalizerSequence,
+    PrependNormalizer,
     ReplaceNormalizer,
 )
 from skeletoken.padding import Padding
@@ -44,6 +45,7 @@ from skeletoken.pre_tokenizers import (
     StringPattern,
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
+    to_tokenizers_pretokenizer,
 )
 from skeletoken.truncation import Truncation, TruncationDirection, TruncationStrategy
 from skeletoken.vocabulary import Vocabulary
@@ -1114,6 +1116,25 @@ def test_to_transformers_model_max_length(small_tokenizer: Tokenizer) -> None:
     )
     transformers_tokenizer = model.to_transformers()
     assert transformers_tokenizer.model_max_length == 50
+
+
+def test_from_transformers_tokenizer_synthesizes_prefix_space_normalizer(small_tokenizer: Tokenizer) -> None:
+    """`add_prefix_space=True` on a tokenizer with no native prefix-space mechanism gets a Prepend normalizer."""
+    hf_tokenizer = PreTrainedTokenizerFast(tokenizer_object=small_tokenizer, add_prefix_space=True)
+    model = TokenizerModel.from_transformers_tokenizer(hf_tokenizer)
+    assert model.normalizer == PrependNormalizer(prepend=" ")
+
+
+def test_from_transformers_tokenizer_skips_prefix_space_normalizer_when_already_present(
+    small_tokenizer: Tokenizer,
+) -> None:
+    """`add_prefix_space=True` is not double-applied when a ByteLevel pre-tokenizer already handles it."""
+    small_tokenizer.pre_tokenizer = to_tokenizers_pretokenizer(
+        ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=False)
+    )
+    hf_tokenizer = PreTrainedTokenizerFast(tokenizer_object=small_tokenizer, add_prefix_space=True)
+    model = TokenizerModel.from_transformers_tokenizer(hf_tokenizer)
+    assert model.normalizer is None
 
 
 def test_to_transformers_to_class(small_tokenizer: Tokenizer) -> None:
