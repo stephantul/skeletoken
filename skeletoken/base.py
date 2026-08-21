@@ -832,6 +832,7 @@ class TokenizerModel(BaseModel):
     @unk_token.setter
     def unk_token(self, token: str | None) -> None:
         """Set the unk token of the tokenizer model."""
+        self._tokenizer = None
         old_unk_token = self.unk_token
         if old_unk_token == token:
             return
@@ -878,6 +879,7 @@ class TokenizerModel(BaseModel):
     @pad_token.setter
     def pad_token(self, token: str | None) -> None:
         """Set the padding token of the tokenizer model."""
+        self._tokenizer = None
         if token is None:
             current_token = self.pad_token
             if current_token is not None:
@@ -984,29 +986,32 @@ class TokenizerModel(BaseModel):
 
     def to_transformers(self, tokenizer_class: type[PreTrainedTokenizerFast] | None = None) -> PreTrainedTokenizerFast:
         """Convert the TokenizerModel to a HuggingFace tokenizer."""
-        stored_pad_token = self.pad_token
-        if is_basic_padding(self.padding):
-            self.padding = None
+        model = self.deep_copy()
+        pad_token = model.pad_token
+        if is_basic_padding(model.padding):
+            # Unset the padding so it isn't baked into the tokenizer we hand to transformers.
+            model.padding = None
+        tokenizer = model.to_tokenizer()
         if tokenizer_class is None:
-            if self._original_class is not None:
-                tokenizer_class = self._original_class
+            if model._original_class is not None:
+                tokenizer_class = model._original_class
             else:
                 tokenizer_class = PreTrainedTokenizerFast
-        tok = tokenizer_class(tokenizer_object=self.to_tokenizer())
-        if self.truncation is not None:
-            tok.model_max_length = self.truncation.max_length
-        tok.pad_token = stored_pad_token
-        tok.unk_token = self.unk_token
-        if self.bos:
-            if len(self.bos) > 1:
-                logger.warning(f"Tokenizer has multiple bos tokens: {self.bos}. Not setting it automatically.")
+        tok = tokenizer_class(tokenizer_object=tokenizer)
+        if model.truncation is not None:
+            tok.model_max_length = model.truncation.max_length
+        tok.pad_token = pad_token
+        tok.unk_token = model.unk_token
+        if model.bos:
+            if len(model.bos) > 1:
+                logger.warning(f"Tokenizer has multiple bos tokens: {model.bos}. Not setting it automatically.")
             else:
-                tok.bos_token = self.bos[0]
-        if self.eos:
-            if len(self.eos) > 1:
-                logger.warning(f"Tokenizer has multiple eos tokens: {self.eos}. Not setting it automatically.")
+                tok.bos_token = model.bos[0]
+        if model.eos:
+            if len(model.eos) > 1:
+                logger.warning(f"Tokenizer has multiple eos tokens: {model.eos}. Not setting it automatically.")
             else:
-                tok.eos_token = self.eos[0]
+                tok.eos_token = model.eos[0]
 
         return tok
 

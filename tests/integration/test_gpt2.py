@@ -1,9 +1,20 @@
 from skeletoken import TokenizerModel
 from skeletoken.post_processors import ByteLevelPostProcessor
 from skeletoken.pre_tokenizers import DigitsPreTokenizer
-from tests.conftest import assert_bpe_merges_consistent, assert_vocabulary_consistent, call_tokenizer
+from tests.conftest import (
+    assert_bpe_merges_consistent,
+    assert_to_transformers_roundtrip,
+    assert_vocabulary_consistent,
+    call_tokenizer,
+)
 
 _PATH = "tests/data/gpt2"
+
+
+def test_to_transformers_roundtrip() -> None:
+    """Test that `to_transformers()` encodes identically to `to_tokenizer()`."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    assert_to_transformers_roundtrip(model, ["hello world", "Skeletoken makes tokenizers easy", ""])
 
 
 def test_load() -> None:

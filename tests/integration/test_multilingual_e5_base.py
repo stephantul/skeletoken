@@ -1,9 +1,17 @@
 from skeletoken import TokenizerModel
 from skeletoken.post_processors import TemplatePostProcessor
 from skeletoken.pre_tokenizers import DigitsPreTokenizer
-from tests.conftest import assert_vocabulary_consistent, call_tokenizer
+from tests.conftest import assert_to_transformers_roundtrip, assert_vocabulary_consistent, call_tokenizer
 
 _PATH = "tests/data/multilingual-e5-base"
+
+
+def test_to_transformers_roundtrip() -> None:
+    """Test that `to_transformers()` encodes identically to `to_tokenizer()`."""
+    model = TokenizerModel.from_pretrained(_PATH)
+    assert_to_transformers_roundtrip(
+        model, ["query: what is the capital of France?", " Bonjour le monde", " Amsterdam", ""]
+    )
 
 
 def test_load() -> None:
