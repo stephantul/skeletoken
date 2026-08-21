@@ -755,6 +755,23 @@ def test_set_prompt_with_existing_bos(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
+def test_set_prompt_does_not_mutate_shared_post_processor(small_tokenizer: Tokenizer) -> None:
+    """Setting a prompt does not mutate a post-processor shared with another model."""
+    model_a = TokenizerModel.from_tokenizer(small_tokenizer)
+    model_a = model_a.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+    model_a.post_processor = TemplatePostProcessor.from_tokens(
+        ("[CLS]", model_a.vocabulary["[CLS]"]), ("[SEP]", model_a.vocabulary["[SEP]"])
+    )
+    model_b = TokenizerModel.from_tokenizer(small_tokenizer)
+    model_b = model_b.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+    model_b.post_processor = model_a.post_processor
+
+    model_a.prompt = "a b c"
+
+    assert model_a.prompt == ["a", "b", "c"]
+    assert model_b.prompt is None
+
+
 def test_split(small_tokenizer: Tokenizer) -> None:
     """Test whether the split works correctly."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -1555,6 +1572,18 @@ def test_adds_pretokenizer(small_tokenizer_json: dict[str, Any]) -> None:
     assert model.adds_prefix_space
     # Done in place.
     assert byt.add_prefix_space
+
+
+def test_adds_prefix_space_invalidates_tokenizer_cache(small_tokenizer_json: dict[str, Any]) -> None:
+    """Setting `adds_prefix_space` invalidates a warmed `.tokenizer` cache."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    byt = ByteLevelPreTokenizer(add_prefix_space=False, use_regex=True, trim_offsets=True)
+    model = model.add_pre_tokenizer(byt)
+    _ = model.tokenizer  # warm the cache
+
+    model.adds_prefix_space = True
+
+    assert model.tokenizer.encode("hello world").tokens == model.to_tokenizer().encode("hello world").tokens
 
 
 def test_load_with_added(small_tokenizer_json: dict[str, Any]) -> None:

@@ -275,35 +275,36 @@ Decoder = (
 DecoderDiscriminator = Annotated[Decoder, Field(discriminator="type")]
 
 
-def _clean_up_tokenization_spaces_steps() -> list[Decoder]:
-    """The decoder steps equivalent to transformers' `clean_up_tokenization_spaces=True`."""
-    return [FuseDecoder(), *(ReplaceDecoder(pattern=p, content=c) for p, c in _CLEAN_UP_TOKENIZATION_REPLACEMENTS)]
+def _clean_up_tokenization_spaces_block() -> DecoderSequence:
+    """The nested decoder block equivalent to transformers' `clean_up_tokenization_spaces=True`."""
+    steps: list[Decoder] = [
+        FuseDecoder(),
+        *(ReplaceDecoder(pattern=p, content=c) for p, c in _CLEAN_UP_TOKENIZATION_REPLACEMENTS),
+    ]
+    return DecoderSequence(decoders=steps)
 
 
 def add_clean_up_tokenization_spaces(decoder: Decoder | None) -> Decoder:
-    """Append the `clean_up_tokenization_spaces` decoder steps onto an existing decoder."""
-    steps = _clean_up_tokenization_spaces_steps()
+    """Append the `clean_up_tokenization_spaces` decoder block onto an existing decoder."""
+    block = _clean_up_tokenization_spaces_block()
     if decoder is None:
-        return DecoderSequence(decoders=steps)
+        return block
     if isinstance(decoder, DecoderSequence):
-        return DecoderSequence(decoders=[*decoder.decoders, *steps])
-    return DecoderSequence(decoders=[decoder, *steps])
+        return DecoderSequence(decoders=[*decoder.decoders, block])
+    return DecoderSequence(decoders=[decoder, block])
 
 
 def strip_clean_up_tokenization_spaces(decoder: Decoder | None) -> Decoder | None:
-    """Remove a trailing `clean_up_tokenization_spaces` suffix added by `add_clean_up_tokenization_spaces`.
+    """Remove a trailing `clean_up_tokenization_spaces` block added by `add_clean_up_tokenization_spaces`.
 
-    Returns `decoder` unchanged if the exact suffix isn't present as a trailing run.
+    Returns `decoder` unchanged if the exact block isn't present as the last step.
     """
-    if not isinstance(decoder, DecoderSequence):
-        return decoder
-    steps = _clean_up_tokenization_spaces_steps()
-    n = len(steps)
-    if len(decoder.decoders) < n or decoder.decoders[-n:] != steps:
-        return decoder
-    remaining = decoder.decoders[:-n]
-    if not remaining:
+    block = _clean_up_tokenization_spaces_block()
+    if decoder == block:
         return None
+    if not isinstance(decoder, DecoderSequence) or not decoder.decoders or decoder.decoders[-1] != block:
+        return decoder
+    remaining = decoder.decoders[:-1]
     if len(remaining) == 1:
         return remaining[0]
     return DecoderSequence(decoders=remaining)

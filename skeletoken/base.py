@@ -10,6 +10,7 @@ from tokenizers import Tokenizer
 from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
+from skeletoken.cache_utils import resets_preprocessor_cache, resets_tokenizer_cache
 from skeletoken.clean import clean_vocabulary
 from skeletoken.common import PathLike, PrependScheme
 from skeletoken.decoders import DecoderDiscriminator
@@ -563,10 +564,9 @@ class TokenizerModel(BaseModel):
         model._add_pretokenizer_inplace(pre_tokenizer, prefix)
         return model
 
+    @resets_preprocessor_cache
     def _add_pretokenizer_inplace(self, pre_tokenizer: PreTokenizerDiscriminator, prefix: bool) -> None:
         """Add a pre-tokenizer to the tokenizer model in place."""
-        self._preprocessor = None
-        self._tokenizer = None
         if self.pre_tokenizer is None:
             self.pre_tokenizer = pre_tokenizer
         elif isinstance(self.pre_tokenizer, PreTokenizerSequence):
@@ -627,9 +627,8 @@ class TokenizerModel(BaseModel):
         model._add_normalizer_inplace(normalizer, prefix)
         return model
 
+    @resets_preprocessor_cache
     def _add_normalizer_inplace(self, normalizer: NormalizerDiscriminator, prefix: bool = False) -> None:
-        self._preprocessor = None
-        self._tokenizer = None
         if self.normalizer is None:
             self.normalizer = normalizer
         elif isinstance(self.normalizer, NormalizerSequence):
@@ -831,9 +830,9 @@ class TokenizerModel(BaseModel):
         return self.model.unk_token
 
     @unk_token.setter
+    @resets_tokenizer_cache
     def unk_token(self, token: str | None) -> None:
         """Set the unk token of the tokenizer model."""
-        self._tokenizer = None
         old_unk_token = self.unk_token
         if old_unk_token == token:
             return
@@ -878,9 +877,9 @@ class TokenizerModel(BaseModel):
         return self.padding.pad_token
 
     @pad_token.setter
+    @resets_tokenizer_cache
     def pad_token(self, token: str | None) -> None:
         """Set the padding token of the tokenizer model."""
-        self._tokenizer = None
         if token is None:
             current_token = self.pad_token
             if current_token is not None:
@@ -989,6 +988,7 @@ class TokenizerModel(BaseModel):
         return get_add_prefix_space(self.pre_tokenizer)
 
     @adds_prefix_space.setter
+    @resets_tokenizer_cache
     def adds_prefix_space(self, value: bool) -> None:
         """Set the prefix space."""
         if self.pre_tokenizer is None:
@@ -1039,6 +1039,7 @@ class TokenizerModel(BaseModel):
         return get_prompt_from_post_processor(self.post_processor)
 
     @prompt.setter
+    @resets_tokenizer_cache
     def prompt(self, prompt: str | None) -> None:
         """Set or unset a prompt inserted right before every sequence.
 
@@ -1055,4 +1056,3 @@ class TokenizerModel(BaseModel):
             self.post_processor = set_prompt_in_post_processor(
                 self.post_processor, cast(list[str], encoding.tokens), cast(list[int], encoding.ids)
             )
-        self._tokenizer = None
