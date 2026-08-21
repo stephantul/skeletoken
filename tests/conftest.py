@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,16 @@ def call_tokenizer(model: TokenizerModel) -> None:
     """Call the tokenizer to ensure the model is correct."""
     tokenizer = model.to_tokenizer()
     tokenizer.encode("some text")
+
+
+def assert_to_transformers_roundtrip(model: TokenizerModel, texts: Sequence[str] = ("hello world",)) -> None:
+    """Assert that `to_transformers()` encodes each text identically to `to_tokenizer()`."""
+    tokenizer = model.to_tokenizer()
+    transformers_tokenizer = model.to_transformers()
+    for text in texts:
+        expected = tokenizer.encode(text)
+        actual = transformers_tokenizer(text)
+        assert actual["input_ids"] == expected.ids, f"Mismatch for {text!r}"
 
 
 def assert_vocabulary_consistent(model: TokenizerModel) -> None:
