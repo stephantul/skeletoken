@@ -21,6 +21,7 @@ from skeletoken.pre_tokenizers import (
     UnicodeScriptsPreTokenizer,
     WhitespacePreTokenizer,
     WhitespaceSplitPreTokenizer,
+    already_adds_prefix_space,
     get_metaspace,
     remove_pretokenizer_of_type,
     to_tokenizers_pretokenizer,
@@ -129,6 +130,25 @@ def test_byte_transform(pretokenizer: PreTokenizer, should_byte_transform: bool)
 def test_splits(pretokenizer: PreTokenizer, splits: bool) -> None:
     """Test whether a pretokenizer splits."""
     assert pretokenizer._splits == splits
+
+
+def test_already_adds_prefix_space() -> None:
+    """A pre-tokenizer already adds a prefix space via ByteLevel or a non-NEVER Metaspace, not otherwise."""
+    assert not already_adds_prefix_space(None)
+    assert not already_adds_prefix_space(BertPreTokenizer())
+    assert not already_adds_prefix_space(
+        ByteLevelPreTokenizer(add_prefix_space=False, use_regex=True, trim_offsets=False)
+    )
+    assert already_adds_prefix_space(ByteLevelPreTokenizer(add_prefix_space=True, use_regex=True, trim_offsets=False))
+    assert already_adds_prefix_space(
+        MetaspacePreTokenizer(replacement=" ", prepend_scheme=PrependScheme.ALWAYS, split=True)
+    )
+    assert already_adds_prefix_space(
+        MetaspacePreTokenizer(replacement=" ", prepend_scheme=PrependScheme.FIRST, split=True)
+    )
+    assert not already_adds_prefix_space(
+        MetaspacePreTokenizer(replacement=" ", prepend_scheme=PrependScheme.NEVER, split=True)
+    )
 
 
 def test_get_metaspace() -> None:

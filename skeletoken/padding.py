@@ -1,7 +1,13 @@
 from enum import Enum
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel, RootModel
+
+
+class PaddingKwargs(TypedDict, total=False):
+    padding_side: str
+    pad_to_multiple_of: int | None
+    pad_token_type_id: int
 
 
 class BatchLongestStrategy(RootModel[Literal["BatchLongest"]]):
@@ -62,3 +68,14 @@ def is_basic_padding(padding: Padding | None) -> bool:
     if padding is None:
         return False
     return padding.strategy == FixedStrategy(Fixed=0)
+
+
+def to_transformers_padding_kwargs(padding: Padding | None) -> PaddingKwargs:
+    """Build the `PreTrainedTokenizerFast` constructor kwargs that carry over this padding config."""
+    if padding is None:
+        return {}
+    return {
+        "padding_side": padding.direction.value.lower(),
+        "pad_to_multiple_of": padding.pad_to_multiple_of,
+        "pad_token_type_id": padding.pad_type_id,
+    }

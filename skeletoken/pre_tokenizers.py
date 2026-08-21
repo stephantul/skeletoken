@@ -367,6 +367,16 @@ def get_add_prefix_space(pre_tokenizer: PreTokenizerDiscriminator) -> bool | Non
     return byte_pre_tokenizer.add_prefix_space if byte_pre_tokenizer else None
 
 
+def already_adds_prefix_space(pre_tokenizer: PreTokenizerDiscriminator | None) -> bool:
+    """Return whether the pre-tokenizer already adds a leading space on its own."""
+    if pre_tokenizer is None:
+        return False
+    if get_add_prefix_space(pre_tokenizer):
+        return True
+    metaspace = get_pretokenizer_of_type(pre_tokenizer, MetaspacePreTokenizer)
+    return metaspace is not None and metaspace.prepend_scheme != PrependScheme.NEVER
+
+
 T = TypeVar("T")
 
 

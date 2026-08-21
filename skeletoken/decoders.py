@@ -7,6 +7,19 @@ from pydantic import BaseModel, Field, field_validator
 
 from skeletoken.common import PrependScheme, RegexPattern, RegexType, StringPattern, coerce_string_regex_pattern
 
+_CLEAN_UP_TOKENIZATION_REPLACEMENTS: list[tuple[str, str]] = [
+    (" .", "."),
+    (" ?", "?"),
+    (" !", "!"),
+    (" ,", ","),
+    (" ' ", "'"),
+    (" n't", "n't"),
+    (" 'm", "'m"),
+    (" 's", "'s"),
+    (" 've", "'ve"),
+    (" 're", "'re"),
+]
+
 
 class DecoderType(str, Enum):
     BPEDECODER = "BPEDecoder"
@@ -260,3 +273,37 @@ Decoder = (
     | DecoderSequence
 )
 DecoderDiscriminator = Annotated[Decoder, Field(discriminator="type")]
+
+
+def _clean_up_tokenization_spaces_steps() -> list[Decoder]:
+    """The decoder steps equivalent to transformers' `clean_up_tokenization_spaces=True`."""
+    return [FuseDecoder(), *(ReplaceDecoder(pattern=p, content=c) for p, c in _CLEAN_UP_TOKENIZATION_REPLACEMENTS)]
+
+
+def add_clean_up_tokenization_spaces(decoder: Decoder | None) -> Decoder:
+    """Append the `clean_up_tokenization_spaces` decoder steps onto an existing decoder."""
+    steps = _clean_up_tokenization_spaces_steps()
+    if decoder is None:
+        return DecoderSequence(decoders=steps)
+    if isinstance(decoder, DecoderSequence):
+        return DecoderSequence(decoders=[*decoder.decoders, *steps])
+    return DecoderSequence(decoders=[decoder, *steps])
+
+
+def strip_clean_up_tokenization_spaces(decoder: Decoder | None) -> Decoder | None:
+    """Remove a trailing `clean_up_tokenization_spaces` suffix added by `add_clean_up_tokenization_spaces`.
+
+    Returns `decoder` unchanged if the exact suffix isn't present as a trailing run.
+    """
+    if not isinstance(decoder, DecoderSequence):
+        return decoder
+    steps = _clean_up_tokenization_spaces_steps()
+    n = len(steps)
+    if len(decoder.decoders) < n or decoder.decoders[-n:] != steps:
+        return decoder
+    remaining = decoder.decoders[:-n]
+    if not remaining:
+        return None
+    if len(remaining) == 1:
+        return remaining[0]
+    return DecoderSequence(decoders=remaining)

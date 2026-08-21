@@ -12,7 +12,11 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.clean import clean_vocabulary
 from skeletoken.common import PathLike, PrependScheme
-from skeletoken.decoders import DecoderDiscriminator
+from skeletoken.decoders import (
+    DecoderDiscriminator,
+    add_clean_up_tokenization_spaces,
+    strip_clean_up_tokenization_spaces,
+)
 from skeletoken.models import (
     MODELS_THAT_NEED_UNK,
     ModelDiscriminator,
@@ -24,8 +28,9 @@ from skeletoken.normalizers import (
     LowercaseNormalizer,
     NormalizerDiscriminator,
     NormalizerSequence,
+    add_prepend_normalizer,
 )
-from skeletoken.padding import Padding, is_basic_padding
+from skeletoken.padding import Padding, is_basic_padding, to_transformers_padding_kwargs
 from skeletoken.post_processors import (
     PostProcessorDiscriminator,
     PostProcessorSequence,
@@ -45,6 +50,7 @@ from skeletoken.pre_tokenizers import (
     MetaspacePreTokenizer,
     PreTokenizerDiscriminator,
     PreTokenizerSequence,
+    already_adds_prefix_space,
     get_add_prefix_space,
     get_metaspace,
     get_pretokenizer_of_type,
@@ -924,6 +930,12 @@ class TokenizerModel(BaseModel):
 
         model = cls.from_tokenizer(hf_tokenizer.backend_tokenizer)
 
+        if getattr(hf_tokenizer, "clean_up_tokenization_spaces", False):
+            model.decoder = add_clean_up_tokenization_spaces(model.decoder)
+
+        if getattr(hf_tokenizer, "add_prefix_space", False) and not already_adds_prefix_space(model.pre_tokenizer):
+            model.normalizer = add_prepend_normalizer(model.normalizer, " ")
+
         if getattr(hf_tokenizer, "_should_update_post_processor", False):
             post_processor = model.post_processor
             if isinstance(post_processor, TemplatePostProcessor) and not post_processor.special_tokens:
@@ -988,20 +1000,36 @@ class TokenizerModel(BaseModel):
         """Convert the TokenizerModel to a HuggingFace tokenizer."""
         model = self.deep_copy()
         pad_token = model.pad_token
+        padding = model.padding
         if is_basic_padding(model.padding):
             # Unset the padding so it isn't baked into the tokenizer we hand to transformers.
             model.padding = None
+        original_decoder = model.decoder
+        model.decoder = strip_clean_up_tokenization_spaces(model.decoder)
+        clean_up_tokenization_spaces = model.decoder != original_decoder
         tokenizer = model.to_tokenizer()
         if tokenizer_class is None:
             if model._original_class is not None:
                 tokenizer_class = model._original_class
             else:
                 tokenizer_class = PreTrainedTokenizerFast
-        tok = tokenizer_class(tokenizer_object=tokenizer)
+        padding_kwargs = to_transformers_padding_kwargs(padding)
+        add_prefix_space = model.adds_prefix_space
+        prefix_space_kwargs = {} if add_prefix_space is None else {"add_prefix_space": add_prefix_space}
+        tok = tokenizer_class(
+            tokenizer_object=tokenizer,
+            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+            **padding_kwargs,
+            **prefix_space_kwargs,
+        )
         if model.truncation is not None:
             tok.model_max_length = model.truncation.max_length
         tok.pad_token = pad_token
         tok.unk_token = model.unk_token
+        if padding is not None:
+            # transformers doesn't copy these from init_kwargs onto live attributes.
+            tok.pad_to_multiple_of = padding.pad_to_multiple_of
+            tok._pad_token_type_id = padding.pad_type_id
         if model.bos:
             if len(model.bos) > 1:
                 logger.warning(f"Tokenizer has multiple bos tokens: {model.bos}. Not setting it automatically.")

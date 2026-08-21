@@ -22,6 +22,7 @@ from skeletoken.normalizers import (
     ReplaceNormalizer,
     StripAccentsNormalizer,
     StripNormalizer,
+    add_prepend_normalizer,
     to_tokenizers_normalizer,
 )
 from tests.conftest import call_tokenizer
@@ -129,6 +130,31 @@ def test_lowercases(normalizer: Normalizer, should_normalize: bool) -> None:
 def test_byte_normalizes(normalizer: Normalizer, should_normalize: bool) -> None:
     """Test whether the lowercases detection works."""
     assert normalizer.byte_normalizes == should_normalize
+
+
+def test_add_prepend_normalizer_none() -> None:
+    """Adding to no normalizer produces a bare Prepend step."""
+    result = add_prepend_normalizer(None, " ")
+    assert result == PrependNormalizer(prepend=" ")
+
+
+def test_add_prepend_normalizer_single() -> None:
+    """Adding to a single, non-Sequence normalizer puts the Prepend step first."""
+    original = LowercaseNormalizer()
+    result = add_prepend_normalizer(original, " ")
+    assert isinstance(result, NormalizerSequence)
+    assert result.normalizers == [PrependNormalizer(prepend=" "), original]
+
+
+def test_add_prepend_normalizer_existing_sequence() -> None:
+    """Adding to an existing Sequence puts the Prepend step first, without nesting a new Sequence."""
+    original = NormalizerSequence(
+        normalizers=[LowercaseNormalizer(), StripNormalizer(strip_left=True, strip_right=True)]
+    )
+    result = add_prepend_normalizer(original, " ")
+    assert isinstance(result, NormalizerSequence)
+    assert result.normalizers[0] == PrependNormalizer(prepend=" ")
+    assert result.normalizers[1:] == original.normalizers
 
 
 @pytest.mark.parametrize(

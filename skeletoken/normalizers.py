@@ -313,6 +313,16 @@ Normalizer = (
 NormalizerDiscriminator = Annotated[Normalizer, Field(discriminator="type")]
 
 
+def add_prepend_normalizer(normalizer: Normalizer | None, prepend: str) -> Normalizer:
+    """Prepend a `PrependNormalizer` step onto an existing normalizer."""
+    step = PrependNormalizer(prepend=prepend)
+    if normalizer is None:
+        return step
+    if isinstance(normalizer, NormalizerSequence):
+        return NormalizerSequence(normalizers=[step, *normalizer.normalizers])
+    return NormalizerSequence(normalizers=[step, normalizer])
+
+
 def to_tokenizers_normalizer(normalizer: NormalizerDiscriminator) -> TokenizersNormalizer:
     """Convert a skeletoken normalizer into a tokenizers normalizer."""
     # Guard because pydantic does no checking on assignment and tokenizers accepts it.
