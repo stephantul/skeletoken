@@ -62,6 +62,18 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     original_vocab_size = embedding.weight.shape[0]
     weight = _remap_embeddings(embedding.weight, mapping)
     embedding.weight.data = weight
+
+    # An output head is a second vocabulary-sized tensor, and `resize_token_embeddings` only
+    # truncates it to a prefix -- it does not select rows. Remap it here, before the resize.
+    # A tied head *is* the input embedding, already remapped above, so remapping its weight
+    # again would corrupt the rows just placed. The bias is never tied, so it always needs it.
+    head = model.get_output_embeddings()
+    if head is not None:
+        if not getattr(model.config, "tie_word_embeddings", False):
+            head.weight.data = _remap_embeddings(head.weight, mapping)
+        if getattr(head, "bias", None) is not None:
+            head.bias.data = _remap_embeddings(head.bias, mapping)
+
     model.resize_token_embeddings(vocab_size)
 
     # token_mapping is new→old; invert to old→new for updating config IDs.
