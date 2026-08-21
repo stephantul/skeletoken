@@ -208,15 +208,15 @@ def test_resync_post_processor_ids_template_ignores_unmatched_identifier() -> No
     assert result.special_tokens == {}
 
 
-def test_resync_post_processor_ids_template_ignores_unreferenced_special_token() -> None:
-    """An unreferenced special_tokens entry ("sequence" keys a SEQUENCE-type token) is left alone."""
+def test_resync_post_processor_ids_template_resyncs_unreferenced_special_token() -> None:
+    """A special_tokens entry not referenced by any SPECIAL token in single/pair is still resynced."""
     post_processor = _get_default_postprocessor(PostProcessorType.TEMPLATE_PROCESSING)
-    vocabulary = {"[BEGIN]": 5, "[END]": 6}
+    vocabulary = {"[BEGIN]": 5, "[END]": 6, "[SEQ]": 7}
     result = resync_post_processor_ids(post_processor, vocabulary)
     assert isinstance(result, TemplatePostProcessor)
     assert result.special_tokens["special_begin"].ids == [5]
     assert result.special_tokens["special_end"].ids == [6]
-    assert result.special_tokens["sequence"].ids == [2]
+    assert result.special_tokens["sequence"].ids == [7]
 
 
 @pytest.mark.parametrize(
@@ -504,7 +504,7 @@ def test_set_prompt_in_post_processor_empty_sequences(caplog: Any) -> None:
     result = set_prompt_in_post_processor(post_processor, ["a", "b"], [1, 2])
 
     assert isinstance(result, TemplatePostProcessor)
-    prompt_token = Token(id="PROMPT", type_id=0, type=TokenType.SPECIAL)
+    prompt_token = Token(id="SKELETOKEN_PROMPT", type_id=0, type=TokenType.SPECIAL)
     assert result.single == (prompt_token,)
     assert result.pair == (prompt_token,)
     assert get_prompt_from_post_processor(result) == ["a", "b"]

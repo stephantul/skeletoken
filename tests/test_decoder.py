@@ -92,16 +92,22 @@ def test_add_clean_up_tokenization_spaces_single_decoder() -> None:
     result = add_clean_up_tokenization_spaces(original)
     assert isinstance(result, DecoderSequence)
     assert result.decoders[0] == original
-    assert len(result.decoders) == 12  # original + Fuse + 10 Replace steps
+    assert len(result.decoders) == 2  # original + the nested clean-up block
+    block = result.decoders[1]
+    assert isinstance(block, DecoderSequence)
+    assert len(block.decoders) == 11  # Fuse + 10 Replace steps
 
 
 def test_add_clean_up_tokenization_spaces_existing_sequence() -> None:
-    """Adding to an existing Sequence appends the steps rather than nesting a new Sequence."""
+    """Adding to an existing Sequence appends the clean-up steps as one nested block, not flattened."""
     original = DecoderSequence(decoders=[WordPieceDecoder(prefix="##", cleanup=True), FuseDecoder()])
     result = add_clean_up_tokenization_spaces(original)
     assert isinstance(result, DecoderSequence)
     assert result.decoders[:2] == original.decoders
-    assert len(result.decoders) == 13  # 2 original + Fuse + 10 Replace steps
+    assert len(result.decoders) == 3  # 2 original + the nested clean-up block
+    block = result.decoders[2]
+    assert isinstance(block, DecoderSequence)
+    assert len(block.decoders) == 11  # Fuse + 10 Replace steps
 
 
 def test_strip_clean_up_tokenization_spaces_not_sequence() -> None:

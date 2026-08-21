@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, SerializationInfo, model_serializer, mode
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_SPECIAL_TOKEN_ID = "PROMPT"
+_PROMPT_SPECIAL_TOKEN_ID = "SKELETOKEN_PROMPT"
 
 
 class PostProcessorType(str, Enum):
@@ -321,6 +321,8 @@ def set_prompt_in_post_processor(
     if post_processor is None:
         return TemplatePostProcessor.from_tokens((tokens, ids), None, _PROMPT_SPECIAL_TOKEN_ID)
 
+    post_processor = post_processor.model_copy(deep=True)
+
     # The postprocessor already has a prompt. Overwrite it.
     if _PROMPT_SPECIAL_TOKEN_ID in post_processor.special_tokens:
         post_processor.special_tokens[_PROMPT_SPECIAL_TOKEN_ID] = prompt_info
@@ -341,6 +343,8 @@ def unset_prompt_in_post_processor(post_processor: PostProcessor | None) -> Post
         return post_processor
     if _PROMPT_SPECIAL_TOKEN_ID not in post_processor.special_tokens:
         return post_processor
+
+    post_processor = post_processor.model_copy(deep=True)
 
     def _is_prompt_slot(t: Token) -> bool:
         return t.type == TokenType.SPECIAL and t.id == _PROMPT_SPECIAL_TOKEN_ID
@@ -437,12 +441,6 @@ def maybe_replace_token_in_post_processor(
 def resync_post_processor_ids(post_processor: PostProcessorDiscriminator, vocabulary: dict[str, int]) -> PostProcessor:
     """Rewrite every id in a post-processor's special tokens to match the current vocabulary.
 
-    Unlike `maybe_replace_token_in_post_processor`, this does not rename any tokens: for each
-    token string already stored in the post-processor, it looks up that token's current id in
-    `vocabulary` and overwrites the stored id with it. This repairs ids left stale by vocabulary
-    compaction (removal or consolidation), regardless of whether the token is a registered added
-    token.
-
     Parameters
     ----------
     post_processor : PostProcessorDiscriminator
@@ -453,12 +451,14 @@ def resync_post_processor_ids(post_processor: PostProcessorDiscriminator, vocabu
     Returns
     -------
     PostProcessor
-        The post-processor with all special token ids matching `vocabulary`.
+        The post-processor with all special token ids matching `vocabulary`, except entries not
+        referenced by any SPECIAL token in `single`/`pair` whose tokens are gone from `vocabulary`,
+        which are left as-is.
 
     Raises
     ------
     ValueError
-        If a token the post-processor references is not in `vocabulary`.
+        If a token referenced by a SPECIAL token in `single`/`pair` is not in `vocabulary`.
 
     """
     if isinstance(post_processor, PostProcessorSequence):
@@ -473,19 +473,18 @@ def resync_post_processor_ids(post_processor: PostProcessorDiscriminator, vocabu
         post_processor.cls = (post_processor.cls[0], vocabulary[post_processor.cls[0]])
         post_processor.sep = (post_processor.sep[0], vocabulary[post_processor.sep[0]])
     if isinstance(post_processor, TemplatePostProcessor):
-        identifiers = {
+        referenced_identifiers = {
             token.id
             for sequence in (post_processor.single, post_processor.pair)
             for token in sequence
             if token.type == TokenType.SPECIAL
         }
-        for identifier in identifiers:
-            special_token = post_processor.special_tokens.get(identifier)
-            if special_token is None:
+        for identifier, special_token in post_processor.special_tokens.items():
+            missing = [token for token in special_token.tokens if token not in vocabulary]
+            if missing:
+                if identifier in referenced_identifiers:
+                    raise ValueError(f"Post-processor token '{missing[0]}' is no longer in the vocabulary.")
                 continue
-            for token in special_token.tokens:
-                if token not in vocabulary:
-                    raise ValueError(f"Post-processor token '{token}' is no longer in the vocabulary.")
             special_token.ids = [vocabulary[token] for token in special_token.tokens]
 
     return post_processor
