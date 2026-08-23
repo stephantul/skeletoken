@@ -109,53 +109,13 @@ class TokenizerModel(BaseModel):
                         f"Updating ID of added token '{content}' from {curr_id} to {new_id} to match vocabulary index."
                     )
                 token.id = new_id
-        unk_token = self.unk_token
-        if unk_token:
-            if unk_token not in self.model.vocab:
-                logger.warning(f"Adding unk_token '{unk_token}' to the vocabulary.")
-                self._add_token_to_vocabulary(unk_token, is_added_token=True)
-            added_token = self.added_tokens.get_token(unk_token)
-            if not added_token:
-                logger.warning(f"Turning unk_token '{unk_token}' into an AddedToken.")
-                self._turn_into_addedtoken(
-                    unk_token,
-                    is_special=True,
-                    normalized=False,
-                    single_word=True,
-                    lstrip=False,
-                    rstrip=False,
-                )
-        pad_token = self.pad_token
-        if pad_token:
-            if pad_token not in self.model.vocab:
-                current_pad_token_id = self.pad_token_id
-                assert current_pad_token_id is not None
-                if current_pad_token_id >= self.vocabulary_size:
-                    logger.warning(
-                        f"pad_token_id {current_pad_token_id} is greater than vocabulary size {self.vocabulary_size}."
-                    )
-                elif current_index_token := self.model.vocab.inverse_vocabulary.get(current_pad_token_id):
-                    logger.warning(
-                        f"pad_token '{pad_token}' not found in vocabulary, but pad_token_id {current_pad_token_id} "
-                        f"maps to existing token '{current_index_token}'."
-                    )
-                self._add_token_to_vocabulary(pad_token, is_added_token=True)
-                logger.warning(
-                    f"Adding pad_token '{pad_token}' to the vocabulary with id: {self.model.vocab[pad_token]}."
-                )
-            added_token = self.added_tokens.get_token(pad_token)
-            if not added_token:
-                logger.warning(f"Turning pad_token '{pad_token}' into an AddedToken.")
-                self._turn_into_addedtoken(
-                    pad_token,
-                    is_special=True,
-                    normalized=False,
-                    single_word=True,
-                    lstrip=True,
-                    rstrip=True,
-                )
-            self.pad_token = pad_token
-
+        # Set the unk token and pad token again, to trigger validation
+        # Edge cases include:
+        # - pad/unk token is not in vocab
+        # - pad token has incorrect id
+        # - pad/unk token in vocab, but not a special token
+        self.unk_token = self.unk_token
+        self.pad_token = self.pad_token
         self._original_tokenizer = self.deep_copy()
 
     @property
@@ -834,8 +794,6 @@ class TokenizerModel(BaseModel):
     def unk_token(self, token: str | None) -> None:
         """Set the unk token of the tokenizer model."""
         old_unk_token = self.unk_token
-        if old_unk_token == token:
-            return
         if token is None:
             if isinstance(self.model, MODELS_THAT_NEED_UNK):
                 raise ValueError("Cannot unset unk_token for WordPiece or WordLevel models.")
@@ -843,30 +801,21 @@ class TokenizerModel(BaseModel):
                 logger.info(f"Removing unk_token '{self.model.unk_token}' from the tokenizer.")
             self.model.unk_token = None
             return
-        if old_unk_token is None:
-            if token not in self.model.vocab:
-                logger.info(f"Adding {token} to the vocabulary.")
-                self._add_token_to_vocabulary(token, is_added_token=True)
-            logger.info(f"Setting unk_token to '{token}'.")
-            index = self.model.vocab[token]
-            self.added_tokens.upsert_token(
-                token=token,
-                is_special=True,
-                normalized=True,
-                single_word=True,
-                rstrip=True,
-                lstrip=True,
-                id=index,
-            )
-        elif old_unk_token in self.model.vocab:
-            logger.info(f"Changing unk_token from '{old_unk_token}' to '{token}'.")
-            self.added_tokens.maybe_replace_token(old_unk_token, token)
-            if token not in self.model.vocab:
-                self._add_token_to_vocabulary(token, is_added_token=True)
+        # If the new token was not in vocab, set it.
+        if token not in self.model.vocab:
+            logger.info(f"Setting unk_token to '{token}' and adding it to the vocabulary.")
+            self._add_token_to_vocabulary(token, is_added_token=True)
+        # Upsert the token regardless. This is a no op if it is already set.
+        index = self.model.vocab[token]
+        self.added_tokens.upsert_token(token=token, id=index)
+
+        # If old_unk_token did not exist or wasn't in vocab, don't do anything.
+        if old_unk_token is not None:
             if self.post_processor is not None:
                 self.post_processor = maybe_replace_token_in_post_processor(
-                    old_unk_token, token, self.model.vocab[token], self.post_processor
+                    old_unk_token, token, self.vocabulary[token], self.post_processor
                 )
+
         self.model.unk_token = token
 
     @property
@@ -898,22 +847,18 @@ class TokenizerModel(BaseModel):
             logger.info(f"Changing padding token to existing token '{token}'.")
             self.padding.pad_id = self.model.vocab[token]
             self.padding.pad_token = token
-        else:
+        elif self.padding.pad_token in self.model.vocab:
             logger.info(f"Changing padding token to new token '{token}'.")
             old_pad_token = self.padding.pad_token
             self._replace_token_in_vocabulary(old_pad_token, token, is_added_token=True)
             self.padding.pad_token = token
+        else:
+            logger.info(f"Adding new pad token to vocabulary '{token}'.")
+            self._add_token_to_vocabulary(token, is_added_token=True)
+            self.padding.pad_id = self.vocabulary[token]
 
         # We know token is in vocab here.
-        self.added_tokens.upsert_token(
-            token,
-            id=self.model.vocab[token],
-            is_special=True,
-            normalized=True,
-            single_word=True,
-            lstrip=True,
-            rstrip=True,
-        )
+        self.added_tokens.upsert_token(token, id=self.vocabulary[token])
 
     @classmethod
     def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:
