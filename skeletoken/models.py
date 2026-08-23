@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from enum import Enum
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -144,6 +144,12 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
     vocab: UnigramVocabulary
     unk_id: int | None
     byte_fallback: bool
+
+    def model_post_init(self, __context: dict[Any, Any]) -> None:
+        """Check if the unk_id is valid."""
+        if self.unk_id is not None and self.unk_id > len(self.vocab.root):
+            logger.warning("Unk token ID in model has id larger than vocab size, setting it to None.")
+            self.unk_id = None
 
     def to_greedy(self) -> WordPiece:
         """Convert the Unigram model to a greedy WordPiece model."""
