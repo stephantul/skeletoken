@@ -95,11 +95,11 @@ class AddedTokens(RootModel[list[AddedToken]]):
         else:
             new_token = AddedToken(
                 content=token,
-                special=is_special or False,
+                special=is_special if is_special is not None else False,
                 normalized=normalized or False,
-                single_word=single_word if single_word is not None else True,
-                lstrip=lstrip if lstrip is not None else True,
-                rstrip=rstrip if rstrip is not None else True,
+                single_word=single_word if single_word is not None else False,
+                lstrip=lstrip if lstrip is not None else False,
+                rstrip=rstrip if rstrip is not None else False,
                 id=id,
             )
             self.root.append(new_token)
