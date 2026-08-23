@@ -1433,6 +1433,126 @@ def test_add_pad_token_post_init_overlap(small_tokenizer_json: dict[str, Any]) -
     assert model.pad_token_id == added_token.id
 
 
+def test_load_pad_id_too_high_does_not_corrupt_rest_of_vocabulary(small_tokenizer_json: dict[str, Any]) -> None:
+    """A pad_id past the end of the vocabulary is fixed up without touching unrelated tokens."""
+    original_vocab = dict(small_tokenizer_json["model"]["vocab"])
+    small_tokenizer_json["padding"] = {
+        "strategy": {"Fixed": 0},
+        "direction": "Right",
+        "pad_to_multiple_of": None,
+        "pad_id": 40000,
+        "pad_type_id": 0,
+        "pad_token": "[ZAAAA]",
+    }
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    for token, idx in original_vocab.items():
+        assert model.vocabulary[token] == idx
+
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
+def test_load_pad_id_mismatched_with_valid_pad_token_resyncs_id(small_tokenizer_json: dict[str, Any]) -> None:
+    """A pad_token that is a real vocab entry but paired with a wrong pad_id gets its id corrected.
+
+    In a previous version, only the id was reset (to match some unrelated token) while the
+    token string was left as-is, leaving pad_token and pad_token_id pointing at different entries.
+    """
+    small_tokenizer_json["padding"] = {
+        "strategy": {"Fixed": 0},
+        "direction": "Right",
+        "pad_to_multiple_of": None,
+        "pad_id": 7,  # This is the id of 'c', not 'a'.
+        "pad_type_id": 0,
+        "pad_token": "a",
+    }
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.pad_token == "a"
+    assert model.pad_token_id == model.vocabulary["a"]
+    # The token that used to sit at the bogus pad_id is untouched.
+    assert model.vocabulary["c"] == 7
+    assert model.vocabulary["a"] == 5
+
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
+def test_load_unk_token_oov_does_not_corrupt_rest_of_vocabulary(small_tokenizer_json: dict[str, Any]) -> None:
+    """An unk_token that is not in the vocabulary is added, without disturbing other tokens."""
+    original_vocab = dict(small_tokenizer_json["model"]["vocab"])
+    small_tokenizer_json["model"]["unk_token"] = "[MISSING_UNK]"
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.unk_token == "[MISSING_UNK]"
+    assert model.vocabulary["[MISSING_UNK]"] == model.unk_token_id
+    added_token = model.added_tokens.get_token("[MISSING_UNK]")
+    assert added_token is not None
+    assert added_token.id == model.unk_token_id
+
+    for token, idx in original_vocab.items():
+        assert model.vocabulary[token] == idx
+    # The old [UNK] entry is still a harmless leftover in the vocabulary.
+    assert "[UNK]" in model.vocabulary
+
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
+def test_load_pad_and_unk_both_oov_do_not_collide(small_tokenizer_json: dict[str, Any]) -> None:
+    """A tokenizer with both an OOV unk_token and an OOV pad_token loads without id collisions."""
+    small_tokenizer_json["model"]["unk_token"] = "[MISSING_UNK]"
+    small_tokenizer_json["padding"] = {
+        "strategy": {"Fixed": 0},
+        "direction": "Right",
+        "pad_to_multiple_of": None,
+        "pad_id": 999,
+        "pad_type_id": 0,
+        "pad_token": "[MISSING_PAD]",
+    }
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+
+    assert model.unk_token == "[MISSING_UNK]"
+    assert model.pad_token == "[MISSING_PAD]"
+    assert model.unk_token_id != model.pad_token_id
+    assert model.vocabulary["[MISSING_UNK]"] == model.unk_token_id
+    assert model.vocabulary["[MISSING_PAD]"] == model.pad_token_id
+
+    assert_vocabulary_consistent(model)
+    call_tokenizer(model)
+
+
+def test_load_unigram_unk_id_out_of_range_is_cleared() -> None:
+    """An out-of-range unk_id on a Unigram model is dropped instead of crashing on load."""
+    model_dict: dict[Any, Any] = {
+        "version": "1.0",
+        "truncation": None,
+        "padding": None,
+        "added_tokens": [],
+        "normalizer": None,
+        "pre_tokenizer": None,
+        "post_processor": None,
+        "decoder": None,
+        "model": {
+            "type": "Unigram",
+            "unk_id": 100,
+            "byte_fallback": False,
+            "vocab": [["a", 0.0], ["b", -1.0], ["c", -2.0]],
+        },
+    }
+    model = TokenizerModel.model_validate(model_dict)
+
+    assert model.unk_token is None
+    assert model.unk_token_id is None
+    assert model.vocabulary == {"a": 0, "b": 1, "c": 2}
+
+    assert_vocabulary_consistent(model)
+    # Every character here is in the (tiny, byte_fallback-less) vocab, since this
+    # model has no unk_token to fall back on for anything else.
+    assert model.to_tokenizer().encode("abc").tokens == ["a", "b", "c"]
+
+
 def test_preprocessor_property(small_tokenizer_json: dict[str, Any]) -> None:
     """Test the preprocessor property."""
     model = TokenizerModel.model_validate(small_tokenizer_json)
