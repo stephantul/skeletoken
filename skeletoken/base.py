@@ -807,7 +807,7 @@ class TokenizerModel(BaseModel):
             self._add_token_to_vocabulary(token, is_added_token=True)
         # Upsert the token regardless. This is a no op if it is already set.
         index = self.model.vocab[token]
-        self.added_tokens.upsert_token(token=token, id=index)
+        self.added_tokens.upsert_token(token=token, id=index, is_special=True)
 
         # If old_unk_token did not exist or wasn't in vocab, don't do anything.
         if old_unk_token is not None:
@@ -856,9 +856,10 @@ class TokenizerModel(BaseModel):
             logger.info(f"Adding new pad token to vocabulary '{token}'.")
             self._add_token_to_vocabulary(token, is_added_token=True)
             self.padding.pad_id = self.vocabulary[token]
+            self.padding.pad_token = token
 
         # We know token is in vocab here.
-        self.added_tokens.upsert_token(token, id=self.vocabulary[token])
+        self.added_tokens.upsert_token(token, id=self.vocabulary[token], is_special=True)
 
     @classmethod
     def from_transformers_tokenizer(cls: type[TokenizerModel], hf_tokenizer: PreTrainedTokenizerFast) -> TokenizerModel:
