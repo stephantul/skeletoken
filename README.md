@@ -168,6 +168,24 @@ print([greedy_tokenizer.encode(x).tokens for x in [" hellooo", " bluetooth"]])
 
 ```
 
+### Setting a prompt
+
+Some models expect a prompt (a prefix) such as `"search query: "` before every input. `skeletoken` can add directly to your tokenizer, so it's applied automatically by the post-processor. This means no keeping track of prompts in code. If the post-processor already inserts a BOS token (e.g. `[CLS]`), the prompt is inserted right after it. Set `prompt` to `None` to remove it again.
+
+```python
+from skeletoken import TokenizerModel
+
+model = TokenizerModel.from_pretrained("bert-base-cased")
+# Use the built-in tokenizer property.
+print(model.tokenizer.encode("what is the capital of Germany").tokens)
+# ['[CLS]', 'what', 'is', 'the', 'capital', 'of', 'Germany', '[SEP]']
+
+model.prompt = "search query:"
+# The tokenizer property is automatically updated
+print(model.tokenizer.encode("what is the capital of Germany").tokens)
+# ['[CLS]', 'search', 'que', '##ry', ':', 'what', 'is', 'the', 'capital', 'of', 'Germany', '[SEP]']
+```
+
 ### Consolidating a vocabulary
 
 Adding a normalizer or pre-tokenizer can leave a vocabulary with entries that have become unreachable, or that now collide with another entry. `consolidate_vocabulary` finds and removes these automatically, keeping the merge table and IDs consistent.

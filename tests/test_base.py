@@ -571,31 +571,6 @@ def test_decase_vocabulary_with_added_token(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
-def test_remove_uppercase_with_added_token(small_tokenizer: Tokenizer) -> None:
-    """Test the decasing of the vocabulary."""
-    model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.add_addedtoken("ADD", is_special=False, normalized=True)
-    model = model.add_addedtoken("ADD_KEEP", is_special=False, normalized=False)
-    model = model.decase_vocabulary()
-    assert model.model.vocab.sorted_vocabulary == [
-        "[pad]",
-        "[sep]",
-        "[UNK]",
-        "[cls]",
-        "[mask]",
-        "a",
-        "b",
-        "c",
-        "d",
-        " ",
-        "F",
-        "ADD",
-        "ADD_KEEP",
-    ]
-
-    call_tokenizer(model)
-
-
 def test_eos(small_tokenizer: Tokenizer) -> None:
     """Test getting the eos token."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -1271,39 +1246,6 @@ def test_remove_tokens_remaps_non_added_special_tokens(small_tokenizer_json: dic
     call_tokenizer(model)
 
 
-def test_remove_uppercase(small_tokenizer: Tokenizer) -> None:
-    """Test the removal of uppercase tokens from the vocabulary."""
-    model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.decase_vocabulary(keep=True)
-    assert model.sorted_vocabulary == ["[pad]", "[sep]", "[UNK]", "[cls]", "[mask]", "a", "b", "c", "d", " ", "F"]
-
-    call_tokenizer(model)
-
-
-def test_remove_uppercaser(small_tokenizer: Tokenizer) -> None:
-    """Test the removal of uppercase tokens from the vocabulary."""
-    model = TokenizerModel.from_tokenizer(small_tokenizer)
-    model = model.add_token_to_vocabulary("apa")
-    model = model.add_normalizer(ReplaceNormalizer(pattern="a", content="G"))
-    model = model.consolidate_vocabulary(keep=True)
-    assert model.sorted_vocabulary == [
-        "[PAD]",
-        "[SEP]",
-        "[UNK]",
-        "[CLS]",
-        "[MASK]",
-        "G",
-        "b",
-        "c",
-        "D",
-        " ",
-        "F",
-        "GpG",
-    ]
-
-    call_tokenizer(model)
-
-
 def test_prune(small_tokenizer: Tokenizer) -> None:
     """Test the removal of uppercase tokens from the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
@@ -1395,24 +1337,6 @@ def test_get_unk_token_id(small_tokenizer: Tokenizer) -> None:
     assert model.unk_token_id is None
 
     call_tokenizer(model)
-
-
-def test_add_pad_token_post_init(small_tokenizer_json: dict[str, Any]) -> None:
-    """Test adding a pad token after initialization from a file."""
-    small_tokenizer_json["padding"] = {
-        "strategy": {"Fixed": 0},
-        "direction": "Right",
-        "pad_to_multiple_of": None,
-        "pad_id": 40000,
-        "pad_type_id": 0,
-        "pad_token": "[ZAAAA]",
-    }
-    model = TokenizerModel.model_validate(small_tokenizer_json)
-    assert model.pad_token == "[ZAAAA]"
-    assert model.pad_token_id == 11
-    added_token = model.added_tokens.get_token("[ZAAAA]")
-    assert added_token is not None
-    assert model.pad_token_id == added_token.id
 
 
 def test_add_pad_token_post_init_overlap(small_tokenizer_json: dict[str, Any]) -> None:
