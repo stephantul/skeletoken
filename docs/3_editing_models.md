@@ -97,3 +97,5 @@ print(tokenizer.encode("Amsterdam").tokens)
 ```
 
 This is because the token `▁amsterdam` got decased, and hence can be used by the tokenizer when "Amsterdam" is tokenized.
+
+Besides the embedding matrix, `reshape_embeddings` also keeps the model's bookkeeping in sync with the new vocabulary. The token IDs recorded on the model config, on any of its sub-configs, and on the generation config are rewritten to their new values, and cleared when the token they named was removed. The same goes for the `padding_idx` of the embedding. The generation config matters most here: `generate` reads `bos_token_id`, `eos_token_id` and `pad_token_id` from it in preference to the model config, so an ID left behind there stops generation on whichever token happens to sit at that index now.
