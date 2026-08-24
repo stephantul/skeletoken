@@ -3,12 +3,14 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("transformers")
 
-from transformers import BertConfig, BertForMaskedLM, BertModel  # noqa: E402
+from transformers import BertConfig, BertForMaskedLM, BertLMHeadModel, BertModel  # noqa: E402
 
 from skeletoken import TokenizerModel  # noqa: E402
 from skeletoken.external.transformers import reshape_embeddings  # noqa: E402
 
 _TOKENIZER_PATH = "tests/data/bert-base-cased"
+# An ordinary vocabulary entry at ID 1, so removing it shifts every special token down.
+_REMOVED_TOKEN = "[unused1]"
 
 
 def _make_bert_model(tokenizer_model: TokenizerModel) -> BertModel:
@@ -42,6 +44,40 @@ def _make_bert_mlm_model(tokenizer_model: TokenizerModel, tie_word_embeddings: b
     with torch.no_grad():
         model.get_output_embeddings().bias.normal_()
     return model
+
+
+def _make_bert_causal_lm_model(tokenizer_model: TokenizerModel) -> BertLMHeadModel:
+    config = BertConfig(
+        vocab_size=tokenizer_model.vocabulary_size,
+        hidden_size=8,
+        num_hidden_layers=1,
+        num_attention_heads=1,
+        intermediate_size=8,
+        max_position_embeddings=32,
+        pad_token_id=tokenizer_model.pad_token_id or 0,
+        is_decoder=True,
+    )
+    torch.manual_seed(0)
+    return BertLMHeadModel(config)
+
+
+class _NestedBertConfig(BertConfig):
+    sub_configs = {"text_config": BertConfig}
+
+
+def _make_nested_bert_model(tokenizer_model: TokenizerModel, **text_config_kwargs: int) -> BertModel:
+    config = _NestedBertConfig(
+        vocab_size=tokenizer_model.vocabulary_size,
+        hidden_size=8,
+        num_hidden_layers=1,
+        num_attention_heads=1,
+        intermediate_size=8,
+        max_position_embeddings=32,
+        pad_token_id=tokenizer_model.pad_token_id or 0,
+    )
+    config.text_config = BertConfig(vocab_size=tokenizer_model.vocabulary_size, **text_config_kwargs)
+    torch.manual_seed(0)
+    return BertModel(config)
 
 
 def test_reshape_embeddings_does_not_mutate_original() -> None:
@@ -153,3 +189,93 @@ def test_reshape_embeddings_keeps_tied_output_head_tied() -> None:
     assert head_after is reshaped.get_input_embeddings().weight
     for new_id, old_id in decased.model_delta.token_mapping.items():
         assert torch.allclose(head_after[new_id], embeddings_before[old_id])
+
+
+def test_reshape_embeddings_remaps_generation_config_token_ids() -> None:
+    """Test that the generation config's token IDs follow the vocabulary, as the config's do."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    model = _make_bert_causal_lm_model(tokenizer_model)
+    vocabulary = tokenizer_model.vocabulary
+    model.generation_config.bos_token_id = vocabulary["[CLS]"]
+    model.generation_config.eos_token_id = vocabulary["[SEP]"]
+    model.generation_config.pad_token_id = vocabulary["[PAD]"]
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    new_vocabulary = trimmed.vocabulary
+    # The removed token sits at ID 1, so every special above it shifts down by one and
+    # the assertions below are not vacuous.
+    assert new_vocabulary["[CLS]"] == vocabulary["[CLS]"] - 1
+    assert reshaped.generation_config.bos_token_id == new_vocabulary["[CLS]"]
+    assert reshaped.generation_config.eos_token_id == new_vocabulary["[SEP]"]
+    assert reshaped.generation_config.pad_token_id == new_vocabulary["[PAD]"]
+    # The input model keeps the generation config it came with.
+    assert model.generation_config.eos_token_id == vocabulary["[SEP]"]
+
+
+def test_reshape_embeddings_clears_removed_generation_config_token_ids() -> None:
+    """Test that a generation config ID whose token was removed is cleared, not left dangling."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    model = _make_bert_causal_lm_model(tokenizer_model)
+    model.generation_config.eos_token_id = tokenizer_model.vocabulary[_REMOVED_TOKEN]
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    assert reshaped.generation_config.eos_token_id is None
+
+
+def test_reshape_embeddings_remaps_generation_config_token_id_lists() -> None:
+    """Test that a list of end-of-sequence IDs keeps the surviving tokens and drops the removed ones."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    model = _make_bert_causal_lm_model(tokenizer_model)
+    vocabulary = tokenizer_model.vocabulary
+    model.generation_config.eos_token_id = [vocabulary["[SEP]"], vocabulary[_REMOVED_TOKEN]]
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    assert reshaped.generation_config.eos_token_id == [trimmed.vocabulary["[SEP]"]]
+
+
+def test_reshape_embeddings_remaps_sub_config_token_ids() -> None:
+    """Test that token IDs on a sub-config are remapped, since nothing shadows them at the top level."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    vocabulary = tokenizer_model.vocabulary
+    model = _make_nested_bert_model(
+        tokenizer_model,
+        eos_token_id=vocabulary["[SEP]"],
+        bos_token_id=vocabulary[_REMOVED_TOKEN],
+    )
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    assert reshaped.config.text_config.eos_token_id == trimmed.vocabulary["[SEP]"]
+    assert reshaped.config.text_config.bos_token_id is None
+
+
+def test_reshape_embeddings_remaps_padding_idx() -> None:
+    """Test that the embedding's padding_idx follows its token instead of naming another one."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    model = _make_bert_model(tokenizer_model)
+    # This tokenizer pads at ID 0, which no removal can move, so use a token that does.
+    model.get_input_embeddings().padding_idx = tokenizer_model.vocabulary["[SEP]"]
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    assert reshaped.get_input_embeddings().padding_idx == trimmed.vocabulary["[SEP]"]
+
+
+def test_reshape_embeddings_clears_removed_padding_idx() -> None:
+    """Test that a padding_idx whose token was removed is cleared rather than pointed at its successor."""
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    model = _make_bert_model(tokenizer_model)
+    model.get_input_embeddings().padding_idx = tokenizer_model.vocabulary[_REMOVED_TOKEN]
+
+    trimmed = tokenizer_model.remove_tokens_from_vocabulary([_REMOVED_TOKEN])
+    reshaped = reshape_embeddings(model, trimmed)
+
+    assert reshaped.get_input_embeddings().padding_idx is None
