@@ -1934,6 +1934,32 @@ def test_to_normal_form(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(normal)
 
 
+def test_to_flota(small_tokenizer: Tokenizer) -> None:
+    """to_flota goes through normal form, converts the model to Unigram, and drops the word prefix by default."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+
+    flota = model.to_flota()
+
+    assert flota.model.type == ModelType.UNIGRAM
+    assert flota.initial_subword_prefix is None
+    # The original model is untouched.
+    assert model.model.type != ModelType.UNIGRAM
+
+    call_tokenizer(flota)
+
+
+def test_to_flota_with_prefix(small_tokenizer: Tokenizer) -> None:
+    """to_flota keeps the word prefix from to_normal_form when with_prefix is set."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+
+    flota = model.to_flota(with_prefix=True)
+
+    assert flota.model.type == ModelType.UNIGRAM
+    assert flota.initial_subword_prefix == " "
+
+    call_tokenizer(flota)
+
+
 def test_to_normal_form_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
     """to_normal_form is a no-op for tokenizers that transform their input into bytes."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)

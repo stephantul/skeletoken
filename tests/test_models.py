@@ -1,4 +1,4 @@
-from math import log
+from math import exp, log
 from typing import Any, Literal, overload
 
 import pytest
@@ -12,6 +12,8 @@ from skeletoken.models import (
     Unigram,
     WordLevel,
     WordPiece,
+    convert_to_flota,
+    convert_to_greedy,
     get_continuing_subword_prefix_token,
     set_continuing_subword_prefix_token,
 )
@@ -118,13 +120,50 @@ def _get_none_bpe() -> BPE:
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType], _get_none_unigram(), _get_none_bpe()])
 def test_greedy(model: Model) -> None:
     """Tests the greedy behavior."""
-    model = model.to_greedy()
+    model = convert_to_greedy(model)
     assert model.type == ModelType.WORDPIECE
 
     tokenizer_model = TokenizerModel(model=model)
     tokenizer = tokenizer_model.to_tokenizer()
 
     assert tokenizer.encode("a b c d e").tokens == ["a", " ", "b", " ", "c", " ", "d", " ", "e"]
+
+
+@pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType], _get_none_unigram(), _get_none_bpe()])
+def test_flota(model: Model) -> None:
+    """Tests the flota conversion behavior."""
+    original_vocabulary = model.vocab.sorted_vocabulary
+    flota = convert_to_flota(model)
+
+    assert flota.type == ModelType.UNIGRAM
+    assert flota.vocab.sorted_vocabulary == original_vocabulary
+    assert [score for _, score in flota.vocab.root] == [exp(len(token)) for token in original_vocabulary]
+
+    if isinstance(model, Unigram):
+        assert flota.unk_id == model.unk_id
+        assert flota.byte_fallback == model.byte_fallback
+    elif isinstance(model, BPE):
+        expected_unk_id = model.vocab[model.unk_token] if model.unk_token is not None else None
+        assert flota.unk_id == expected_unk_id
+        assert flota.byte_fallback == model.byte_fallback
+    else:
+        assert flota.unk_id == model.vocab[model.unk_token]
+        assert flota.byte_fallback is False
+
+    tokenizer_model = TokenizerModel(model=flota)
+    tokenizer = tokenizer_model.to_tokenizer()
+    assert tokenizer.encode("a b c d e").tokens == ["a", " ", "b", " ", "c", " ", "d", " ", "e"]
+
+
+def test_flota_byte_fallback_passthrough() -> None:
+    """byte_fallback should be carried over from Unigram and BPE sources instead of defaulting to False."""
+    bpe = _get_default_model(ModelType.BPE)
+    bpe.byte_fallback = True
+    assert convert_to_flota(bpe).byte_fallback is True
+
+    unigram = _get_default_model(ModelType.UNIGRAM)
+    unigram.byte_fallback = True
+    assert convert_to_flota(unigram).byte_fallback is True
 
 
 def test_get_continuing_subword_prefix_token() -> None:
