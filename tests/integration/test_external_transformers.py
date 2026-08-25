@@ -3,10 +3,19 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("transformers")
 
-from transformers import BertConfig, BertForMaskedLM, BertLMHeadModel, BertModel  # noqa: E402
+from transformers import (  # noqa: E402
+    BertConfig,
+    BertForMaskedLM,
+    BertLMHeadModel,
+    BertModel,
+    EncodecConfig,
+    MusicgenConfig,
+    MusicgenDecoderConfig,
+    T5Config,
+)
 
 from skeletoken import TokenizerModel  # noqa: E402
-from skeletoken.external.transformers import reshape_embeddings  # noqa: E402
+from skeletoken.external.transformers import _remap_config_token_ids, reshape_embeddings  # noqa: E402
 
 _TOKENIZER_PATH = "tests/data/bert-base-cased"
 # An ordinary vocabulary entry at ID 1, so removing it shifts every special token down.
@@ -180,15 +189,19 @@ def test_reshape_embeddings_keeps_tied_output_head_tied() -> None:
     """Test that a tied output head is remapped once, and stays tied to the input embedding."""
     tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
     model = _make_bert_mlm_model(tokenizer_model, tie_word_embeddings=True)
-    embeddings_before = model.get_input_embeddings().weight.clone()
+    embeddings_module = model.get_input_embeddings()
+    assert isinstance(embeddings_module, torch.nn.Module)
+    embeddings_before = embeddings_module.weight.clone()
 
     decased = tokenizer_model.decase_vocabulary()
     reshaped = reshape_embeddings(model, decased)
-    head_after = reshaped.get_output_embeddings().weight
+    head_after = reshaped.get_output_embeddings()
+    assert isinstance(head_after, torch.nn.Module)
 
-    assert head_after is reshaped.get_input_embeddings().weight
+    embeddings_after = head_after.weight
+
     for new_id, old_id in decased.model_delta.token_mapping.items():
-        assert torch.allclose(head_after[new_id], embeddings_before[old_id])
+        assert torch.allclose(embeddings_after[new_id], embeddings_before[old_id])
 
 
 def test_reshape_embeddings_remaps_generation_config_token_ids() -> None:
@@ -279,3 +292,40 @@ def test_reshape_embeddings_clears_removed_padding_idx() -> None:
     reshaped = reshape_embeddings(model, trimmed)
 
     assert reshaped.get_input_embeddings().padding_idx is None
+
+
+def test_remap_config_token_ids_ignores_unrelated_sub_config() -> None:
+    """Test that a sub-config under a name `get_text_config` does not look for, like vision_config, is left alone."""
+
+    class _CompositeConfig(BertConfig):
+        sub_configs = {"text_config": BertConfig, "vision_config": BertConfig}
+
+    config = _CompositeConfig(vocab_size=100)
+    config.text_config = BertConfig(vocab_size=100, eos_token_id=5)
+    config.vision_config = BertConfig(vocab_size=999, eos_token_id=5)
+
+    inv_mapping = {token_id: token_id - 1 for token_id in range(1, 100)}
+
+    _remap_config_token_ids(config, inv_mapping, original_vocab_size=100)
+
+    assert config.text_config.eos_token_id == 4
+    assert config.vision_config.eos_token_id == 5
+
+
+def test_remap_config_token_ids_leaves_ambiguous_composite_config_unchanged() -> None:
+    """Test that an ambiguous composite, like Musicgen's text encoder and decoder, is left untouched."""
+    text_encoder = T5Config(vocab_size=32100, eos_token_id=1, pad_token_id=0)
+    audio_encoder = EncodecConfig()
+    decoder = MusicgenDecoderConfig(bos_token_id=2048, pad_token_id=2048)
+    config = MusicgenConfig(text_encoder=text_encoder, audio_encoder=audio_encoder, decoder=decoder)
+
+    original_vocab_size = text_encoder.vocab_size
+    # Shifts every ID down by one, so a token that survived the reshape would visibly move.
+    inv_mapping = {token_id: token_id - 1 for token_id in range(1, original_vocab_size)}
+
+    _remap_config_token_ids(config, inv_mapping, original_vocab_size)
+
+    assert config.text_encoder.eos_token_id == 1
+    assert config.text_encoder.pad_token_id == 0
+    assert config.decoder.bos_token_id == 2048
+    assert config.decoder.pad_token_id == 2048
