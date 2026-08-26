@@ -78,6 +78,7 @@ class TokenizerModel(BaseModel):
     decoder: DecoderDiscriminator | None = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
+    _content_history: dict[str, str] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
     _tokenizer: Tokenizer | None = None
@@ -343,9 +344,14 @@ class TokenizerModel(BaseModel):
         """
         return self.replace_tokens_in_vocabulary([old_token], [new_token], preprocess_tokens=preprocess_token)
 
+    def _record_rename(self, old_token: str, new_token: str) -> None:
+        """Track that `old_token` became `new_token`, chaining through any prior rename."""
+        self._content_history[new_token] = self._content_history.pop(old_token, old_token)
+
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token with another one. It keeps the old index in the vocabulary."""
         self.model.replace_token(old_token, new_token, is_added_token=is_added_token)
+        self._record_rename(old_token, new_token)
         self.added_tokens.maybe_replace_token(old_token, new_token)
         if self.post_processor is not None:
             self.post_processor = maybe_replace_token_in_post_processor(
@@ -499,6 +505,7 @@ class TokenizerModel(BaseModel):
         for old_token, token in zip(sorted_vocab, new_vocabulary, strict=True):
             if token is None:
                 continue
+            self._record_rename(old_token, token)
             self.added_tokens.maybe_replace_token(old_token, token)
             if self.post_processor is not None:
                 self.post_processor = maybe_replace_token_in_post_processor(

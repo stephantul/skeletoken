@@ -114,6 +114,12 @@ def test_reshape_embeddings_remaps_rows() -> None:
     for new_id, old_id in delta.token_mapping.items():
         assert torch.allclose(embeddings_after[new_id], embeddings_before[old_id])
 
+    old_id_amsterdam = tokenizer_model.vocabulary["Amsterdam"]
+    new_id_amsterdam = decased.vocabulary["amsterdam"]
+    assert "amsterdam" not in delta.new_tokens
+    assert delta.token_mapping[new_id_amsterdam] == old_id_amsterdam
+    assert torch.allclose(embeddings_after[new_id_amsterdam], embeddings_before[old_id_amsterdam])
+
 
 def test_reshape_embeddings_batch_added_tokens_grow_vocab_size() -> None:
     """Test that batch-adding tokens via add_tokens_to_vocabulary grows the embedding matrix by len(tokens)."""
@@ -180,13 +186,19 @@ def test_reshape_embeddings_keeps_tied_output_head_tied() -> None:
     """Test that a tied output head is remapped once, and stays tied to the input embedding."""
     tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
     model = _make_bert_mlm_model(tokenizer_model, tie_word_embeddings=True)
-    embeddings_before = model.get_input_embeddings().weight.clone()
+    embedding_module = model.get_input_embeddings()
+    assert isinstance(embedding_module, torch.nn.Embedding)
+    embeddings_before = embedding_module.weight.clone()
 
     decased = tokenizer_model.decase_vocabulary()
     reshaped = reshape_embeddings(model, decased)
-    head_after = reshaped.get_output_embeddings().weight
+    output_embedding_after = reshaped.get_output_embeddings()
+    assert isinstance(output_embedding_after, torch.nn.Linear)
+    head_after = output_embedding_after.weight
 
-    assert head_after is reshaped.get_input_embeddings().weight
+    input_embedding_after = reshaped.get_input_embeddings()
+    assert isinstance(input_embedding_after, torch.nn.Embedding)
+    assert head_after is input_embedding_after.weight
     for new_id, old_id in decased.model_delta.token_mapping.items():
         assert torch.allclose(head_after[new_id], embeddings_before[old_id])
 
