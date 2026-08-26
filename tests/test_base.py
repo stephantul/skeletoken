@@ -1796,6 +1796,48 @@ def test_consolidate_pad_token_update(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(model)
 
 
+def test_remove_unpreprocessable_tokens_does_not_reinterpret(small_tokenizer: Tokenizer) -> None:
+    """Test that unpreprocessable tokens are dropped outright, never renamed to their new form.
+
+    Unlike `consolidate_vocabulary(keep=False)`, which would rename 'A' to 'a', this method
+    just removes 'A' and leaves the existing 'a' untouched.
+    """
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("A")
+    model._add_normalizer_inplace(LowercaseNormalizer())
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert "A" not in result.sorted_vocabulary
+    assert "a" in result.sorted_vocabulary
+    call_tokenizer(result)
+
+
+def test_remove_unpreprocessable_tokens_removes_split_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test that a token which no longer preprocesses to a single token is removed."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert " " in model.sorted_vocabulary
+    model = model.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert " " not in result.sorted_vocabulary
+    assert result.vocabulary_size == model.vocabulary_size - 1
+    call_tokenizer(result)
+
+
+def test_remove_unpreprocessable_tokens_keeps_added_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test that added tokens are never removed, even if they would otherwise be unpreprocessable."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model._add_normalizer_inplace(LowercaseNormalizer())
+    assert "[UNK]" in {token.content for token in model.added_tokens.root}
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert "[UNK]" in result.sorted_vocabulary
+    call_tokenizer(result)
+
+
 def test_set_continuing_subword_prefix(small_tokenizer: Tokenizer) -> None:
     """Test that setting continuing_subword_prefix re-encodes the vocabulary."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)

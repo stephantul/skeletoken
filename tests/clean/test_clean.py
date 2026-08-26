@@ -1,9 +1,10 @@
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.normalizers import Lowercase
 from tokenizers.pre_tokenizers import BertPreTokenizer as HFBertPreTokenizer
 from tokenizers.pre_tokenizers import Metaspace, WhitespaceSplit
 
 from skeletoken.addedtoken import AddedToken
-from skeletoken.clean.clean import _process, clean_vocabulary
+from skeletoken.clean.clean import _process, clean_vocabulary, find_unpreprocessable_tokens
 from skeletoken.preprocessor import Preprocessor
 
 
@@ -162,6 +163,38 @@ def test_process_added_token_returns_original_regardless_of_split() -> None:
     added_token_dict = {"▁HELLO WORLD": at}
     assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, False, False, True) == "▁HELLO WORLD"
     assert _process("HELLO WORLD", "▁HELLO WORLD", added_token_dict, p, True, False, True) == "▁HELLO WORLD"
+
+
+def test_find_unpreprocessable_tokens() -> None:
+    """Unpreprocessable tokens are reported for removal; tokens are never renamed."""
+    p = Preprocessor(normalizer=Lowercase())
+    vocabulary = ["dog", "CAT", "cat", "spin"]
+    result = find_unpreprocessable_tokens(vocabulary, added_tokens=[], preprocessor=p)
+    # 'CAT' would become 'cat' under the normalizer, but is reported for removal, not renamed
+    assert result == ["CAT"]
+
+
+def test_find_unpreprocessable_tokens_multi_pretoken_split() -> None:
+    """A token that splits into more than one pretoken is reported as unpreprocessable."""
+    p = Preprocessor(initial_subword_prefix="_", pretokenizer=Metaspace(replacement="_"))
+    vocabulary = ["_dog", "_cat hat"]
+    result = find_unpreprocessable_tokens(vocabulary, added_tokens=[], preprocessor=p)
+    assert result == ["_cat hat"]
+
+
+def test_find_unpreprocessable_tokens_keeps_added_tokens() -> None:
+    """Added tokens are never reported, even if they would otherwise be unpreprocessable."""
+    p = Preprocessor(normalizer=Lowercase())
+    at = AddedToken(content="SPIN", single_word=True, normalized=True, special=False, lstrip=True, rstrip=True, id=0)
+    result = find_unpreprocessable_tokens(["SPIN"], added_tokens=[at], preprocessor=p)
+    assert result == []
+
+
+def test_find_unpreprocessable_tokens_keeps_decoding_errors() -> None:
+    """A token whose decoded form contains the replacement character is kept, not reported."""
+    p = Preprocessor(byte_transformer=ByteLevelDecoder())
+    result = find_unpreprocessable_tokens(["¡"], added_tokens=[], preprocessor=p)
+    assert result == []
 
 
 def test_process_added_token_empty_preprocess() -> None:

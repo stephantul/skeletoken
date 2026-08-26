@@ -1,3 +1,3 @@
-from skeletoken.clean.clean import clean_vocabulary
+from skeletoken.clean.clean import clean_vocabulary, find_unpreprocessable_tokens
 
-__all__ = ["clean_vocabulary"]
+__all__ = ["clean_vocabulary", "find_unpreprocessable_tokens"]

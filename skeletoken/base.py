@@ -11,7 +11,7 @@ from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.cache_utils import resets_preprocessor_cache, resets_tokenizer_cache
-from skeletoken.clean import clean_vocabulary
+from skeletoken.clean import clean_vocabulary, find_unpreprocessable_tokens
 from skeletoken.common import PathLike, PrependScheme
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import (
@@ -479,6 +479,26 @@ class TokenizerModel(BaseModel):
             old_preprocessor=model.preprocessor,
             new_preprocessor=model.preprocessor,
         )
+
+    def remove_unpreprocessable_tokens(self) -> TokenizerModel:
+        """Remove tokens whose current spelling can't be reproduced by preprocessing raw text.
+
+        Unlike `consolidate_vocabulary`, this never reinterprets a token into a new spelling:
+        a token is either left exactly as-is, or removed outright. For example, if 'A' would be
+        reinterpreted as 'a' under the current normalizer, `consolidate_vocabulary` renames it to
+        'a' (merging with any existing 'a'), while this method just removes 'A' and leaves the rest
+        of the vocabulary untouched.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the unpreprocessable tokens removed.
+
+        """
+        model = self.deep_copy()
+        sorted_vocab = tokens_ordered_by_id(model.model.vocab.inverse_vocabulary)
+        tokens_to_remove = find_unpreprocessable_tokens(sorted_vocab, model.added_tokens.root, model.preprocessor)
+        return model._remove_tokens_from_vocabulary(tokens_to_remove)
 
     def _consolidate(
         self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor
