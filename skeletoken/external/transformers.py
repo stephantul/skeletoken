@@ -40,7 +40,7 @@ def _remap_embeddings(embeddings: torch.Tensor, shift_mapping: dict[int, int]) -
 def _remap_config_token_ids(
     config: PretrainedConfig | GenerationConfig, inv_mapping: dict[int, int], original_vocab_size: int
 ) -> None:
-    """Rewrite the token IDs stored on a config, and on its sub-configs, in place.
+    """Rewrite the token IDs stored on a config, and on its nested text config, in place.
 
     Parameters
     ----------
@@ -69,11 +69,15 @@ def _remap_config_token_ids(
             setattr(config, key, surviving_ids or None)
 
     # A multimodal checkpoint keeps its text IDs on a sub-config, with nothing shadowing
-    # them at the top level.
-    for name in getattr(type(config), "sub_configs", {}):
-        sub_config = getattr(config, name, None)
-        if sub_config is not None:
-            _remap_config_token_ids(sub_config, inv_mapping, original_vocab_size)
+    # them at the top level. So only `text_config`s should be walked.
+    get_text_config = getattr(config, "get_text_config", None)
+    if get_text_config is not None:
+        try:
+            text_config = get_text_config()
+        except ValueError:
+            return
+        if text_config is not config:
+            _remap_config_token_ids(text_config, inv_mapping, original_vocab_size)
 
 
 def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
