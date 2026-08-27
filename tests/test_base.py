@@ -973,9 +973,9 @@ def test_model_delta(small_tokenizer: Tokenizer) -> None:
     model.unk_token = "new_unk"
     model.pad_token = "[PAD]"
     delta = model.model_delta
-    assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 7, 7: 8, 8: 9, 9: 10}
+    assert delta.token_mapping == {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10}
     assert delta.new_vocabulary_size == 13
-    assert delta.new_tokens == {"x": 5, "[ADDED]": 11, "new_token": 10, "new_unk": 12}
+    assert delta.new_tokens == {"[ADDED]": 11, "new_token": 10, "new_unk": 12}
 
 
 def test_model_same_unk_and_pad(small_tokenizer: Tokenizer) -> None:
@@ -1794,6 +1794,48 @@ def test_consolidate_pad_token_update(small_tokenizer: Tokenizer) -> None:
     # 'D' is a special normalized added token, so it is not renamed during consolidation
     assert model.pad_token == "D"
     call_tokenizer(model)
+
+
+def test_remove_unpreprocessable_tokens_does_not_reinterpret(small_tokenizer: Tokenizer) -> None:
+    """Test that unpreprocessable tokens are dropped outright, never renamed to their new form.
+
+    Unlike `consolidate_vocabulary(keep=False)`, which would rename 'A' to 'a', this method
+    just removes 'A' and leaves the existing 'a' untouched.
+    """
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary("A")
+    model._add_normalizer_inplace(LowercaseNormalizer())
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert "A" not in result.sorted_vocabulary
+    assert "a" in result.sorted_vocabulary
+    call_tokenizer(result)
+
+
+def test_remove_unpreprocessable_tokens_removes_split_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test that a token which no longer preprocesses to a single token is removed."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    assert " " in model.sorted_vocabulary
+    model = model.add_pre_tokenizer(WhitespaceSplitPreTokenizer())
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert " " not in result.sorted_vocabulary
+    assert result.vocabulary_size == model.vocabulary_size - 1
+    call_tokenizer(result)
+
+
+def test_remove_unpreprocessable_tokens_keeps_added_tokens(small_tokenizer: Tokenizer) -> None:
+    """Test that added tokens are never removed, even if they would otherwise be unpreprocessable."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model._add_normalizer_inplace(LowercaseNormalizer())
+    assert "[UNK]" in {token.content for token in model.added_tokens.root}
+
+    result = model.remove_unpreprocessable_tokens()
+
+    assert "[UNK]" in result.sorted_vocabulary
+    call_tokenizer(result)
 
 
 def test_set_continuing_subword_prefix(small_tokenizer: Tokenizer) -> None:

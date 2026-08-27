@@ -38,10 +38,11 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
 
     current_tokenizer = model.tokenizer
     new_tokenizer = tokenizer_model.to_transformers()
+    # Ignore both types so mypy passes independently of which version is installed.
     try:
-        model.tokenizer = new_tokenizer
+        model.tokenizer = new_tokenizer  # type: ignore
     except AttributeError:
-        model[0].processor = new_tokenizer
+        model[0].processor = new_tokenizer  # type: ignore
     model.tokenizer.model_max_length = current_tokenizer.model_max_length
     model.tokenizer.model_input_names = current_tokenizer.model_input_names
 

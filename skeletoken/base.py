@@ -11,7 +11,7 @@ from transformers import PreTrainedTokenizerFast
 
 from skeletoken.addedtoken import AddedTokens
 from skeletoken.cache_utils import resets_preprocessor_cache, resets_tokenizer_cache
-from skeletoken.clean import clean_vocabulary
+from skeletoken.clean import clean_vocabulary, find_unpreprocessable_tokens
 from skeletoken.common import PathLike, PrependScheme
 from skeletoken.decoders import DecoderDiscriminator
 from skeletoken.models import (
@@ -80,6 +80,7 @@ class TokenizerModel(BaseModel):
     decoder: DecoderDiscriminator | None = None
     model: ModelDiscriminator
     _original_tokenizer: TokenizerModel = PrivateAttr(init=False)
+    _content_history: dict[str, str] = PrivateAttr(default_factory=dict)
     _original_class: type[PreTrainedTokenizerFast] | None = PrivateAttr(init=False, default=None)
     _preprocessor: Preprocessor | None = None
     _tokenizer: Tokenizer | None = None
@@ -345,9 +346,14 @@ class TokenizerModel(BaseModel):
         """
         return self.replace_tokens_in_vocabulary([old_token], [new_token], preprocess_tokens=preprocess_token)
 
+    def _record_rename(self, old_token: str, new_token: str) -> None:
+        """Track that `old_token` became `new_token`, chaining through any prior rename."""
+        self._content_history[new_token] = self._content_history.pop(old_token, old_token)
+
     def _replace_token_in_vocabulary(self, old_token: str, new_token: str, is_added_token: bool = False) -> None:
         """Replace a token with another one. It keeps the old index in the vocabulary."""
         self.model.replace_token(old_token, new_token, is_added_token=is_added_token)
+        self._record_rename(old_token, new_token)
         self.added_tokens.maybe_replace_token(old_token, new_token)
         if self.post_processor is not None:
             self.post_processor = maybe_replace_token_in_post_processor(
@@ -482,6 +488,26 @@ class TokenizerModel(BaseModel):
             new_preprocessor=model.preprocessor,
         )
 
+    def remove_unpreprocessable_tokens(self) -> TokenizerModel:
+        """Remove tokens whose current spelling can't be reproduced by preprocessing raw text.
+
+        Unlike `consolidate_vocabulary`, this never reinterprets a token into a new spelling:
+        a token is either left exactly as-is, or removed outright. For example, if 'A' would be
+        reinterpreted as 'a' under the current normalizer, `consolidate_vocabulary` renames it to
+        'a' (merging with any existing 'a'), while this method just removes 'A' and leaves the rest
+        of the vocabulary untouched.
+
+        Returns
+        -------
+        TokenizerModel
+            The tokenizer model with the unpreprocessable tokens removed.
+
+        """
+        model = self.deep_copy()
+        sorted_vocab = tokens_ordered_by_id(model.model.vocab.inverse_vocabulary)
+        tokens_to_remove = find_unpreprocessable_tokens(sorted_vocab, model.added_tokens.root, model.preprocessor)
+        return model._remove_tokens_from_vocabulary(tokens_to_remove)
+
     def _consolidate(
         self, keep: bool, old_preprocessor: Preprocessor, new_preprocessor: Preprocessor
     ) -> TokenizerModel:
@@ -501,6 +527,7 @@ class TokenizerModel(BaseModel):
         for old_token, token in zip(sorted_vocab, new_vocabulary, strict=True):
             if token is None:
                 continue
+            self._record_rename(old_token, token)
             self.added_tokens.maybe_replace_token(old_token, token)
             if self.post_processor is not None:
                 self.post_processor = maybe_replace_token_in_post_processor(

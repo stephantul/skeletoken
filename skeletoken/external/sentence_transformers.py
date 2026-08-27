@@ -46,4 +46,9 @@ def reshape_embeddings(model: T, tokenizer_model: TokenizerModel) -> T:
     model.tokenizer.model_max_length = current_tokenizer.model_max_length
     model.tokenizer.model_input_names = current_tokenizer.model_input_names
 
+    for module in model:
+        on_model_ready = getattr(module, "on_model_ready", None)
+        if on_model_ready is not None:
+            on_model_ready(model)
+
     return model

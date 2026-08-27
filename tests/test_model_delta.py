@@ -80,3 +80,26 @@ def test_compute_model_delta_detects_new_tokens(small_tokenizer_json: dict[str, 
 
     assert "NEW_TOKEN" in delta.new_tokens
     assert delta.new_tokens["NEW_TOKEN"] == mod.vocabulary["NEW_TOKEN"]
+
+
+def test_record_rename_chains_through_prior_rename(small_tokenizer_json: dict[str, Any]) -> None:
+    """A token renamed twice should still resolve back to its very first spelling."""
+    model = TokenizerModel.model_validate(small_tokenizer_json)
+    model._record_rename("A", "B")
+    model._record_rename("B", "C")
+    assert model._content_history == {"C": "A"}
+
+
+def test_compute_model_delta_tracks_renamed_token(small_tokenizer_json: dict[str, Any]) -> None:
+    """A token that survives with a new spelling (e.g. via decasing) must still be traced back."""
+    orig = TokenizerModel.model_validate(small_tokenizer_json)
+    old_id = orig.vocabulary["D"]
+
+    decased = orig.decase_vocabulary()
+    assert "D" not in decased.vocabulary
+    new_id = decased.vocabulary["d"]
+
+    delta = decased.model_delta
+    assert delta.token_mapping[new_id] == old_id
+    assert "d" not in delta.new_tokens
+    assert "D" not in delta.removed_tokens

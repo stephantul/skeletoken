@@ -30,6 +30,30 @@ def _process(
     return reprocessed
 
 
+def find_unpreprocessable_tokens(
+    vocabulary: list[str],
+    added_tokens: list[AddedToken],
+    preprocessor: "Preprocessor",
+) -> list[str]:
+    """Find tokens whose current spelling can't be reproduced by preprocessing raw text."""
+    decoded_sequences = preprocessor.decode_sequences(vocabulary)
+    added_token_dict = {at.content: at for at in added_tokens}
+
+    unpreprocessable = []
+    for dt in decoded_sequences:
+        if dt.original in added_token_dict:
+            continue
+        if "�" in dt.decoded:
+            continue
+        preprocessed_tokens = preprocessor.preprocess(
+            dt.decoded, dt.had_initial_subword_prefix, dt.had_continuing_subword_prefix, empty_sequence_is_token=True
+        )
+        if preprocessed_tokens != [dt.original]:
+            unpreprocessable.append(dt.original)
+
+    return unpreprocessable
+
+
 def clean_vocabulary(
     vocabulary: list[str],
     added_tokens: list[AddedToken],

@@ -38,16 +38,17 @@ def compute_model_delta(original: TokenizerModel, modified: TokenizerModel) -> M
     new_tokens = {}
     new_vocab = modified.vocabulary
     old_vocab = original.vocabulary
-    removed_tokens = set(original.vocabulary) - set(modified.vocabulary)
+    changed_tokens: set[str] = set()
     for token, new_id in new_vocab.items():
-        if token in old_vocab:
-            # This is an old token that got a new index
-            old_index = old_vocab[token]
-            token_mapping[new_id] = old_index
+        original_token = modified._content_history.get(token, token)
+        if original_token in old_vocab:
+            # This is an old token, possibly renamed, that got a new index
+            token_mapping[new_id] = old_vocab[original_token]
+            changed_tokens.add(original_token)
         else:
             # This is a new token
             new_tokens[token] = new_id
-    # Compute new tokens
+    removed_tokens = set(old_vocab) - changed_tokens
     new_vocabulary_size = len(modified.vocabulary)
 
     return ModelDelta(

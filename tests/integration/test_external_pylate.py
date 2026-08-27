@@ -36,10 +36,18 @@ def test_reshape_embeddings_remaps_and_swaps_tokenizer(small_bert_checkpoint_dir
         assert torch.allclose(embeddings_after[new_id], embeddings_before[old_id])
 
     # query/document prefix ids were remapped to the new vocabulary rather than left dangling.
+    assert reshaped.query_prefix is not None
+    assert reshaped.document_prefix is not None
     assert reshaped.query_prefix_id == decased.tokens_to_ids([reshaped.query_prefix])[0]
     assert reshaped.document_prefix_id == decased.tokens_to_ids([reshaped.document_prefix])[0]
 
     assert reshaped.tokenizer("amsterdam")["input_ids"] == reshaped.tokenizer("Amsterdam")["input_ids"]
+
+    old_id_amsterdam = tokenizer_model.vocabulary["Amsterdam"]
+    new_id_amsterdam = decased.vocabulary["amsterdam"]
+    assert "amsterdam" not in delta.new_tokens
+    assert delta.token_mapping[new_id_amsterdam] == old_id_amsterdam
+    assert torch.allclose(embeddings_after[new_id_amsterdam], embeddings_before[old_id_amsterdam])
 
 
 def test_reshape_embeddings_batch_added_tokens_get_rows(small_bert_checkpoint_dir: str) -> None:

@@ -41,9 +41,57 @@ def test_reshape_embeddings_remaps_and_swaps_tokenizer(small_bert_checkpoint_dir
     assert type(reshaped.tokenizer) is original_tokenizer_class
     assert reshaped.tokenizer("amsterdam")["input_ids"] == reshaped.tokenizer("Amsterdam")["input_ids"]
 
+    old_id_amsterdam = tokenizer_model.vocabulary["Amsterdam"]
+    new_id_amsterdam = decased.vocabulary["amsterdam"]
+    assert "amsterdam" not in delta.new_tokens
+    assert delta.token_mapping[new_id_amsterdam] == old_id_amsterdam
+    assert torch.allclose(embeddings_after[new_id_amsterdam], embeddings_before[old_id_amsterdam])
+
     # encode() must not crash after the swap.
     vector = reshaped.encode("Hello Amsterdam")
     assert vector.shape == (8,)
+
+
+def test_reshape_embeddings_refreshes_multi_vector_mask_skiplist(small_bert_checkpoint_dir: str) -> None:
+    """MultiVectorMask caches skiplist token ids from the tokenizer at construction time.
+
+    After decasing shifts the vocabulary, those ids must be re-resolved against the new
+    tokenizer, not left pointing at whatever token now happens to sit at the old index.
+    """
+    pytest.importorskip("sentence_transformers.multi_vector_encoder")
+    from sentence_transformers import MultiVectorEncoder  # type: ignore[attr-defined]
+    from sentence_transformers.base.modules.transformer import Transformer
+    from sentence_transformers.multi_vector_encoder.modules import MultiVectorMask
+
+    transformer = Transformer(small_bert_checkpoint_dir)
+    mask = MultiVectorMask(skiplist_words=["."], skiplist_tasks=["document"])
+    model = MultiVectorEncoder(modules=[transformer, mask])
+
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    decased = tokenizer_model.decase_vocabulary()
+    old_id = tokenizer_model.vocabulary["."]
+    new_id = decased.vocabulary["."]
+    assert old_id != new_id
+
+    reshaped = reshape_embeddings(model, decased)
+
+    assert reshaped[1]._skiplist_ids.tolist() == [new_id]
+
+
+def test_reshape_embeddings_preserves_encode_output_for_unchanged_case(small_bert_checkpoint_dir: str) -> None:
+    """docs/3_editing_models.md example: decasing must not change encode() output."""
+    np = pytest.importorskip("numpy")
+    model = SentenceTransformer(small_bert_checkpoint_dir, local_files_only=True)
+    tokenizer_model = TokenizerModel.from_pretrained(_TOKENIZER_PATH)
+    decased = tokenizer_model.decase_vocabulary()
+
+    test_string = "this is a test string"
+    x = model.encode(test_string)
+
+    decased_model = reshape_embeddings(model, decased)
+    x2 = decased_model.encode(test_string)
+
+    assert np.allclose(x, x2)
 
 
 def test_reshape_embeddings_new_token_gets_a_row(small_bert_checkpoint_dir: str) -> None:
