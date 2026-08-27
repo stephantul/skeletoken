@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from enum import Enum
-from math import exp
 from typing import Annotated, Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
@@ -203,7 +202,7 @@ def convert_to_greedy(model: Model) -> WordPiece:
 def convert_to_flota(model: Model) -> Unigram:
     """Convert a model to a flota model."""
     vocabulary = model.vocab.sorted_vocabulary
-    length_scores: list[float] = [exp(len(x)) for x in vocabulary]
+    length_scores: list[float] = [-1 for x in vocabulary]
     with_length = list(zip(vocabulary, length_scores, strict=True))
 
     match model:

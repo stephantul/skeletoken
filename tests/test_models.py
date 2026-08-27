@@ -1,4 +1,4 @@
-from math import exp, log
+from math import log
 from typing import Any, Literal, overload
 
 import pytest
@@ -137,7 +137,7 @@ def test_flota(model: Model) -> None:
 
     assert flota.type == ModelType.UNIGRAM
     assert flota.vocab.sorted_vocabulary == original_vocabulary
-    assert [score for _, score in flota.vocab.root] == [exp(len(token)) for token in original_vocabulary]
+    assert [score for _, score in flota.vocab.root] == [-1 for token in original_vocabulary]
 
     if isinstance(model, Unigram):
         assert flota.unk_id == model.unk_id
