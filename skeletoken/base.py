@@ -18,8 +18,8 @@ from skeletoken.models import (
     MODELS_THAT_NEED_UNK,
     ModelDiscriminator,
     WordPiece,
-    convert_to_flota,
     convert_to_greedy,
+    convert_to_unigram,
     get_continuing_subword_prefix_token,
     set_continuing_subword_prefix_token,
 )
@@ -1011,10 +1011,23 @@ class TokenizerModel(BaseModel):
     def to_flota(self, with_prefix: bool = False) -> TokenizerModel:
         """Convert a model to a flota model."""
         model = self.to_normal_form()
+        # This is necessary because FLOTA
+        # requires start of word tokens to be preferred
+        # over continuing tokens.
         if not with_prefix:
+            if not model.transforms_into_bytes:
+                prefix = model.initial_subword_prefix or ""
+                vocab = model.vocabulary
+                duplicates = [
+                    token[len(prefix) :]
+                    for token in vocab
+                    if token.startswith(prefix) and len(token) > len(prefix) and token[len(prefix) :] in vocab
+                ]
+                if duplicates:
+                    model = model.remove_tokens_from_vocabulary(duplicates)
             model.initial_subword_prefix = None
 
-        model.model = convert_to_flota(model.model)
+        model.model = convert_to_unigram(model.model, {})
         return model
 
     @property

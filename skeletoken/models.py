@@ -199,11 +199,12 @@ def convert_to_greedy(model: Model) -> WordPiece:
             )
 
 
-def convert_to_flota(model: Model) -> Unigram:
-    """Convert a model to a flota model."""
+def convert_to_unigram(model: Model, token_scores: dict[str, float]) -> Unigram:
+    """Convert any model to a unigram model by supplying probabilities."""
     vocabulary = model.vocab.sorted_vocabulary
-    length_scores: list[float] = [-1 for x in vocabulary]
-    with_length = list(zip(vocabulary, length_scores, strict=True))
+    lowest_score = -1 if not token_scores else min(token_scores.values())
+    length_scores: list[float] = [token_scores.get(x, lowest_score) for x in vocabulary]
+    with_scores = list(zip(vocabulary, length_scores, strict=True))
 
     match model:
         case Unigram():
@@ -219,7 +220,7 @@ def convert_to_flota(model: Model) -> Unigram:
             unk_id = model.vocab[model.unk_token]
             byte_fallback = False
 
-    return Unigram(vocab=UnigramVocabulary(with_length), unk_id=unk_id, byte_fallback=byte_fallback)
+    return Unigram(vocab=UnigramVocabulary(with_scores), unk_id=unk_id, byte_fallback=byte_fallback)
 
 
 def get_continuing_subword_prefix_token(model: Model) -> str | None:

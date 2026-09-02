@@ -12,8 +12,8 @@ from skeletoken.models import (
     Unigram,
     WordLevel,
     WordPiece,
-    convert_to_flota,
     convert_to_greedy,
+    convert_to_unigram,
     get_continuing_subword_prefix_token,
     set_continuing_subword_prefix_token,
 )
@@ -133,7 +133,7 @@ def test_greedy(model: Model) -> None:
 def test_flota(model: Model) -> None:
     """Tests the flota conversion behavior."""
     original_vocabulary = model.vocab.sorted_vocabulary
-    flota = convert_to_flota(model)
+    flota = convert_to_unigram(model, {})
 
     assert flota.type == ModelType.UNIGRAM
     assert flota.vocab.sorted_vocabulary == original_vocabulary
@@ -159,11 +159,11 @@ def test_flota_byte_fallback_passthrough() -> None:
     """byte_fallback should be carried over from Unigram and BPE sources instead of defaulting to False."""
     bpe = _get_default_model(ModelType.BPE)
     bpe.byte_fallback = True
-    assert convert_to_flota(bpe).byte_fallback is True
+    assert convert_to_unigram(bpe, {}).byte_fallback is True
 
     unigram = _get_default_model(ModelType.UNIGRAM)
     unigram.byte_fallback = True
-    assert convert_to_flota(unigram).byte_fallback is True
+    assert convert_to_unigram(unigram, {}).byte_fallback is True
 
 
 def test_get_continuing_subword_prefix_token() -> None:

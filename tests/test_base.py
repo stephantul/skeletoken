@@ -2002,6 +2002,21 @@ def test_to_flota_with_prefix(small_tokenizer: Tokenizer) -> None:
     call_tokenizer(flota)
 
 
+def test_to_flota_dedupes_prefixed_and_bare_tokens(small_tokenizer: Tokenizer) -> None:
+    """to_flota drops bare tokens that collide with a prefixed token once the prefix is stripped."""
+    model = TokenizerModel.from_tokenizer(small_tokenizer)
+    model = model.add_token_to_vocabulary(" a", preprocess_token=False)
+    assert "a" in model.vocabulary
+    assert " a" in model.vocabulary
+
+    flota = model.to_flota()
+
+    assert "a" in flota.vocabulary
+    assert " a" not in flota.vocabulary
+    assert flota.initial_subword_prefix is None
+    call_tokenizer(flota)
+
+
 def test_to_normal_form_no_op_for_byte_transforming_model(small_tokenizer: Tokenizer) -> None:
     """to_normal_form is a no-op for tokenizers that transform their input into bytes."""
     model = TokenizerModel.from_tokenizer(small_tokenizer)
