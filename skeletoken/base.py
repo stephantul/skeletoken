@@ -18,6 +18,8 @@ from skeletoken.models import (
     MODELS_THAT_NEED_UNK,
     ModelDiscriminator,
     WordPiece,
+    convert_to_greedy,
+    convert_to_unigram,
     get_continuing_subword_prefix_token,
     set_continuing_subword_prefix_token,
 )
@@ -678,7 +680,7 @@ class TokenizerModel(BaseModel):
     def make_model_greedy(self, max_input_chars_per_word: int = 100) -> TokenizerModel:
         """Convert the TokenizerModel to a greedy tokenizer model."""
         model = self.deep_copy()
-        model.model = model.model.to_greedy()
+        model.model = convert_to_greedy(model.model)
         assert isinstance(model.model, WordPiece)
         model.model.max_input_chars_per_word = max_input_chars_per_word
         model = model.add_pre_tokenizer(FixedLengthPreTokenizer(length=max_input_chars_per_word))
@@ -1004,6 +1006,28 @@ class TokenizerModel(BaseModel):
         if model.continuing_subword_prefix:
             model.continuing_subword_prefix = ""
 
+        return model
+
+    def to_flota(self, with_prefix: bool = False) -> TokenizerModel:
+        """Convert a model to a flota model."""
+        model = self.to_normal_form()
+        # This is necessary because FLOTA
+        # requires start of word tokens to be preferred
+        # over continuing tokens.
+        if not with_prefix:
+            if not model.transforms_into_bytes:
+                prefix = model.initial_subword_prefix or ""
+                vocab = model.vocabulary
+                duplicates = [
+                    token[len(prefix) :]
+                    for token in vocab
+                    if token.startswith(prefix) and len(token) > len(prefix) and token[len(prefix) :] in vocab
+                ]
+                if duplicates:
+                    model = model.remove_tokens_from_vocabulary(duplicates)
+            model.initial_subword_prefix = None
+
+        model.model = convert_to_unigram(model.model, {})
         return model
 
     @property

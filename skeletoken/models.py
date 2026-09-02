@@ -58,10 +58,6 @@ class WordPiece(BaseModel, VocabMixinMethod[Vocabulary]):
     continuing_subword_prefix: str
     max_input_chars_per_word: int = 100
 
-    def to_greedy(self) -> WordPiece:
-        """Convert the WordPiece model to a greedy version."""
-        return self
-
 
 class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     """Data model representing a BPE vocabulary."""
@@ -76,20 +72,6 @@ class BPE(BaseModel, VocabMixinMethod[Vocabulary]):
     fuse_unk: bool
     byte_fallback: bool
     ignore_merges: bool
-
-    def to_greedy(self) -> WordPiece:
-        """Convert the BPE model to a greedy WordPiece model."""
-        if self.unk_token is None:
-            logger.warning("BPE model has no unk_token, using the first token in the vocab.")
-            unk_token = tokens_ordered_by_id(self.vocab.inverse_vocabulary)[0]
-        else:
-            unk_token = self.unk_token
-        return WordPiece(
-            vocab=self.vocab,
-            unk_token=unk_token,
-            continuing_subword_prefix=self.continuing_subword_prefix or "",
-            max_input_chars_per_word=100,
-        )
 
     def add_token(self, token: str, is_added_token: bool = False) -> None:
         """Add a token to the vocabulary."""
@@ -151,20 +133,6 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
             logger.warning("Unk token ID in model has id larger than vocab size, setting it to None.")
             self.unk_id = None
 
-    def to_greedy(self) -> WordPiece:
-        """Convert the Unigram model to a greedy WordPiece model."""
-        if self.unk_id is None:
-            unk_token = self.vocab.root[0][0]  # Use the first token as unk_token
-            logger.warning("Unigram model has no `unk_id`, using the first token in the vocab.")
-        else:
-            unk_token = self.vocab.root[self.unk_id][0]
-        return WordPiece(
-            vocab=Vocabulary({token: idx for idx, (token, _) in enumerate(self.vocab.root)}),
-            unk_token=unk_token,
-            continuing_subword_prefix="",
-            max_input_chars_per_word=100,
-        )
-
     @property
     def unk_token(self) -> str | None:
         """Return the unknown token, if any."""
@@ -188,18 +156,71 @@ class WordLevel(BaseModel, VocabMixinMethod[Vocabulary]):
     vocab: Vocabulary
     unk_token: str
 
-    def to_greedy(self) -> WordPiece:
-        """Convert the WordLevel model to a greedy WordPiece model."""
-        return WordPiece(
-            vocab=self.vocab,
-            unk_token=self.unk_token,
-            continuing_subword_prefix="",
-            max_input_chars_per_word=100,
-        )
-
 
 Model = WordPiece | BPE | Unigram | WordLevel
 ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
+
+
+def convert_to_greedy(model: Model) -> WordPiece:
+    """Convert a model to a greedy WordPiece model."""
+    match model:
+        case WordPiece():
+            return model
+        case BPE():
+            if model.unk_token is None:
+                logger.warning("BPE model has no unk_token, using the first token in the vocab.")
+                unk_token = tokens_ordered_by_id(model.vocab.inverse_vocabulary)[0]
+            else:
+                unk_token = model.unk_token
+            return WordPiece(
+                vocab=model.vocab,
+                unk_token=unk_token,
+                continuing_subword_prefix=model.continuing_subword_prefix or "",
+                max_input_chars_per_word=100,
+            )
+        case Unigram():
+            if model.unk_id is None:
+                logger.warning("Unigram model has no `unk_id`, using the first token in the vocab.")
+                unk_token = model.vocab.root[0][0]
+            else:
+                unk_token = model.vocab.root[model.unk_id][0]
+            return WordPiece(
+                vocab=Vocabulary({token: idx for idx, (token, _) in enumerate(model.vocab.root)}),
+                unk_token=unk_token,
+                continuing_subword_prefix="",
+                max_input_chars_per_word=100,
+            )
+        case WordLevel():
+            return WordPiece(
+                vocab=model.vocab,
+                unk_token=model.unk_token,
+                continuing_subword_prefix="",
+                max_input_chars_per_word=100,
+            )
+
+
+def convert_to_unigram(model: Model, token_scores: dict[str, float]) -> Unigram:
+    """Convert any model to a unigram model by supplying probabilities."""
+    vocabulary = model.vocab.sorted_vocabulary
+    lowest_score = -1 if not token_scores else min(token_scores.values())
+    length_scores: list[float] = [token_scores.get(x, lowest_score) for x in vocabulary]
+    with_scores = list(zip(vocabulary, length_scores, strict=True))
+
+    match model:
+        case Unigram():
+            unk_id = model.unk_id
+            byte_fallback = model.byte_fallback
+        case BPE():
+            if model.unk_token:
+                unk_id = model.vocab[model.unk_token]
+            else:
+                unk_id = None
+            byte_fallback = model.byte_fallback
+        case WordPiece() | WordLevel():
+            unk_id = model.vocab[model.unk_token]
+            byte_fallback = False
+
+    return Unigram(vocab=UnigramVocabulary(with_scores), unk_id=unk_id, byte_fallback=byte_fallback)
 
 
 def get_continuing_subword_prefix_token(model: Model) -> str | None:
