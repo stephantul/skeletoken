@@ -129,7 +129,7 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
 
     def model_post_init(self, __context: dict[Any, Any]) -> None:
         """Check if the unk_id is valid."""
-        if self.unk_id is not None and self.unk_id > len(self.vocab.root):
+        if self.unk_id is not None and self.unk_id >= len(self.vocab.root):
             logger.warning("Unk token ID in model has id larger than vocab size, setting it to None.")
             self.unk_id = None
 
@@ -147,6 +147,17 @@ class Unigram(BaseModel, VocabMixinMethod[UnigramVocabulary]):
             self.unk_id = None
         else:
             self.unk_id = self.vocab.vocabulary[token]
+
+    def replace_vocabulary(self, vocabulary: list[str | None]) -> None:
+        """Completely replaces the vocabulary by a vocabulary of the same length."""
+        unk_id = self.unk_id
+        self.vocab.replace_vocabulary(vocabulary)
+        if unk_id is not None:
+            unk = vocabulary[unk_id]
+            if unk is None:
+                self.unk_id = None
+            else:
+                self.unk_id = self.vocab.vocabulary[unk]
 
 
 class WordLevel(BaseModel, VocabMixinMethod[Vocabulary]):
