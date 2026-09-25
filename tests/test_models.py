@@ -205,6 +205,32 @@ def test_unk_token_unigram() -> None:
     assert model.unk_token is None
 
 
+@pytest.mark.parametrize(
+    "new_unk,expected_id",
+    [
+        ("[UNK]", 0),
+        ("[unk]", 0),
+        (None, None),
+    ],
+)
+def test_unigram_replace_vocabulary_unk(new_unk: str | None, expected_id: int | None) -> None:
+    """Test that the unk id is remapped when the vocabulary is replaced."""
+    model = _get_default_model(ModelType.UNIGRAM)
+    new_vocab: list[str | None] = list(model.vocab.sorted_vocabulary)
+    new_vocab[0] = None
+    new_vocab[1] = None
+    new_vocab[2] = new_unk
+    model.replace_vocabulary(new_vocab)
+    assert model.unk_id == expected_id
+    assert model.unk_token == new_unk
+
+
+def test_unigram_unk_id_out_of_bounds() -> None:
+    """Test that an unk id equal to the vocabulary size is unset."""
+    model = Unigram(vocab=UnigramVocabulary([("a", -1.0), ("b", -2.0)]), unk_id=2, byte_fallback=False)
+    assert model.unk_id is None
+
+
 @pytest.mark.parametrize("model", [*[_get_default_model(x) for x in ModelType]])
 def test_add_token(model: Model) -> None:
     """Test the add token functionality."""
