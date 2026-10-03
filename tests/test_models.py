@@ -14,6 +14,7 @@ from skeletoken.models import (
     WordPiece,
     convert_to_greedy,
     convert_to_unigram,
+    empty_model,
     get_continuing_subword_prefix_token,
     set_continuing_subword_prefix_token,
 )
@@ -532,3 +533,21 @@ def test_set_continuing_subword_prefix_token(model: Model) -> None:
     else:
         with pytest.raises(ValueError):
             set_continuing_subword_prefix_token(model, "haha")
+
+
+@pytest.mark.parametrize("model_type", list(ModelType))
+def test_empty_model(model_type: ModelType) -> None:
+    """Test that empty models have the correct type and defaults."""
+    model = empty_model(model_type)
+    assert model.type == model_type
+    match model:
+        case BPE():
+            assert model.vocab.root == {}
+            assert model.merges.root == []
+            assert model.unk_token is None
+        case Unigram():
+            assert model.vocab.root == []
+            assert model.unk_id is None
+        case WordPiece() | WordLevel():
+            assert model.vocab.root == {"[UNK]": 0}
+            assert model.unk_token == "[UNK]"
