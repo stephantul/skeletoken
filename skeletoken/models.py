@@ -172,6 +172,34 @@ Model = WordPiece | BPE | Unigram | WordLevel
 ModelDiscriminator = Annotated[Model, Field(discriminator="type")]
 
 
+def empty_model(model_type: ModelType) -> Model:
+    """Create an empty model of the given type with default settings."""
+    match model_type:
+        case ModelType.BPE:
+            return BPE(
+                merges=Merges([]),
+                vocab=Vocabulary(root={}),
+                dropout=None,
+                unk_token=None,
+                continuing_subword_prefix=None,
+                end_of_word_suffix=None,
+                fuse_unk=False,
+                byte_fallback=False,
+                ignore_merges=False,
+            )
+        case ModelType.WORDLEVEL:
+            return WordLevel(vocab=Vocabulary(root={"[UNK]": 0}), unk_token="[UNK]")
+        case ModelType.WORDPIECE:
+            return WordPiece(
+                vocab=Vocabulary(root={"[UNK]": 0}),
+                unk_token="[UNK]",
+                continuing_subword_prefix="##",
+                max_input_chars_per_word=100,
+            )
+        case ModelType.UNIGRAM:
+            return Unigram(vocab=UnigramVocabulary(root=[]), unk_id=None, byte_fallback=False)
+
+
 def convert_to_greedy(model: Model) -> WordPiece:
     """Convert a model to a greedy WordPiece model."""
     match model:
